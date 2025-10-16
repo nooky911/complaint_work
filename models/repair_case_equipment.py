@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP
+from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP, text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 from database import Base
@@ -15,7 +15,7 @@ class RepairCaseEquipment(Base):
     section_mask: Mapped[int] = mapped_column(Integer, nullable=False)
     locomotive_number: Mapped[str | None] = mapped_column(String(50))
     mileage: Mapped[int | None] = mapped_column(Integer)
-    component_quantity: Mapped[int] = mapped_column(Integer, default=1)
+    component_quantity: Mapped[int] = mapped_column(Integer, server_default=text('1'))
     element_quantity: Mapped[int | None] = mapped_column(Integer)
     component_serial_number_old: Mapped[str | None] = mapped_column(String(100))
     component_manufacture_date_old: Mapped[date | None] = mapped_column(Date)
