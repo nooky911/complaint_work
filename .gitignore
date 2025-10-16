@@ -16,7 +16,7 @@ Thumbs.db
 # Python
 .venv/
 venv/
-env/
+env/t
 __pycache__/
 *.pyc
 *.pyo
