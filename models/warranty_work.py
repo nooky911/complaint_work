@@ -1,7 +1,7 @@
 from sqlalchemy import Integer, String, Date, ForeignKey
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date
-from database import Base
+from database.base import Base
 
 
 class WarrantyWork(Base):
