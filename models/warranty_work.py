@@ -38,7 +38,8 @@ class WarrantyWork(Base):
     )
     case: Mapped["RepairCaseEquipment"] = relationship(
         "RepairCaseEquipment",
-        back_populates="warranty_work"
+        back_populates="warranty_work",
+        uselist=False
     )
 
 

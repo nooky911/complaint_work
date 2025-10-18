@@ -72,4 +72,9 @@ class RepairCaseEquipment(Base):
         back_populates="repair_cases"
     )
     supplier: Mapped["Supplier | None"] = relationship("Supplier", back_populates="repair_cases")
-    warranty_work: Mapped[list["WarrantyWork"]] = relationship("WarrantyWork", back_populates="case")
+    warranty_work: Mapped["WarrantyWork"] = relationship(
+        "WarrantyWork",
+        back_populates="case",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
