@@ -12,7 +12,7 @@ class WarrantyService:
 
     @staticmethod
     async def _get_warranty_work_with_relations(case_id: int, session: AsyncSession) -> WarrantyWork | None:
-        """Внутренний метод для получения WarrantyWork с загруженными summary связями."""
+        """Внутренний метод для получения WarrantyWork"""
         stmt = (
             select(WarrantyWork)
             .options(
@@ -24,18 +24,16 @@ class WarrantyService:
             .where(RepairCaseEquipment.id == case_id)
         )
         result = await session.execute(stmt)
-        # .unique() нужен при joinedload
         return result.unique().scalar_one_or_none()
 
-# ---
 
     @staticmethod
     async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWorkResponse:
-        """Получение данных по рекл. работе"""
+        """Получение данных по рекл. работе."""
         warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:
-            raise HTTPException(status_code=404, detail="Warranty work not found")
+            raise HTTPException(status_code=404, detail="Рекламационная работа не найдена")
 
         return WarrantyWorkResponse.model_validate(warranty_work)
 
@@ -46,11 +44,11 @@ class WarrantyService:
             warranty_data: WarrantyWorkUpdate,
             session: AsyncSession
             )-> WarrantyWorkResponse:
-        """Редактирование случая по рекл. работе"""
+        """Редактирование"""
         warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:
-            raise HTTPException(status_code=404, detail="Warranty work not found")
+            raise HTTPException(status_code=404, detail="Рекламационная работа не найдена")
 
         update_data = warranty_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():

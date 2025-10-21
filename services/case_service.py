@@ -13,6 +13,7 @@ class CaseService:
 
     @staticmethod
     async def _get_case_with_relations(session: AsyncSession, case_id: int) -> RepairCaseEquipment | None:
+        """Внутренний метод для загрузки случая со всеми связями"""
         stmt = (
             select(RepairCaseEquipment)
             .options(
@@ -28,29 +29,31 @@ class CaseService:
                 joinedload(RepairCaseEquipment.destination),
                 joinedload(RepairCaseEquipment.supplier),
 
-                # warranty_work
-                joinedload(RepairCaseEquipment.warranty_work)
-                .selectinload(WarrantyWork.notification_summary)
-                .selectinload(WarrantyWork.response_summary)
-                .selectinload(WarrantyWork.decision_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.notification_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.response_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.decision_summary),
             )
             .where(RepairCaseEquipment.id == case_id)
         )
         result = await session.execute(stmt)
         return result.unique().scalar_one_or_none()
 
-    # ---
 
     @staticmethod
-    async def create_case(case_data: CaseCreate, session: AsyncSession) -> RepairCaseEquipment:
+    async def create_case(case_data: CaseCreate, session: AsyncSession) -> CaseDetail:  # <-- Возвращаем CaseDetail
         """Создание случая"""
         case = RepairCaseEquipment(**case_data.model_dump())
-
-        # Создаем связанную запись WarrantyWork
         case.warranty_work = WarrantyWork()
         session.add(case)
+
         await session.flush()
-        return case
+        await session.refresh(case)
+
+        full_case = await CaseService._get_case_with_relations(session, case.id)
+        if not full_case:
+            raise HTTPException(status_code=500, detail="Ошибка при создании случая")
+
+        return CaseDetail.model_validate(full_case)
 
 
     @staticmethod
@@ -59,7 +62,6 @@ class CaseService:
         case = await CaseService._get_case_with_relations(session, case_id)
         if not case:
             raise HTTPException(status_code=404, detail="Case not found")
-
         return CaseDetail.model_validate(case)
 
 
@@ -86,20 +88,18 @@ class CaseService:
 
         return [CaseList.model_validate(case) for case in cases]
 
-
     @staticmethod
     async def update_case(case_id: int, case_data: CaseUpdate, session: AsyncSession) -> CaseDetail:
-        """Редактирование случая"""
+        """Редактирование случая."""
         case = await CaseService._get_case_with_relations(session, case_id)
         if not case:
-            raise HTTPException(status_code=404, detail="Case not found")
+            raise HTTPException(status_code=404, detail="Случай не найден")
 
         update_data = case_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(case, field, value)
 
         await session.flush()
-        # Возвращаем полностью загруженный объект
         return CaseDetail.model_validate(case)
 
 
@@ -111,7 +111,7 @@ class CaseService:
         case = result.scalar_one_or_none()
 
         if not case:
-            raise HTTPException(status_code=404, detail="Case not found")
+            raise HTTPException(status_code=404, detail="Случай не найден")
 
         await session.delete(case)
         await session.flush()

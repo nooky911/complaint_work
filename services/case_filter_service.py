@@ -1,19 +1,19 @@
 from sqlalchemy import select, and_, func
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 from datetime import date
-from typing import List
 
 from models.repair_case_equipment import RepairCaseEquipment
 from models.warranty_work import WarrantyWork
 from schemas.cases import CaseList
-
+from schemas.filters import FilterOptionsResponse
 
 class CaseFilterService:
     """Сервис фильтрации с использованием функции БД"""
 
     @staticmethod
     async def filter_cases(
-            session,
+            session: AsyncSession,
             # Основные фильтры
             date_from: date | None = None,
             date_to: date | None = None,
@@ -35,7 +35,7 @@ class CaseFilterService:
 
             skip: int = 0,
             limit: int = 50
-    ) -> List[CaseList]:
+    ) -> list[CaseList]:
 
         # Выражение для статуса
         status_expr = func.calculate_case_status(
@@ -65,16 +65,15 @@ class CaseFilterService:
                 joinedload(RepairCaseEquipment.repair_type),
                 joinedload(RepairCaseEquipment.supplier),
 
-                # warranty_work
-                joinedload(RepairCaseEquipment.warranty_work)
-                    .selectinload(WarrantyWork.notification_summary)
-                    .selectinload(WarrantyWork.response_summary)
-                    .selectinload(WarrantyWork.decision_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.notification_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.response_summary),
+                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.decision_summary),
             )
         )
 
         conditions = []
 
+        # --- БЛОК ФИЛЬТРОВ ---
         # Фильтры по датам
         if date_from:
             conditions.append(RepairCaseEquipment.fault_date >= date_from)
@@ -112,6 +111,7 @@ class CaseFilterService:
         # Фильтр по статусу
         if status:
             conditions.append(status_expr == status)
+        # --- КОНЕЦ БЛОКА ФИЛЬТРОВ ---
 
         if conditions:
             stmt = stmt.where(and_(*conditions))
@@ -131,7 +131,7 @@ class CaseFilterService:
 
 
     @staticmethod
-    async def get_filter_options(session):
+    async def get_filter_options(session: AsyncSession):
         """Получение опций для фильтров (для выпадающих списков на фронтенде)"""
         from models.auxiliaries import RegionalCenter, LocomotiveModel, Supplier, RepairType
         from models.equipment_mulfunctions import Equipment, Malfunction
@@ -151,13 +151,16 @@ class CaseFilterService:
         suppliers_result = await session.execute(suppliers_stmt)
         repair_types_result = await session.execute(repair_types_stmt)
 
-        return {
-            "regional_centers": [{"id": rc.id, "name": rc.name} for rc in regional_centers_result.scalars().all()],
-            "locomotive_models": [{"id": lm.id, "name": lm.name} for lm in locomotive_models_result.scalars().all()],
-            "components": [{"id": comp.id, "name": comp.name} for comp in equipment_result.scalars().all()],
-            "malfunctions": [{"id": m.id, "name": m.name} for m in malfunctions_result.scalars().all()],
-            "suppliers": [{"id": s.id, "name": s.name} for s in suppliers_result.scalars().all()],
-            "repair_types": [{"id": rt.id, "name": rt.name} for rt in repair_types_result.scalars().all()],
+        data = {
+            "regional_centers": [{"id": rc.id, "name": rc.regional_center_name} for rc in
+                                 regional_centers_result.scalars().all()],
+            "locomotive_models": [{"id": lm.id, "name": lm.locomotive_model_name} for lm in
+                                  locomotive_models_result.scalars().all()],
+            "components": [{"id": equip.id, "name": equip.equipment_name} for equip in
+                           equipment_result.scalars().all()],
+            "malfunctions": [{"id": m.id, "name": m.defect_name} for m in malfunctions_result.scalars().all()],
+            "suppliers": [{"id": s.id, "name": s.supplier_name} for s in suppliers_result.scalars().all()],
+            "repair_types": [{"id": rt.id, "name": rt.repair_types_name} for rt in repair_types_result.scalars().all()],
             "statuses": [
                 "Ожидает уведомление поставщика",
                 "Уведомление отправлено",
@@ -170,3 +173,5 @@ class CaseFilterService:
                 "Завершено"
             ]
         }
+
+        return FilterOptionsResponse.model_validate(data)
