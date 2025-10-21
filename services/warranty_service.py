@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from fastapi import HTTPException
 
 from models.warranty_work import WarrantyWork
@@ -10,15 +11,28 @@ from schemas.warranty import WarrantyWorkUpdate, WarrantyWorkResponse
 class WarrantyService:
 
     @staticmethod
-    async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWorkResponse:
-        """Получение данных по рекл. работе"""
+    async def _get_warranty_work_with_relations(case_id: int, session: AsyncSession) -> WarrantyWork | None:
+        """Внутренний метод для получения WarrantyWork с загруженными summary связями."""
         stmt = (
             select(WarrantyWork)
+            .options(
+                joinedload(WarrantyWork.notification_summary),
+                joinedload(WarrantyWork.response_summary),
+                joinedload(WarrantyWork.decision_summary),
+            )
             .join(RepairCaseEquipment)
             .where(RepairCaseEquipment.id == case_id)
         )
         result = await session.execute(stmt)
-        warranty_work = result.scalar_one_or_none()
+        # .unique() нужен при joinedload
+        return result.unique().scalar_one_or_none()
+
+# ---
+
+    @staticmethod
+    async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWorkResponse:
+        """Получение данных по рекл. работе"""
+        warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:
             raise HTTPException(status_code=404, detail="Warranty work not found")
@@ -33,13 +47,7 @@ class WarrantyService:
             session: AsyncSession
             )-> WarrantyWorkResponse:
         """Редактирование случая по рекл. работе"""
-        stmt = (
-            select(WarrantyWork)
-            .join(RepairCaseEquipment)
-            .where(RepairCaseEquipment.id == case_id)
-        )
-        result = await session.execute(stmt)
-        warranty_work = result.scalar_one_or_none()
+        warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:
             raise HTTPException(status_code=404, detail="Warranty work not found")
