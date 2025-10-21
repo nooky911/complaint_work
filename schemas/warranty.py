@@ -26,11 +26,6 @@ class WarrantyWorkBase(BaseModel):
     decision_summary_id: int | None = None
 
 
-class WarrantyWorkCreate(WarrantyWorkBase):
-    """Схема для создания"""
-    pass
-
-
 class WarrantyWorkUpdate(WarrantyWorkBase):
     """Схема для редактирования"""
     pass

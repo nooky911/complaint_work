@@ -1,6 +1,9 @@
 from pydantic import BaseModel
+from pydantic import computed_field
 from datetime import date, datetime
 from .warranty import WarrantyWorkResponse
+from utils.status_calculator import calculate_status
+
 
 class CaseBase(BaseModel):
     """Основная схема"""
@@ -46,7 +49,6 @@ class CaseCreate(CaseBase):
     repair_type_id: int
 
 
-
 class CaseUpdate(CaseBase):
     """Схема в случае редактирования случая"""
     pass
@@ -72,6 +74,24 @@ class CaseList(BaseModel):
     supplier_id: int | None = None
 
     warranty_work: WarrantyWorkResponse | None = None
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        """Вычесление статуса рекламационной работы"""
+        if not self.warranty_work:
+            return "Ожидает уведомление поставщика"
+
+        return calculate_status(
+            n_id=self.warranty_work.notification_summary_id,
+            r_id=self.warranty_work.response_summary_id,
+            d_id=self.warranty_work.decision_summary_id,
+            comp_act_number=self.warranty_work.work_completion_act_number,
+            claim_act_number=self.warranty_work.claim_act_number,
+            re_n_number=self.warranty_work.re_notification_number,
+            re_n_date=self.warranty_work.re_notification_date,
+            n_date=self.warranty_work.notification_date
+        )
 
     model_config = {"from_attributes": True}
 
@@ -107,5 +127,23 @@ class CaseDetail(BaseModel):
     supplier_id: int | None
 
     warranty_work: WarrantyWorkResponse | None = None
+
+    @computed_field
+    @property
+    def status(self) -> str:
+        """Вычесление статуса рекламационной работы"""
+        if not self.warranty_work:
+            return "Ожидает уведомление поставщика"
+
+        return calculate_status(
+            n_id=self.warranty_work.notification_summary_id,
+            r_id=self.warranty_work.response_summary_id,
+            d_id=self.warranty_work.decision_summary_id,
+            comp_act_number=self.warranty_work.work_completion_act_number,
+            claim_act_number=self.warranty_work.claim_act_number,
+            re_n_number=self.warranty_work.re_notification_number,
+            re_n_date=self.warranty_work.re_notification_date,
+            n_date=self.warranty_work.notification_date
+        )
 
     model_config = {"from_attributes": True}
