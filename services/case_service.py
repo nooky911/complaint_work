@@ -65,29 +65,6 @@ class CaseService:
 
 
     @staticmethod
-    async def get_cases_list(session: AsyncSession, skip: int = 0, limit: int = 50) -> list[CaseList]:
-        """Список случаев"""
-        stmt = (
-            select(RepairCaseEquipment)
-            .options(
-                selectinload(RepairCaseEquipment.warranty_work),
-                selectinload(RepairCaseEquipment.regional_center),
-                selectinload(RepairCaseEquipment.locomotive_model),
-                selectinload(RepairCaseEquipment.component_equipment),
-                selectinload(RepairCaseEquipment.element_equipment),
-                selectinload(RepairCaseEquipment.malfunction),
-                selectinload(RepairCaseEquipment.supplier),
-            )
-            .offset(skip)
-            .limit(limit)
-            .order_by(RepairCaseEquipment.date_recorded.desc())
-        )
-        result = await session.execute(stmt)
-        cases = result.unique().scalars().all()
-
-        return [CaseList.model_validate(case) for case in cases]
-
-    @staticmethod
     async def update_case(case_id: int, case_data: CaseUpdate, session: AsyncSession) -> CaseDetail:
         """Редактирование случая"""
         case = await CaseService._get_case_with_relations(session, case_id)
