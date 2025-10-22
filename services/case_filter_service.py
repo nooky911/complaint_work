@@ -1,62 +1,30 @@
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
-from datetime import date
 
 from models.repair_case_equipment import RepairCaseEquipment
 from models.warranty_work import WarrantyWork
 from schemas.cases import CaseList
 from schemas.filters import FilterOptionsResponse
+from schemas.filters import CaseFilterParams
+from database.query_builders.query_case_filters import (
+    build_repair_case_conditions,
+    build_warranty_work_conditions,
+    status_expr
+)
+
 
 class CaseFilterService:
     """Сервис фильтрации с использованием функции БД"""
-
     @staticmethod
-    async def filter_cases(
-            session: AsyncSession,
-            # Основные фильтры
-            date_from: date | None = None,
-            date_to: date | None = None,
-            section_mask: int | None = None,
-            locomotive_number: str | None = None,
-            component_serial_number_old: str | None = None,
-            element_serial_number_old: str | None = None,
-            component_serial_number_new: str | None = None,
-            element_serial_number_new: str | None = None,
-            regional_center_id: int | None = None,
-            locomotive_model_id: int | None = None,
-            component_equipment_id: int | None = None,
-            element_equipment_id: int | None = None,
-            malfunction_id: int | None = None,
-            repair_type_id: int | None = None,
-            supplier_id: int | None = None,
-
-            status: str | None = None,
-
-            skip: int = 0,
-            limit: int = 50
-    ) -> list[CaseList]:
+    async def filter_cases(session: AsyncSession, params: CaseFilterParams) -> list[CaseList]:
 
         # Выражение для статуса
-        status_expr = func.calculate_case_status(
-            WarrantyWork.notification_summary_id,
-            WarrantyWork.response_summary_id,
-            WarrantyWork.decision_summary_id,
-            WarrantyWork.work_completion_act_number,
-            WarrantyWork.claim_act_number,
-            WarrantyWork.re_notification_number,
-            WarrantyWork.re_notification_date,
-            WarrantyWork.notification_date
-        )
+        stmt = select(RepairCaseEquipment, status_expr)
+        stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
 
         # Базовый запрос с выборкой статуса
-        stmt = (
-            select(
-                RepairCaseEquipment,
-                status_expr.label('calculated_status')
-            )
-            .outerjoin(RepairCaseEquipment.warranty_work)
-            .options(
+        stmt = (stmt.options(
                 joinedload(RepairCaseEquipment.regional_center),
                 joinedload(RepairCaseEquipment.locomotive_model),
                 joinedload(RepairCaseEquipment.component_equipment),
@@ -71,72 +39,32 @@ class CaseFilterService:
             )
         )
 
-        conditions = []
+        all_conditions = []
 
-        # --- БЛОК ФИЛЬТРОВ ---
-        # Фильтры по датам
-        if date_from:
-            conditions.append(RepairCaseEquipment.fault_date >= date_from)
-        if date_to:
-            conditions.append(RepairCaseEquipment.fault_date <= date_to)
-        # По секции
-        if section_mask is not None:
-            conditions.append(RepairCaseEquipment.section_mask == section_mask)
-        # Фильтры по строковым полям
-        if locomotive_number:
-            conditions.append(RepairCaseEquipment.locomotive_number.ilike(f"%{locomotive_number}%"))
-        if component_serial_number_old:
-            conditions.append(RepairCaseEquipment.component_serial_number_old.ilike(f"%{component_serial_number_old}%"))
-        if element_serial_number_old:
-            conditions.append(RepairCaseEquipment.element_serial_number_old.ilike(f"%{element_serial_number_old}%"))
-        if component_serial_number_new:
-            conditions.append(RepairCaseEquipment.component_serial_number_new.ilike(f"%{component_serial_number_new}%"))
-        if element_serial_number_new:
-            conditions.append(RepairCaseEquipment.element_serial_number_new.ilike(f"%{element_serial_number_new}%"))
-        # Фильтры по ID
-        if regional_center_id is not None:
-            conditions.append(RepairCaseEquipment.regional_center_id == regional_center_id)
-        if locomotive_model_id is not None:
-            conditions.append(RepairCaseEquipment.locomotive_model_id == locomotive_model_id)
-        if component_equipment_id is not None:
-            conditions.append(RepairCaseEquipment.component_equipment_id == component_equipment_id)
-        if element_equipment_id is not None:
-            conditions.append(RepairCaseEquipment.element_equipment_id == element_equipment_id)
-        if malfunction_id is not None:
-            conditions.append(RepairCaseEquipment.malfunction_id == malfunction_id)
-        if repair_type_id is not None:
-            conditions.append(RepairCaseEquipment.repair_type_id == repair_type_id)
-        if supplier_id is not None:
-            conditions.append(RepairCaseEquipment.supplier_id == supplier_id)
-        # Фильтр по статусу
-        if status:
-            conditions.append(status_expr == status)
-        # --- КОНЕЦ БЛОКА ФИЛЬТРОВ ---
+        #Сбор отфильтрованных парамеров
+        all_conditions.extend(build_repair_case_conditions(params))
+        all_conditions.extend(build_warranty_work_conditions(params))
 
-        if conditions:
-            stmt = stmt.where(and_(*conditions))
+        if all_conditions:
+            stmt = stmt.where(and_(*all_conditions))
 
-        stmt = stmt.offset(skip).limit(limit).order_by(RepairCaseEquipment.date_recorded.desc())
+        stmt = stmt.offset(params.skip).limit(params.limit).order_by(RepairCaseEquipment.date_recorded.desc())
 
-        # Выполняем запрос и обрабатываем результаты
         result = await session.execute(stmt)
         rows = result.unique().all()
 
-        cases = [
-            CaseList.model_validate(case, context={'status': calculated_status})
-            for case, calculated_status in rows
-        ]
+        cases = [CaseList.model_validate(case) for case, _ in rows]
 
         return cases
 
 
     @staticmethod
-    async def get_filter_options(session: AsyncSession):
-        """Получение опций для фильтров (для выпадающих списков на фронтенде)"""
+    async def get_filter_options(session: AsyncSession) -> FilterOptionsResponse:
+        """Получение опций для фильтров (для выпадающих списков на фронте)"""
         from models.auxiliaries import RegionalCenter, LocomotiveModel, Supplier, RepairType
         from models.equipment_mulfunctions import Equipment, Malfunction
 
-        # Делаем запросы для всех справочников
+        # Запросы для всех справочников
         regional_centers_stmt = select(RegionalCenter)
         locomotive_models_stmt = select(LocomotiveModel)
         equipment_stmt = select(Equipment).where(Equipment.parent_id == None)
