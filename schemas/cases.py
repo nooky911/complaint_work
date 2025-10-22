@@ -1,13 +1,14 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 from typing import TYPE_CHECKING
 from datetime import date, datetime
-
+from .references import AuxiliaryItem
 
 if TYPE_CHECKING:
     from .warranty import WarrantyWorkResponse
 
+
 class CaseBase(BaseModel):
-    """Основная схема"""
+    """Основная схема для общих полей и ID, используемых для создания/обновления."""
     fault_date: date | None = None
     section_mask: int | None = None
     locomotive_number: str | None = None
@@ -24,6 +25,7 @@ class CaseBase(BaseModel):
     element_serial_number_new: str | None = None
     element_manufacture_date_new: date | None = None
 
+    # ID-поля для создания/обновления
     regional_center_id: int | None = None
     locomotive_model_id: int | None = None
     fault_discovered_at_id: int | None = None
@@ -36,9 +38,11 @@ class CaseBase(BaseModel):
     destination_id: int | None = None
     supplier_id: int | None = None
 
+    model_config = ConfigDict(from_attributes=True)
+
 
 class CaseCreate(CaseBase):
-    """Схема создание случая"""
+    """Схема создание случая (переопределение обязательных полей)."""
     fault_date: date
     section_mask: int
     component_quantity: int
@@ -51,12 +55,13 @@ class CaseCreate(CaseBase):
 
 
 class CaseUpdate(CaseBase):
-    """Схема в случае редактирования случая"""
+    """Схема для редактирования случая."""
     pass
 
 
 class CaseList(BaseModel):
     """Схема для списка случаев (превью)"""
+    id: int
     fault_date: date
     section_mask: int
     locomotive_number: str | None = None
@@ -67,21 +72,23 @@ class CaseList(BaseModel):
     element_serial_number_old: str | None = None
     element_manufacture_date_old: date | None = None
 
-    regional_center_id: int
-    locomotive_model_id: int
-    component_equipment_id: int
-    element_equipment_id: int | None = None
-    malfunction_id: int
-    supplier_id: int | None = None
-    status: str
+    regional_center: AuxiliaryItem
+    locomotive_model: AuxiliaryItem
+    component_equipment: AuxiliaryItem
+    element_equipment: AuxiliaryItem | None = None
+    malfunction: AuxiliaryItem
+    supplier: AuxiliaryItem | None = None
 
-    warranty_work: WarrantyWorkResponse | None = None
+    status: str = Field(..., validation_alias='calculated_status')
 
-    model_config = {"from_attributes": True}
+    warranty_work: "WarrantyWorkResponse | None" = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CaseDetail(BaseModel):
     """Схема для детального просмотра карточки"""
+    id: int
     date_recorded: datetime
     fault_date: date
     section_mask: int
@@ -98,19 +105,22 @@ class CaseDetail(BaseModel):
     component_manufacture_date_new: date | None
     element_serial_number_new: str | None
     element_manufacture_date_new: date | None
-    regional_center_id: int
-    locomotive_model_id: int
-    fault_discovered_at_id: int
-    component_equipment_id: int
-    element_equipment_id: int | None
-    malfunction_id: int
-    repair_type_id: int
-    performed_by_id: int | None
-    equipment_owner_id: int | None
-    destination_id: int | None
-    supplier_id: int | None
-    status: str
 
-    warranty_work: WarrantyWorkResponse | None = None
+    # Вложенные объекты (справочники)
+    regional_center: AuxiliaryItem
+    locomotive_model: AuxiliaryItem
+    fault_discovered_at: AuxiliaryItem
+    component_equipment: AuxiliaryItem
+    element_equipment: AuxiliaryItem | None = None
+    malfunction: AuxiliaryItem
+    repair_type: AuxiliaryItem
+    performed_by: AuxiliaryItem | None = None
+    equipment_owner: AuxiliaryItem | None = None
+    destination: AuxiliaryItem | None = None
+    supplier: AuxiliaryItem | None = None
 
-    model_config = {"from_attributes": True}
+    status: str = Field(..., validation_alias='calculated_status')
+
+    warranty_work: "WarrantyWorkResponse | None" = None
+
+    model_config = ConfigDict(from_attributes=True)
