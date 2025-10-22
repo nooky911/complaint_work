@@ -1,7 +1,6 @@
 from models.repair_case_equipment import RepairCaseEquipment
 from models.warranty_work import WarrantyWork, NotificationSummary, ResponseSummary, DecisionSummary
 from schemas.cases import CaseCreate, CaseUpdate, CaseList, CaseDetail
-from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +39,7 @@ class CaseService:
 
 
     @staticmethod
-    async def create_case(case_data: CaseCreate, session: AsyncSession) -> CaseDetail:  # <-- Возвращаем CaseDetail
+    async def create_case(case_data: CaseCreate, session: AsyncSession) -> CaseDetail:
         """Создание случая"""
         case = RepairCaseEquipment(**case_data.model_dump())
         case.warranty_work = WarrantyWork()
@@ -66,7 +65,7 @@ class CaseService:
 
 
     @staticmethod
-    async def get_cases_list(session: AsyncSession, skip: int = 0, limit: int = 50) -> List[CaseList]:
+    async def get_cases_list(session: AsyncSession, skip: int = 0, limit: int = 50) -> list[CaseList]:
         """Список случаев"""
         stmt = (
             select(RepairCaseEquipment)
@@ -90,7 +89,7 @@ class CaseService:
 
     @staticmethod
     async def update_case(case_id: int, case_data: CaseUpdate, session: AsyncSession) -> CaseDetail:
-        """Редактирование случая."""
+        """Редактирование случая"""
         case = await CaseService._get_case_with_relations(session, case_id)
         if not case:
             raise HTTPException(status_code=404, detail="Случай не найден")
