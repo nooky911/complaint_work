@@ -27,15 +27,16 @@ class WarrantyService:
 
 
     @staticmethod
-    async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWork | None:
+    async def get_warranty_by_case(session: AsyncSession, case_id: int) -> WarrantyWork | None:
         """Получение данных по рекл. работе"""
         return await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
+
     @staticmethod
     async def update_warranty_work(
+            session: AsyncSession,
             case_id: int,
-            warranty_data: WarrantyWorkUpdate,
-            session: AsyncSession
+            warranty_data: WarrantyWorkUpdate
     ) -> WarrantyWork | None:
         """Редактирование"""
         warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
