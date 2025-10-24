@@ -1,18 +1,17 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
-from fastapi import HTTPException
 
 from models.warranty_work import WarrantyWork
 from models.repair_case_equipment import RepairCaseEquipment
-from schemas.warranty import WarrantyWorkUpdate, WarrantyWorkResponse
+from schemas.warranty import WarrantyWorkUpdate
 
 
 class WarrantyService:
 
     @staticmethod
     async def _get_warranty_work_with_relations(case_id: int, session: AsyncSession) -> WarrantyWork | None:
-        """Внутренний метод для получения WarrantyWork"""
+        """Внутренний метод для получения WarrantyWork со связями"""
         stmt = (
             select(WarrantyWork)
             .options(
@@ -28,31 +27,25 @@ class WarrantyService:
 
 
     @staticmethod
-    async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWorkResponse:
+    async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWork | None:
         """Получение данных по рекл. работе"""
-        warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
-
-        if not warranty_work:
-            raise HTTPException(status_code=404, detail="Рекламационная работа не найдена")
-
-        return WarrantyWorkResponse.model_validate(warranty_work)
-
+        return await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
     @staticmethod
     async def update_warranty_work(
             case_id: int,
             warranty_data: WarrantyWorkUpdate,
             session: AsyncSession
-            )-> WarrantyWorkResponse:
+    ) -> WarrantyWork | None:
         """Редактирование"""
         warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:
-            raise HTTPException(status_code=404, detail="Рекламационная работа не найдена")
+            return None
 
+        # Обновление данных
         update_data = warranty_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(warranty_work, field, value)
 
-        await session.flush()
-        return WarrantyWorkResponse.model_validate(warranty_work)
+        return warranty_work

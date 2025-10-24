@@ -1,10 +1,9 @@
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
 
 from models.repair_case_equipment import RepairCaseEquipment
 from models.warranty_work import WarrantyWork
-from schemas.cases import CaseCreate, CaseUpdate, CaseDetail
+from schemas.cases import CaseCreate, CaseUpdate
 from database.query_builders.query_case_builders import load_detail_relations
 
 
@@ -23,7 +22,13 @@ class CaseService:
 
 
     @staticmethod
-    async def create_case(case_data: CaseCreate, session: AsyncSession) -> CaseDetail:
+    async def get_case(session: AsyncSession, case_id: int) -> RepairCaseEquipment | None:
+        """Получение подробного случая"""
+        return await CaseService._get_case_with_relations(session, case_id)
+
+
+    @staticmethod
+    async def create_case(session: AsyncSession, case_data: CaseCreate) -> RepairCaseEquipment:
         """Создание случая"""
         case = RepairCaseEquipment(**case_data.model_dump())
         case.warranty_work = WarrantyWork()
@@ -32,50 +37,28 @@ class CaseService:
         await session.flush()
         await session.refresh(case)
 
-        full_case = await CaseService._get_case_with_relations(session, case.id)
-        if not full_case:
-            raise HTTPException(status_code=500, detail="Ошибка при создании случая")
-
-        return CaseDetail.model_validate(full_case)
+        return case
 
 
     @staticmethod
-    async def get_case(case_id: int, session: AsyncSession) -> CaseDetail:
-        """Получение подробного случая"""
-        case = await CaseService._get_case_with_relations(session, case_id)
-        if not case:
-            raise HTTPException(status_code=404, detail="Case not found")
-        return CaseDetail.model_validate(case)
-
-
-    @staticmethod
-    async def update_case(case_id: int, case_data: CaseUpdate, session: AsyncSession) -> CaseDetail:
+    async def update_case(session: AsyncSession, case_id: int, case_data: CaseUpdate) -> RepairCaseEquipment | None:
         """Редактирование случая"""
         case = await CaseService._get_case_with_relations(session, case_id)
+
         if not case:
-            raise HTTPException(status_code=404, detail="Случай не найден")
+            return None
 
         update_data = case_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(case, field, value)
 
-        full_case = await CaseService._get_case_with_relations(session, case.id)
-
-        if not full_case:
-            raise HTTPException(status_code=500, detail="Ошибка при обновлении и повторной загрузке")
-
-        return CaseDetail.model_validate(full_case)
+        return case
 
 
     @staticmethod
-    async def delete_case(case_id: int, session: AsyncSession) -> None:
+    async def delete_case(session: AsyncSession, case_id: int) -> int:
         """Удаление случая"""
-        stmt = select(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)
+        stmt = delete(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)
         result = await session.execute(stmt)
-        case = result.scalar_one_or_none()
 
-        if not case:
-            raise HTTPException(status_code=404, detail="Случай не найден")
-
-        await session.delete(case)
-        await session.flush()
+        return result.rowcount
