@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from typing import TYPE_CHECKING
 from datetime import date, datetime
+
 from .references import AuxiliaryItem
 
 if TYPE_CHECKING:
@@ -8,7 +9,7 @@ if TYPE_CHECKING:
 
 
 class CaseBase(BaseModel):
-    """Основная схема для общих полей и ID, используемых для создания/обновления."""
+    """Основная схема для общих полей и ID, используемых для создания/обновления"""
     fault_date: date | None = None
     section_mask: int | None = None
     locomotive_number: str | None = None
@@ -42,7 +43,7 @@ class CaseBase(BaseModel):
 
 
 class CaseCreate(CaseBase):
-    """Схема создание случая (переопределение обязательных полей)."""
+    """Схема создание случая (переопределение обязательных полей)"""
     fault_date: date
     section_mask: int
     component_quantity: int
@@ -55,7 +56,7 @@ class CaseCreate(CaseBase):
 
 
 class CaseUpdate(CaseBase):
-    """Схема для редактирования случая."""
+    """Схема для редактирования случая"""
     pass
 
 
