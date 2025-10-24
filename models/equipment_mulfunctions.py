@@ -1,8 +1,9 @@
-from sqlalchemy import Text, ForeignKey
-from sqlalchemy import PrimaryKeyConstraint
+from sqlalchemy import Text, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional
+
 from database.base import Base
+
 
 class Equipment(Base):
     __tablename__ = "equipment"

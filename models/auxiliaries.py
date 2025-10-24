@@ -30,7 +30,7 @@ class LocomotiveModel(Base):
 
 
 class FaultDiscoveryPlace(Base):
-    """Где обнаружилась неиспроавнсть?"""
+    """Где обнаружилась неисправность?"""
     __tablename__ = "fault_discovery_places"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
