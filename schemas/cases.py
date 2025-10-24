@@ -43,7 +43,7 @@ class CaseBase(BaseModel):
 
 
 class CaseCreate(CaseBase):
-    """Схема создание случая (переопределение обязательных полей)"""
+    """Схема создание случая"""
     fault_date: date
     section_mask: int
     component_quantity: int
@@ -60,19 +60,30 @@ class CaseUpdate(CaseBase):
     pass
 
 
-class CaseList(BaseModel):
-    """Схема для списка случаев (превью)"""
+class CaseOutputData(BaseModel):
+    """Промежуточная схема для ВСЕХ полей данных (без ID)"""
     id: int
     fault_date: date
     section_mask: int
     locomotive_number: str | None = None
+    mileage: int | None = None
     component_quantity: int
     element_quantity: int | None = None
     component_serial_number_old: str | None = None
     component_manufacture_date_old: date | None = None
     element_serial_number_old: str | None = None
     element_manufacture_date_old: date | None = None
+    notes: str | None = None
+    component_serial_number_new: str | None = None
+    component_manufacture_date_new: date | None = None
+    element_serial_number_new: str | None = None
+    element_manufacture_date_new: date | None = None
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class CaseCommonRelations(CaseOutputData):
+    """Схема, используется как база для CaseList и CaseDetail"""
     regional_center: AuxiliaryItem
     locomotive_model: AuxiliaryItem
     component_equipment: AuxiliaryItem
@@ -84,44 +95,18 @@ class CaseList(BaseModel):
 
     warranty_work: "WarrantyWorkResponse | None" = None
 
-    model_config = ConfigDict(from_attributes=True)
+
+class CaseList(CaseCommonRelations):
+    """Схема для списка случаев (превью)"""
+    pass
 
 
-class CaseDetail(BaseModel):
+class CaseDetail(CaseCommonRelations):
     """Схема для детального просмотра карточки"""
-    id: int
     date_recorded: datetime
-    fault_date: date
-    section_mask: int
-    locomotive_number: str | None
-    mileage: int | None
-    component_quantity: int
-    element_quantity: int | None
-    component_serial_number_old: str | None
-    component_manufacture_date_old: date | None
-    element_serial_number_old: str | None
-    element_manufacture_date_old: date | None
-    notes: str | None
-    component_serial_number_new: str | None
-    component_manufacture_date_new: date | None
-    element_serial_number_new: str | None
-    element_manufacture_date_new: date | None
 
-    # Вложенные объекты (справочники)
-    regional_center: AuxiliaryItem
-    locomotive_model: AuxiliaryItem
     fault_discovered_at: AuxiliaryItem
-    component_equipment: AuxiliaryItem
-    element_equipment: AuxiliaryItem | None = None
-    malfunction: AuxiliaryItem
     repair_type: AuxiliaryItem
     performed_by: AuxiliaryItem | None = None
     equipment_owner: AuxiliaryItem | None = None
     destination: AuxiliaryItem | None = None
-    supplier: AuxiliaryItem | None = None
-
-    status: str = Field(..., validation_alias='calculated_status')
-
-    warranty_work: "WarrantyWorkResponse | None" = None
-
-    model_config = ConfigDict(from_attributes=True)
