@@ -29,7 +29,7 @@ class WarrantyService:
 
     @staticmethod
     async def get_warranty_by_case(case_id: int, session: AsyncSession) -> WarrantyWorkResponse:
-        """Получение данных по рекл. работе."""
+        """Получение данных по рекл. работе"""
         warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
 
         if not warranty_work:

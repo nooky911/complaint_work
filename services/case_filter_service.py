@@ -1,12 +1,12 @@
+import asyncio
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
 
 from models.repair_case_equipment import RepairCaseEquipment
-from models.warranty_work import WarrantyWork
 from schemas.cases import CaseList
 from schemas.filters import FilterOptionsResponse
 from schemas.filters import CaseFilterParams
+from database.query_builders.query_case_builders import load_list_relations
 from database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
@@ -24,20 +24,7 @@ class CaseFilterService:
         stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
 
         # Базовый запрос с выборкой статуса
-        stmt = (stmt.options(
-                joinedload(RepairCaseEquipment.regional_center),
-                joinedload(RepairCaseEquipment.locomotive_model),
-                joinedload(RepairCaseEquipment.component_equipment),
-                joinedload(RepairCaseEquipment.element_equipment),
-                joinedload(RepairCaseEquipment.malfunction),
-                joinedload(RepairCaseEquipment.repair_type),
-                joinedload(RepairCaseEquipment.supplier),
-
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.notification_summary),
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.response_summary),
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.decision_summary),
-            )
-        )
+        stmt = stmt.options(*load_list_relations())
 
         all_conditions = []
 
@@ -72,12 +59,21 @@ class CaseFilterService:
         suppliers_stmt = select(Supplier)
         repair_types_stmt = select(RepairType)
 
-        regional_centers_result = await session.execute(regional_centers_stmt)
-        locomotive_models_result = await session.execute(locomotive_models_stmt)
-        equipment_result = await session.execute(equipment_stmt)
-        malfunctions_result = await session.execute(malfunctions_stmt)
-        suppliers_result = await session.execute(suppliers_stmt)
-        repair_types_result = await session.execute(repair_types_stmt)
+        (
+            regional_centers_result,
+            locomotive_models_result,
+            equipment_result,
+            malfunctions_result,
+            suppliers_result,
+            repair_types_result
+        ) = await asyncio.gather(
+            session.execute(regional_centers_stmt),
+            session.execute(locomotive_models_stmt),
+            session.execute(equipment_stmt),
+            session.execute(malfunctions_stmt),
+            session.execute(suppliers_stmt),
+            session.execute(repair_types_stmt),
+        )
 
         data = {
             "regional_centers": [{"id": rc.id, "name": rc.regional_center_name} for rc in

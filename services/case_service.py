@@ -1,11 +1,11 @@
-from models.repair_case_equipment import RepairCaseEquipment
-from models.warranty_work import WarrantyWork, NotificationSummary, ResponseSummary, DecisionSummary
-from schemas.cases import CaseCreate, CaseUpdate, CaseList, CaseDetail
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
 from fastapi import HTTPException
+
+from models.repair_case_equipment import RepairCaseEquipment
+from models.warranty_work import WarrantyWork
+from schemas.cases import CaseCreate, CaseUpdate, CaseDetail
+from database.query_builders.query_case_builders import load_detail_relations
 
 
 class CaseService:
@@ -15,27 +15,11 @@ class CaseService:
         """Внутренний метод для загрузки случая со всеми связями"""
         stmt = (
             select(RepairCaseEquipment)
-            .options(
-                joinedload(RepairCaseEquipment.regional_center),
-                joinedload(RepairCaseEquipment.locomotive_model),
-                joinedload(RepairCaseEquipment.fault_discovered_at),
-                joinedload(RepairCaseEquipment.component_equipment),
-                joinedload(RepairCaseEquipment.element_equipment),
-                joinedload(RepairCaseEquipment.malfunction),
-                joinedload(RepairCaseEquipment.repair_type),
-                joinedload(RepairCaseEquipment.performed_by),
-                joinedload(RepairCaseEquipment.equipment_owner),
-                joinedload(RepairCaseEquipment.destination),
-                joinedload(RepairCaseEquipment.supplier),
-
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.notification_summary),
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.response_summary),
-                joinedload(RepairCaseEquipment.warranty_work).selectinload(WarrantyWork.decision_summary),
-            )
+            .options(*load_detail_relations())
             .where(RepairCaseEquipment.id == case_id)
         )
         result = await session.execute(stmt)
-        return result.unique().scalar_one_or_none()
+        return result.scalar_one_or_none()
 
 
     @staticmethod
@@ -75,8 +59,12 @@ class CaseService:
         for field, value in update_data.items():
             setattr(case, field, value)
 
-        await session.flush()
-        return CaseDetail.model_validate(case)
+        full_case = await CaseService._get_case_with_relations(session, case.id)
+
+        if not full_case:
+            raise HTTPException(status_code=500, detail="Ошибка при обновлении и повторной загрузке")
+
+        return CaseDetail.model_validate(full_case)
 
 
     @staticmethod
