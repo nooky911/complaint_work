@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, Path, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.warranty import WarrantyWorkUpdate, WarrantyWorkResponse
-from services.warranty_service import WarrantyService
-from database.base import get_db
+from myapp.schemas.warranty import WarrantyWorkUpdate, WarrantyWorkResponse
+from myapp.services.warranty_service import WarrantyService
+from myapp.database.base import get_db
 
 router = APIRouter(prefix="/cases/{case_id}/warranty", tags=["Рекламационная работа"])
 

@@ -2,7 +2,7 @@ from sqlalchemy import Text, ForeignKey, PrimaryKeyConstraint
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import Optional
 
-from database.base import Base
+from myapp.database.base import Base
 
 
 class Equipment(Base):

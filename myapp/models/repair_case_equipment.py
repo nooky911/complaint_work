@@ -2,7 +2,7 @@ from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP, text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 
-from database.base import Base
+from myapp.database.base import Base
 
 
 # Основная таблица со случаями неисправности

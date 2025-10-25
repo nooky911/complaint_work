@@ -1,7 +1,7 @@
 from sqlalchemy.orm import joinedload
 
-from models.repair_case_equipment import RepairCaseEquipment
-from models.warranty_work import WarrantyWork
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.warranty_work import WarrantyWork
 
 
 def load_list_relations():

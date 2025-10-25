@@ -2,12 +2,12 @@ import asyncio
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.repair_case_equipment import RepairCaseEquipment
-from schemas.cases import CaseList
-from schemas.filters import FilterOptionsResponse
-from schemas.filters import CaseFilterParams
-from database.query_builders.query_case_builders import load_list_relations
-from database.query_builders.query_case_filters import (
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.schemas.cases import CaseList
+from myapp.schemas.filters import FilterOptionsResponse
+from myapp.schemas.filters import CaseFilterParams
+from myapp.database.query_builders.query_case_builders import load_list_relations
+from myapp.database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
     status_expr
@@ -48,8 +48,8 @@ class CaseFilterService:
     @staticmethod
     async def get_filter_options(session: AsyncSession) -> FilterOptionsResponse:
         """Получение опций для фильтров (для выпадающих списков на фронте)"""
-        from models.auxiliaries import RegionalCenter, LocomotiveModel, Supplier, RepairType
-        from models.equipment_mulfunctions import Equipment, Malfunction
+        from myapp.models.auxiliaries import RegionalCenter, LocomotiveModel, Supplier, RepairType
+        from myapp.models.equipment_mulfunctions import Equipment, Malfunction
 
         # Запросы для всех справочников
         regional_centers_stmt = select(RegionalCenter)

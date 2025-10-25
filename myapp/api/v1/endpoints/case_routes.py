@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, Path, status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.cases import CaseList, CaseDetail, CaseCreate, CaseUpdate
-from schemas.filters import CaseFilterParams
-from services.case_service import CaseService
-from services.case_filter_service import CaseFilterService
-from database.base import get_db
+from myapp.schemas.cases import CaseList, CaseDetail, CaseCreate, CaseUpdate
+from myapp.schemas.filters import CaseFilterParams
+from myapp.services.case_service import CaseService
+from myapp.services.case_filter_service import CaseFilterService
+from myapp.database.base import get_db
 
 
 router = APIRouter(prefix="/cases", tags=["Случаи неисправности"] )

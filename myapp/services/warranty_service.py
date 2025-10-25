@@ -2,9 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
-from models.warranty_work import WarrantyWork
-from models.repair_case_equipment import RepairCaseEquipment
-from schemas.warranty import WarrantyWorkUpdate
+from myapp.models.warranty_work import WarrantyWork
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.schemas.warranty import WarrantyWorkUpdate
 
 
 class WarrantyService:

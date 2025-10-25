@@ -1,9 +1,9 @@
 from sqlalchemy.sql import expression
 from sqlalchemy import func
 
-from models.repair_case_equipment import RepairCaseEquipment
-from models.warranty_work import WarrantyWork
-from schemas.filters import CaseFilterParams
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.warranty_work import WarrantyWork
+from myapp.schemas.filters import CaseFilterParams
 
 # SQL-выражение для статуса
 status_expr = func.calculate_case_status(

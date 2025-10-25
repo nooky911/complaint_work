@@ -1,6 +1,6 @@
 from sqlalchemy import String
 from sqlalchemy.orm import relationship, Mapped, mapped_column
-from database.base import Base
+from myapp.database.base import Base
 
 
 class RegionalCenter(Base):

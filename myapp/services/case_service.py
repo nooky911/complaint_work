@@ -1,10 +1,10 @@
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.repair_case_equipment import RepairCaseEquipment
-from models.warranty_work import WarrantyWork
-from schemas.cases import CaseCreate, CaseUpdate
-from database.query_builders.query_case_builders import load_detail_relations
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.warranty_work import WarrantyWork
+from myapp.schemas.cases import CaseCreate, CaseUpdate
+from myapp.database.query_builders.query_case_builders import load_detail_relations
 
 
 class CaseService:
