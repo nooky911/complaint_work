@@ -5,7 +5,7 @@ from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.cases import CaseCreate, CaseUpdate
 from myapp.database.query_builders.query_case_builders import load_detail_relations
-
+from myapp.database.transactional import transactional
 
 class CaseService:
 
@@ -28,6 +28,7 @@ class CaseService:
 
 
     @staticmethod
+    @transactional
     async def create_case(session: AsyncSession, case_data: CaseCreate) -> RepairCaseEquipment:
         """Создание случая"""
         case = RepairCaseEquipment(**case_data.model_dump())
@@ -41,6 +42,7 @@ class CaseService:
 
 
     @staticmethod
+    @transactional
     async def update_case(session: AsyncSession, case_id: int, case_data: CaseUpdate) -> RepairCaseEquipment | None:
         """Редактирование случая"""
         case = await CaseService._get_case_with_relations(session, case_id)
@@ -56,6 +58,7 @@ class CaseService:
 
 
     @staticmethod
+    @transactional
     async def delete_case(session: AsyncSession, case_id: int) -> int:
         """Удаление случая"""
         stmt = delete(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)

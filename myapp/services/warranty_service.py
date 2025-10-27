@@ -5,6 +5,7 @@ from sqlalchemy.orm import joinedload
 from myapp.models.warranty_work import WarrantyWork
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.schemas.warranty import WarrantyWorkUpdate
+from myapp.database.transactional import transactional
 
 
 class WarrantyService:
@@ -33,6 +34,7 @@ class WarrantyService:
 
 
     @staticmethod
+    @transactional
     async def update_warranty_work(
             session: AsyncSession,
             case_id: int,
