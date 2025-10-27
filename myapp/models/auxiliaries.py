@@ -69,6 +69,7 @@ class RepairPerformer(Base):
 
 
 class EquipmentOwner(Base):
+    """Владелец нового оборудования?"""
     __tablename__ = "equipment_owners"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -81,6 +82,7 @@ class EquipmentOwner(Base):
 
 
 class DestinationType(Base):
+    """Куда отправили неисправное оборудование?"""
     __tablename__ = "destination_types"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -92,6 +94,7 @@ class DestinationType(Base):
 
 
 class Supplier(Base):
+    """Поставщик"""
     __tablename__ = "suppliers"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
