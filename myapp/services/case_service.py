@@ -28,11 +28,21 @@ class CaseService:
 
 
     @staticmethod
+    def _recalculate_supplier(case: RepairCaseEquipment):
+        """Функция для перерасчета supplier_id на основе актуального equipment"""
+        supplier = case.component_equipment.get_actual_supplier()
+        case.supplier_id = supplier.id if supplier else None
+
+
+    @staticmethod
     @transactional
     async def create_case(session: AsyncSession, case_data: CaseCreate) -> RepairCaseEquipment:
         """Создание случая"""
         case = RepairCaseEquipment(**case_data.model_dump())
         case.warranty_work = WarrantyWork()
+
+        CaseService._recalculate_supplier(case)
+
         session.add(case)
 
         await session.flush()
@@ -50,9 +60,18 @@ class CaseService:
         if not case:
             return None
 
+        # старый ID оборудования
+        old_equipment_id = case.component_equipment_id
+
         update_data = case_data.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(case, field, value)
+
+        new_equipment_id = case.component_equipment_id
+
+        # Вызываем пересчет, если ID оборудования был изменен
+        if new_equipment_id != old_equipment_id:
+            CaseService._recalculate_supplier(case)
 
         return case
 
