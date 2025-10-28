@@ -5,6 +5,4 @@ from .warranty_routes import router as warranty_router
 
 endpoints_router = APIRouter()
 
-case_router.include_router(warranty_router)
-
 endpoints_router.include_router(case_router)

@@ -1,11 +1,9 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import TYPE_CHECKING
 from datetime import date, datetime
 
 from .references import AuxiliaryItem
 
-if TYPE_CHECKING:
-    from .warranty import WarrantyWorkResponse
+from .warranty import WarrantyWorkResponse
 
 
 class CaseBase(BaseModel):
@@ -93,7 +91,7 @@ class CaseCommonRelations(CaseOutputData):
 
     status: str = Field(..., validation_alias='calculated_status')
 
-    warranty_work: "WarrantyWorkResponse | None" = None
+    warranty_work: WarrantyWorkResponse | None = None
 
 
 class CaseList(CaseCommonRelations):

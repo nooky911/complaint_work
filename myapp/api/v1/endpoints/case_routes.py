@@ -6,9 +6,12 @@ from myapp.schemas.filters import CaseFilterParams
 from myapp.services.case_service import CaseService
 from myapp.services.case_filter_service import CaseFilterService
 from myapp.database.base import get_db
+from .warranty_routes import router as warranty_router
 
 
 router = APIRouter(prefix="/cases", tags=["Случаи неисправности"] )
+
+router.include_router(warranty_router)
 
 
 # Полный список и фильтрация

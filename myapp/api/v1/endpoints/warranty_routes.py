@@ -10,7 +10,7 @@ router = APIRouter(prefix="/cases/{case_id}/warranty", tags=["Рекламаци
 
 # Данные случая по рекламационная работа
 @router.get("/", response_model=WarrantyWorkResponse, summary="Вкладка рекл. работы")
-async def get_warranty_work(
+async def get_warranty_work_data(
         case_id: int = Path(..., description="ID случая неисправности", ge=1),
         session: AsyncSession = Depends(get_db)
 ):
@@ -27,7 +27,7 @@ async def get_warranty_work(
 
 # Редактирование случая
 @router.patch("/", response_model=WarrantyWorkResponse, summary="Редактирование данных по рекл. работе")
-async def update_warranty_work(
+async def update_warranty_work_data(
         warranty_data: WarrantyWorkUpdate,
         case_id: int = Path(..., description="ID случая неисправности", ge=1),
         session: AsyncSession = Depends(get_db)
