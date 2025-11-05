@@ -8,11 +8,12 @@ import json
 def openapi_encoding_fix(app: FastAPI):
     # Мутируем список роутов, чтобы удалить стандартный роут
     app.router.routes[:] = [
-        route for route in app.router.routes
-        if not (hasattr(route, 'path') and route.path == '/openapi.json')
+        route
+        for route in app.router.routes
+        if not (hasattr(route, "path") and route.path == "/openapi.json")
     ]
 
-    # 2. Регистрируем кастомный роут
+    # Регистрируем кастомный роут
     @app.get("/openapi.json", include_in_schema=False, response_class=Response)
     async def get_custom_openapi() -> Response:
 
@@ -33,5 +34,5 @@ def openapi_encoding_fix(app: FastAPI):
 
         return Response(
             content=json_output_string.encode("utf-8"),
-            headers={"Content-Type": "application/json; charset=utf-8"}
+            headers={"Content-Type": "application/json; charset=utf-8"},
         )
