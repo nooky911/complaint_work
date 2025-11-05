@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -32,12 +33,13 @@ async def lifespan(_: FastAPI):
 
 
 # - ИНИЦИАЛИЗАЦИЯ FASTAPI -
-app = FastAPI(lifespan=lifespan,
+app = FastAPI(
+    lifespan=lifespan,
     title="Complaint Management API",
     version="1.0.0",
     description="API для управления случаями неисправностей и рекламационной работой",
     docs_url="/api/docs",
-    redoc_url="/api/redoc"
+    redoc_url="/api/redoc",
 )
 
 

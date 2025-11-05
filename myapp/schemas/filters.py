@@ -1,9 +1,11 @@
 from pydantic import BaseModel
 from datetime import date
 
+
 class FilterOption(BaseModel):
     id: int
     name: str
+
 
 class FilterOptionsResponse(BaseModel):
     regional_centers: list[FilterOption]
@@ -18,7 +20,7 @@ class FilterOptionsResponse(BaseModel):
 class CaseFilterParams(BaseModel):
     """Схема параметров для фильтрации случаев"""
 
-    # ---Фильтры REPAIR_CASE_EQUIPMENT---
+    # Фильтры REPAIR_CASE_EQUIPMENT
 
     # Даты
     date_from: date | None = None
@@ -44,7 +46,7 @@ class CaseFilterParams(BaseModel):
     # Статус
     status: str | None = None
 
-    # --- Фильтры WARRANTY_WORK ---
+    # Фильтры WARRANTY_WORK
 
     # Уведомления
     notification_number: str | None = None

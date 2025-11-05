@@ -14,10 +14,15 @@ def load_list_relations():
         joinedload(RepairCaseEquipment.malfunction),
         joinedload(RepairCaseEquipment.repair_type),
         joinedload(RepairCaseEquipment.supplier),
-
-        joinedload(RepairCaseEquipment.warranty_work).joinedload(WarrantyWork.notification_summary),
-        joinedload(RepairCaseEquipment.warranty_work).joinedload(WarrantyWork.response_summary),
-        joinedload(RepairCaseEquipment.warranty_work).joinedload(WarrantyWork.decision_summary),
+        joinedload(RepairCaseEquipment.warranty_work).joinedload(
+            WarrantyWork.notification_summary
+        ),
+        joinedload(RepairCaseEquipment.warranty_work).joinedload(
+            WarrantyWork.response_summary
+        ),
+        joinedload(RepairCaseEquipment.warranty_work).joinedload(
+            WarrantyWork.decision_summary
+        ),
     ]
 
 
@@ -25,11 +30,12 @@ def load_detail_relations():
     """Полный набор связей для детального просмотра"""
     relations = load_list_relations()
 
-    relations.extend([
-        joinedload(RepairCaseEquipment.fault_discovered_at),
-        joinedload(RepairCaseEquipment.performed_by),
-        joinedload(RepairCaseEquipment.equipment_owner),
-        joinedload(RepairCaseEquipment.destination)
-    ])
+    relations.extend(
+        [
+            joinedload(RepairCaseEquipment.fault_discovered_at),
+            joinedload(RepairCaseEquipment.performed_by),
+            joinedload(RepairCaseEquipment.equipment_owner),
+            joinedload(RepairCaseEquipment.destination),
+        ]
+    )
     return relations
-

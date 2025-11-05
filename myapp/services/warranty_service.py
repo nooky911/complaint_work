@@ -11,7 +11,9 @@ from myapp.database.transactional import transactional
 class WarrantyService:
 
     @staticmethod
-    async def _get_warranty_work_with_relations(case_id: int, session: AsyncSession) -> WarrantyWork | None:
+    async def _get_warranty_work_with_relations(
+        case_id: int, session: AsyncSession
+    ) -> WarrantyWork | None:
         """Внутренний метод для получения WarrantyWork со связями"""
         stmt = (
             select(WarrantyWork)
@@ -26,22 +28,22 @@ class WarrantyService:
         result = await session.execute(stmt)
         return result.unique().scalar_one_or_none()
 
-
     @staticmethod
-    async def get_warranty_by_case(session: AsyncSession, case_id: int) -> WarrantyWork | None:
+    async def get_warranty_by_case(
+        session: AsyncSession, case_id: int
+    ) -> WarrantyWork | None:
         """Получение данных по рекл. работе"""
         return await WarrantyService._get_warranty_work_with_relations(case_id, session)
-
 
     @staticmethod
     @transactional
     async def update_warranty_work(
-            session: AsyncSession,
-            case_id: int,
-            warranty_data: WarrantyWorkUpdate
+        session: AsyncSession, case_id: int, warranty_data: WarrantyWorkUpdate
     ) -> WarrantyWork | None:
         """Редактирование"""
-        warranty_work = await WarrantyService._get_warranty_work_with_relations(case_id, session)
+        warranty_work = await WarrantyService._get_warranty_work_with_relations(
+            case_id, session
+        )
 
         if not warranty_work:
             return None
