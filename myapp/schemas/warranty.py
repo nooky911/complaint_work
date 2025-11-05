@@ -1,9 +1,12 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
+
+from .references import AuxiliaryItem
 
 
 class WarrantyWorkBase(BaseModel):
-    """Основная схема"""
+    """Основная схема рекламационной работы"""
+
     # Уведомления
     notification_number: str | None = None
     notification_date: date | None = None
@@ -27,11 +30,19 @@ class WarrantyWorkBase(BaseModel):
 
 
 class WarrantyWorkUpdate(WarrantyWorkBase):
-    """Схема для редактирования"""
+    """Схема для редактирования рекламационной работы"""
+
     pass
 
 
 class WarrantyWorkResponse(WarrantyWorkBase):
-    """Схема для отображения"""
+    """Схема для отображения рекламационной работы"""
 
-    model_config = {"from_attributes": True}
+    id: int
+    case_id: int
+
+    notification_summary: AuxiliaryItem | None = None
+    response_summary: AuxiliaryItem | None = None
+    decision_summary: AuxiliaryItem | None = None
+
+    model_config = ConfigDict(from_attributes=True)
