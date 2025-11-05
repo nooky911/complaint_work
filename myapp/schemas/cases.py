@@ -2,12 +2,13 @@ from pydantic import BaseModel, ConfigDict, Field
 from datetime import date, datetime
 
 from .references import AuxiliaryItem
-
-from .warranty import WarrantyWorkResponse
+from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
 
 
 class CaseBase(BaseModel):
-    """Основная схема для общих полей и ID, используемых для создания/обновления"""
+    """Основная схема для общих полей, используемых для создания/обновления"""
+
+    # Основные поля данных
     fault_date: date | None = None
     section_mask: int | None = None
     locomotive_number: str | None = None
@@ -24,7 +25,7 @@ class CaseBase(BaseModel):
     element_serial_number_new: str | None = None
     element_manufacture_date_new: date | None = None
 
-    # ID-поля для создания/обновления
+    # ID-поля
     regional_center_id: int | None = None
     locomotive_model_id: int | None = None
     fault_discovered_at_id: int | None = None
@@ -35,76 +36,70 @@ class CaseBase(BaseModel):
     performed_by_id: int | None = None
     equipment_owner_id: int | None = None
     destination_id: int | None = None
-    supplier_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class CaseCreate(CaseBase):
     """Схема создание случая"""
-    fault_date: date
-    section_mask: int
-    component_quantity: int
-    regional_center_id: int
-    locomotive_model_id: int
-    fault_discovered_at_id: int
-    component_equipment_id: int
-    malfunction_id: int
-    repair_type_id: int
+
+    fault_date: date = ...
+    section_mask: int = ...
+    component_quantity: int = ...
+
+    regional_center_id: int = ...
+    locomotive_model_id: int = ...
+    fault_discovered_at_id: int = ...
+    component_equipment_id: int = ...
+    malfunction_id: int = ...
+    repair_type_id: int = ...
+
+    # Вложенная схема для данных о гарантийном ремонте
+    warranty_work: WarrantyWorkUpdate | None = None
 
 
 class CaseUpdate(CaseBase):
-    """Схема для редактирования случая"""
-    pass
+    """Схема для обновления случая"""
+
+    warranty_work: WarrantyWorkUpdate | None = None
 
 
-class CaseOutputData(BaseModel):
-    """Промежуточная схема для ВСЕХ полей данных (без ID)"""
+class CaseOutputData(CaseBase):
+    """Схема для вывода"""
+
     id: int
-    fault_date: date
-    section_mask: int
-    locomotive_number: str | None = None
-    mileage: int | None = None
-    component_quantity: int
-    element_quantity: int | None = None
-    component_serial_number_old: str | None = None
-    component_manufacture_date_old: date | None = None
-    element_serial_number_old: str | None = None
-    element_manufacture_date_old: date | None = None
-    notes: str | None = None
-    component_serial_number_new: str | None = None
-    component_manufacture_date_new: date | None = None
-    element_serial_number_new: str | None = None
-    element_manufacture_date_new: date | None = None
+    date_recorded: datetime
+    supplier_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class CaseCommonRelations(CaseOutputData):
     """Схема, используется как база для CaseList и CaseDetail"""
-    regional_center: AuxiliaryItem
-    locomotive_model: AuxiliaryItem
-    component_equipment: AuxiliaryItem
+
+    regional_center: AuxiliaryItem | None = None
+    locomotive_model: AuxiliaryItem | None = None
+    component_equipment: AuxiliaryItem | None = None
     element_equipment: AuxiliaryItem | None = None
-    malfunction: AuxiliaryItem
+    malfunction: AuxiliaryItem | None = None
     supplier: AuxiliaryItem | None = None
 
-    status: str = Field(..., validation_alias='calculated_status')
+    status: str = Field(..., validation_alias="calculated_status")
 
     warranty_work: WarrantyWorkResponse | None = None
 
 
 class CaseList(CaseCommonRelations):
     """Схема для списка случаев (превью)"""
+
     pass
 
 
 class CaseDetail(CaseCommonRelations):
     """Схема для детального просмотра карточки"""
-    date_recorded: datetime
 
-    fault_discovered_at: AuxiliaryItem
-    repair_type: AuxiliaryItem
+    fault_discovered_at: AuxiliaryItem | None = None
+    repair_type: AuxiliaryItem | None = None
     performed_by: AuxiliaryItem | None = None
     equipment_owner: AuxiliaryItem | None = None
     destination: AuxiliaryItem | None = None
