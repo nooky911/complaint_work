@@ -8,6 +8,12 @@ from myapp.database.base import Base
 from myapp.database.base import engine
 from myapp.api import api_router
 from openapi_fix import openapi_encoding_fix
+from myapp.debug_logger import setup_debug_logging
+
+from fastapi import Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+import logging
 
 
 # -ФУНКЦИЯ СОЗДАНИЯ ТАБЛИЦ -
@@ -42,9 +48,51 @@ app = FastAPI(
     redoc_url="/api/redoc",
 )
 
-
 # Принудительная установка кодировки
 openapi_encoding_fix(app)
+
+
+logging.basicConfig(level=logging.DEBUG)
+
+
+# Обработчик ошибок валидации
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    body = await request.body()
+    try:
+        body_str = body.decode("utf-8")
+    except:
+        body_str = str(body)
+
+    print(f"Ошибки: {exc.errors()}")
+    print(f"Тело запроса: {body_str}")
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": exc.errors(),
+            "body": body_str,
+        },
+    )
+
+
+# Middleware для логирования всех запросов
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    print(f"Метод: {request.method}")
+    print(f"URL: {request.url}")
+    print(f"Заголовки: {dict(request.headers)}")
+
+    body = await request.body()
+    print(f"Тело запроса {body}")
+
+    async def receive():
+        return {"type": "http.request", "body": body}
+
+    request._receive = receive
+
+    response = await call_next(request)
+    return response
 
 
 # -MIDDLEWARE (CORS) -
@@ -57,12 +105,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 # Подключаем роуты
 app.include_router(api_router)
 
+setup_debug_logging()
 
-# если запускать как python main.py
 if __name__ == "__main__":
-    # Обычно запускается командой 'uvicorn main:app --reload', но это полезно для отладки
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(
+        "myapp.main:app", host="0.0.0.0", port=8000, reload=True, log_level="debug"
+    )

@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 540
 
-    FILE_STORAGE_PATH: str = str(Path(__file__).parent.parent / "storage")
+    FILE_STORAGE_PATH: str = "/app/storage"
 
     model_config = SettingsConfigDict(env_file=".env")
 

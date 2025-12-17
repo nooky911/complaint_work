@@ -1,29 +1,41 @@
 # Environment
 .env
-.env.local
-.env.production
+.env.*
 
-# IDE
+# Python & Build
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+build/
+dist/
+*.egg-info/
+
+# Tests & Quality
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Databases & Storage
+*.db
+*.sqlite3
+storage/
+postgres_data/
+
+# Project Specific
+sources/
+temp_archives/
+
+# Logs
+*.log
+logs/
+
+# System & IDE
+.DS_Store
 .idea/
 .vscode/
 *.swp
 *.swo
-
-# System
-.DS_Store
-Thumbs.db
-
-# Python
-.venv
-.venv/
-venv/
-env/t
-__pycache__/
-*.pyc
-*.pyo
-
-# Project
-sources/
-
-#Alembic
-alembic.ini

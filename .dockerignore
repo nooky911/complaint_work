@@ -1,0 +1,30 @@
+# виртуальное окружение
+.venv/
+venv/
+env/
+bin/
+lib/
+include/
+
+# кэш Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# настройки IDE
+.idea/
+.vscode/
+*.swp
+
+# файлы Git
+.git/
+.gitignore
+
+.env
+
+# логи
+*.log
+
+# исходники
+sources/
