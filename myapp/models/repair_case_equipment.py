@@ -61,6 +61,11 @@ class RepairCaseEquipment(Base):
     )
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
 
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+
     # Отношения
     regional_center: Mapped["RegionalCenter"] = relationship(
         "RegionalCenter", back_populates="repair_cases"
@@ -105,3 +110,7 @@ class RepairCaseEquipment(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    files: Mapped[list["CaseFile"]] = relationship(
+        "CaseFile", back_populates="case", cascade="all, delete-orphan"
+    )
+    user: Mapped["User"] = relationship("User")

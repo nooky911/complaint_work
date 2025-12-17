@@ -34,6 +34,7 @@ class CaseFilterParams(BaseModel):
     malfunction_id: int | None = None
     repair_type_id: int | None = None
     supplier_id: int | None = None
+    user_id: int | None = None
 
     # Числа/Строки
     section_mask: int | None = None

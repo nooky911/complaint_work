@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status, Path
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
 
 from myapp.database.base import get_db
 from myapp.schemas.equipment import EquipmentWithPathResponse
@@ -12,20 +13,15 @@ router = APIRouter(prefix="/references", tags=["Выпадающие списк�
 # Получить оборудование для конкретного уровня иерархии
 @router.get("/equipment-by-level", response_model=list[EquipmentWithPathResponse])
 async def get_equipment_by_level(
-    level: int = Query(..., description="Уровень иерархии (0-4)"),
-    parent_id: int | None = Query(None, description="ID родителя для фильтрации"),
-    q: str = Query("", description="Поисковый запрос"),
-    session: AsyncSession = Depends(get_db),
+    level: Annotated[int, Query(description="Уровень иерархии (0-4)", ge=0, le=4)],
+    parent_id: Annotated[
+        int | None, Query(description="ID родителя для фильтрации")
+    ] = None,
+    q: Annotated[str, Query(description="Поисковый запрос")] = "",
+    session: Annotated[AsyncSession, Depends(get_db)] = None,
 ):
     """Возможность начинать заполнение типа оборудования с любого места вложенности"""
-    # 1. Валидация входных данных
-    if level < 0 or level > 4:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Уровень должен быть в диапазоне 0-4",
-        )
-
-    # 2. Обязательное наличие parent_id для уровней > 0
+    # Обязательное наличие parent_id для уровней > 0
     if level > 0 and not parent_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,7 +36,8 @@ async def get_equipment_by_level(
     "/equipment-chain/{equipment_id}", response_model=list[EquipmentWithPathResponse]
 )
 async def get_equipment_chain(
-    equipment_id: int, session: AsyncSession = Depends(get_db)
+    equipment_id: Annotated[int, Path(description="ID оборудования", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Автоматическое заполнение всех полей, которые находятся выше поля заполняемого пользователем"""
     return await EquipmentService.get_equipment_chain(session, equipment_id)

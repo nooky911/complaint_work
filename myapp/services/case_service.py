@@ -9,6 +9,7 @@ from myapp.database.query_builders.query_case_builders import load_detail_relati
 from myapp.database.query_builders.query_case_filters import status_expr
 from myapp.database.transactional import transactional
 from myapp.services.equipment_service import EquipmentService
+from myapp.services.warranty_service import WarrantyService
 
 
 class CaseService:
@@ -47,7 +48,9 @@ class CaseService:
     @staticmethod
     @transactional
     async def create_case(
-        session: AsyncSession, case_data: CaseCreate
+        session: AsyncSession,
+        case_data: CaseCreate,
+        user_id: int,
     ) -> RepairCaseEquipment:
         """Создание случая"""
 
@@ -62,6 +65,7 @@ class CaseService:
         # 2. Создаем RepairCaseEquipment только с его собственными полями
         case = RepairCaseEquipment(**case_creation_data)
         case.date_recorded = datetime.now()
+        case.user_id = user_id
 
         # 3. Создаем WarrantyWork (если есть данные) и привязываем его как ORM-объект
         if warranty_work_data:
@@ -87,7 +91,7 @@ class CaseService:
     async def update_case(
         session: AsyncSession, case_id: int, case_data: CaseUpdate
     ) -> RepairCaseEquipment | None:
-        """Обновление случая с автоматическим переопределением supplier_id"""
+        """Обновление случая, включая WarrantyWork, и автоматическое переопределение supplier_id"""
         case: RepairCaseEquipment | None = await session.get(
             RepairCaseEquipment, case_id
         )
@@ -95,7 +99,7 @@ class CaseService:
             return None
 
         # Автоматически определяем supplier_id если изменился component_equipment_id
-        supplier_id = case.supplier_id  # сохраняем текущее значение
+        supplier_id = case.supplier_id
 
         # Если в обновлении передали component_equipment_id, переопределяем supplier_id
         if case_data.component_equipment_id is not None:
@@ -103,16 +107,21 @@ class CaseService:
                 session, case_data.component_equipment_id
             )
 
-        # Обновляем поля
         update_data = case_data.model_dump(
             exclude_unset=True, exclude={"warranty_work"}
         )
-        update_data["supplier_id"] = supplier_id  # обновляем supplier_id
+        update_data["supplier_id"] = supplier_id
 
         for field, value in update_data.items():
             setattr(case, field, value)
 
         await session.flush()
+
+        # Обновление WarrantyWork
+        if case_data.warranty_work:
+            await WarrantyService.update_warranty_work(
+                session, case_id, case_data.warranty_work
+            )
 
         return await CaseService._get_case_with_relations(session, case.id)
 

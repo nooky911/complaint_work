@@ -88,6 +88,8 @@ def build_repair_case_conditions(
         conditions.append(RepairCaseEquipment.repair_type_id == params.repair_type_id)
     if params.supplier_id is not None:
         conditions.append(RepairCaseEquipment.supplier_id == params.supplier_id)
+    if params.user_id is not None:
+        conditions.append(RepairCaseEquipment.user_id == params.user_id)
 
     # Статус
     if params.status:
