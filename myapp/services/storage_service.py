@@ -29,7 +29,7 @@ class StorageService:
         """Создание ZIP-архива"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        if category == FileCategory.PRIMARY:
+        if category == FileCategory.primary:
             archive_name = f"Первичные_документы_случая_{case_id}_{timestamp}.zip"
         else:
             archive_name = f"Рекламационные_документы_случая_{case_id}_{timestamp}.zip"
@@ -95,9 +95,9 @@ class StorageService:
 
         relative_path_base = Path("cases") / case_id_str
 
-        if category == FileCategory.PRIMARY:
+        if category == FileCategory.primary:
             relative_path = relative_path_base / "primary" / stored_name
-        elif category == FileCategory.WARRANTY and related_field:
+        elif category == FileCategory.warranty and related_field:
             field_value = str(related_field.value)
             relative_path = relative_path_base / "warranty" / field_value / stored_name
         else:

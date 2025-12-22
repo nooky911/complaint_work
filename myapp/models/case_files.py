@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Enum, ForeignKey
+from sqlalchemy import Integer, String, ForeignKey, Enum
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from enum import Enum as PyEnum
 
@@ -6,17 +6,17 @@ from myapp.database.base import Base
 
 
 # Первичка или рекл.
-class FileCategory(PyEnum):
-    PRIMARY = "primary"
-    WARRANTY = "warranty"
+class FileCategory(str, PyEnum):
+    primary = "primary"
+    warranty = "warranty"
 
 
 # Тип документа для рекл. работы
-class WarrantyDocumentField(PyEnum):
-    NOTIFICATION = "notification"
-    RE_NOTIFICATION = "re_notification"
-    CLAIM_ACT = "claim_act"
-    RESPONSE = "response"
+class WarrantyDocumentField(str, PyEnum):
+    notification = "notification"
+    re_notification = "re_notification"
+    claim_act = "claim_act"
+    response = "response"
 
 
 # Таблица с файлами для первичной и рекламационной документации
@@ -31,9 +31,21 @@ class CaseFile(Base):
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Enum поля
-    category: Mapped[FileCategory] = mapped_column(Enum(FileCategory), nullable=False)
     related_field: Mapped[WarrantyDocumentField | None] = mapped_column(
-        Enum(WarrantyDocumentField)
+        Enum(
+            WarrantyDocumentField,
+            name="warranty_document_field",
+            native_enum=True,
+        ),
+        nullable=True,
+    )
+    category: Mapped[FileCategory] = mapped_column(
+        Enum(
+            FileCategory,
+            name="file_category",
+            native_enum=True,
+        ),
+        nullable=False,
     )
 
     # Ключи

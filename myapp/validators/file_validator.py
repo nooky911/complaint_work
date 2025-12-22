@@ -7,7 +7,7 @@ MAX_CASE_SIZE = 50 * 1024 * 1024  # 50 Мб
 
 ALLOWED_MIME_TYPES = {
     # Общие разрешенные типы для ВСЕЙ первичной документации
-    FileCategory.PRIMARY: {
+    FileCategory.primary: {
         # --- Фото ---
         "image/jpeg",
         "image/png",
@@ -35,7 +35,7 @@ ALLOWED_MIME_TYPES = {
         "application/vnd.ms-outlook",
     },
     # Типы для рекламационной работы
-    FileCategory.WARRANTY: {
+    FileCategory.warranty: {
         "application/pdf",
         "image/jpeg",
         "application/vnd.ms-outlook",
