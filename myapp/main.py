@@ -55,41 +55,12 @@ openapi_encoding_fix(app)
 logging.basicConfig(level=logging.DEBUG)
 
 
-# Обработчик ошибок валидации
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    body = await request.body()
-    try:
-        body_str = body.decode("utf-8")
-    except:
-        body_str = str(body)
-
-    print(f"Ошибки: {exc.errors()}")
-    print(f"Тело запроса: {body_str}")
-
-    return JSONResponse(
-        status_code=422,
-        content={
-            "detail": exc.errors(),
-            "body": body_str,
-        },
-    )
-
-
 # Middleware для логирования всех запросов
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     print(f"Метод: {request.method}")
     print(f"URL: {request.url}")
     print(f"Заголовки: {dict(request.headers)}")
-
-    body = await request.body()
-    print(f"Тело запроса {body}")
-
-    async def receive():
-        return {"type": "http.request", "body": body}
-
-    request._receive = receive
 
     response = await call_next(request)
     return response
