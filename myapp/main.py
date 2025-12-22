@@ -11,8 +11,6 @@ from openapi_fix import openapi_encoding_fix
 from myapp.debug_logger import setup_debug_logging
 
 from fastapi import Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 import logging
 
 
