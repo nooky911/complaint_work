@@ -68,7 +68,6 @@ class FileService:
         return result.scalar_one_or_none()
 
     @staticmethod
-    @transactional
     async def upload_file(
         session: AsyncSession,
         case_id: int,
@@ -77,7 +76,6 @@ class FileService:
         related_field: WarrantyDocumentField | None = None,
     ) -> CaseFile:
         """Загрузка одного файла"""
-        # Единая точка обработки: используем upload_files, оборачивая файл в список
         results = await FileService.upload_files(
             session, case_id, category, [file], related_field
         )
@@ -92,59 +90,58 @@ class FileService:
         files: list[UploadFile],
         related_field: WarrantyDocumentField | None = None,
     ) -> list[CaseFile]:
-        """Загрузка нескольких файлов с проверкой"""
+        """Загрузка нескольких файлов"""
+        if related_field == "" or related_field == "string":
+            related_field = None
+
         case = await CaseService.get_case(session, case_id)
         if not case:
             raise ValueError(f"Случай с ID {case_id} не найден")
 
-        # 1. Валидация связанных полей
-        if category == FileCategory.WARRANTY and not related_field:
+        if category == FileCategory.warranty and not related_field:
             raise ValueError("Для warranty файлов обязателен related_field")
-
-        if category == FileCategory.PRIMARY and related_field is not None:
+        if category == FileCategory.primary and related_field is not None:
             raise ValueError("Для primary файлов related_field должен быть None")
 
-        # 2. Проверка общего размера перед загрузкой
         total_case_size = await FileService._get_total_case_size(session, case_id)
-
         total_new_size = 0
         for file in files:
             if file.size is None:
-                raise ValueError(
-                    f"Файл {file.filename} не содержит информации о размере"
-                )
+                file.file.seek(0, 2)
+                file.size = file.file.tell()
+                file.file.seek(0)
+
             total_new_size += file.size
 
         if total_case_size + total_new_size > MAX_CASE_SIZE:
             raise ValueError(
-                f"Превышен общий лимит размера для случая ({MAX_CASE_SIZE / 1024 / 1024} МБ)"
+                f"Превышен общий лимит размера для случая ({MAX_CASE_SIZE // (1024*1024)} МБ)"
             )
 
         uploaded_files = []
 
         try:
             for file in files:
-                # 3. Валидация каждого файла по типу/формату
                 FileValidator.validate_file(file, category)
 
-                # 4. Обработка и сохранение (диск + БД)
                 case_file = await FileService._process_single_file(
                     session, case_id, category, file, related_field
                 )
                 uploaded_files.append(case_file)
 
+            await session.flush()
+
             return uploaded_files
 
-        except Exception:
-            # 5. Очистка диска в случае ошибки
+        except Exception as e:
             for case_file in uploaded_files:
                 try:
                     full_path = StorageService.get_full_path(case_file)
                     if full_path.exists():
                         await asyncio.to_thread(full_path.unlink)
                 except Exception:
-                    pass  # Игнорируем ошибки при очистке диска
-            raise
+                    pass
+            raise e
 
     @staticmethod
     @transactional
