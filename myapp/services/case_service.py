@@ -59,7 +59,7 @@ class CaseService:
         warranty_work_data = (
             case_data.warranty_work.model_dump(exclude_unset=True)
             if case_data.warranty_work
-            else None
+            else {}
         )
 
         # 2. Создаем RepairCaseEquipment только с его собственными полями
@@ -67,10 +67,9 @@ class CaseService:
         case.date_recorded = datetime.now()
         case.user_id = user_id
 
-        # 3. Создаем WarrantyWork (если есть данные) и привязываем его как ORM-объект
-        if warranty_work_data:
-            new_warranty_work = WarrantyWork(**warranty_work_data)
-            case.warranty_work = new_warranty_work
+        # 3. Создаем WarrantyWork и привязываем его как ORM-объект
+        new_warranty_work = WarrantyWork(**warranty_work_data)
+        case.warranty_work = new_warranty_work
 
         # 4. Пересчет supplier_id
         if case.component_equipment_id:
