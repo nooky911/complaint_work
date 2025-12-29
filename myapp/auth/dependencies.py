@@ -1,7 +1,6 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 from myapp.auth.tokens import decode_token
 from myapp.database.base import get_db
@@ -10,43 +9,55 @@ from myapp.models.user import User
 from myapp.services.case_service import CaseService
 from myapp.services.file_service import FileService
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+
+def raise_401(detail: str) -> NoReturn:
+    """Быстрое создание 401 ошибки с WWW-Authenticate заголовком"""
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=detail,
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    request: Request,
     session: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    """Получает текущего авторизованного пользователя по JWT токену"""
+    """Получает текущего авторизованного пользователя из cookie или заголовка"""
+
+    # Получаем токен из кук или заголовка
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+
+    if not token:
+        raise_401("Not authenticated")
+
+    # Декод токена
     payload = decode_token(token)
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise_401("Invalid or expired token")
 
     user_id = payload.get("sub")
     if user_id is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token payload",
-        )
+        raise_401("Invalid token format")
 
+    # Преобразование user_id в int
     try:
         user_id_int = int(user_id)
     except (ValueError, TypeError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid user ID in token",
-        )
+        raise_401("Invalid user ID format")
 
+    # Получаем пользователя из БД
     user = await session.get(User, user_id_int)
-    if user is None or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found or inactive",
-        )
+    if user is None:
+        raise_401("User not found")
+
+    # Проверка на активность
+    if not user.is_active:
+        raise_401("User account is disabled")
 
     return user  # type: ignore[valid-type]
 
