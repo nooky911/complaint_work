@@ -26,8 +26,8 @@ async def login_user(
     login: Annotated[str, Form()],
     password: Annotated[str, Form()],
     session: Annotated[AsyncSession, Depends(get_db)],
-) -> UserResponse:
-    """Аутентифицирует пользователя и возвращает JWT токен доступа"""
+):
+    """Аутентифицирует пользователя и возвращает JWT токен в куках и в теле ответа"""
 
     user = await UserService.get_by_login(session, login)
 
@@ -46,24 +46,22 @@ async def login_user(
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
-    # Установка cookie
+    # 1. Куку оставляем (пусть будет для порядка)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=False,  # !!! ПОМЕНЯТЬ!!!
+        secure=False,
         samesite="lax",
         path="/",
     )
 
-    return UserResponse(
-        id=user.id,
-        login=user.login,
-        role=user.role,
-        is_active=user.is_active,
-        created_at=user.created_at,
-    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {"id": user.id, "login": user.login, "role": user.role},
+    }
 
 
 @router.post("/logout", status_code=status.HTTP_200_OK, summary="Выход из системы")
