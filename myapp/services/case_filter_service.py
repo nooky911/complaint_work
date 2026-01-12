@@ -53,9 +53,14 @@ class CaseFilterService:
         rows = result.unique().all()
 
         cases = []
+        seen_ids = set()
 
-        # Преобразование в Pydentic модель со статусом
         for case, calculated_status in rows:
+            if case.id in seen_ids:
+                continue
+
+            seen_ids.add(case.id)
+
             setattr(case, "calculated_status", calculated_status)
             cases.append(CaseList.model_validate(case))
 
