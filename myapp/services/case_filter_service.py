@@ -2,6 +2,7 @@ import asyncio
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from myapp.models.warranty_work import WarrantyWork
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.auxiliaries import (
     RegionalCenter,
@@ -29,14 +30,19 @@ class CaseFilterService:
         session: AsyncSession, params: CaseFilterParams
     ) -> list[CaseList]:
 
-        # Выражение для статуса
-        stmt = select(RepairCaseEquipment, status_expr)
-        # Базовый запрос с выборкой статуса
+        status_subquery = (
+            select(status_expr)
+            .where(WarrantyWork.case_id == RepairCaseEquipment.id)
+            .scalar_subquery()
+            .label("calculated_status")
+        )
+
+        stmt = select(RepairCaseEquipment, status_subquery)
+
         stmt = stmt.options(*load_list_relations())
 
         all_conditions = []
-
-        # Сбор отфильтрованных парамеров
+        # Фильтры
         all_conditions.extend(build_repair_case_conditions(params))
         all_conditions.extend(build_warranty_work_conditions(params))
 
@@ -50,18 +56,12 @@ class CaseFilterService:
         )
 
         result = await session.execute(stmt)
-        rows = result.all()
+        rows = result.unique().all()
 
         cases = []
-        seen_ids = set()
-
         for row in rows:
             case_obj = row[0]
-            calculated_val = row[1]
-
-            if case_obj.id in seen_ids:
-                continue
-            seen_ids.add(case_obj.id)
+            calculated_val = row[1] or "Ожидает уведомление поставщика"
 
             case_obj.status = calculated_val
 
