@@ -30,7 +30,7 @@ class CaseFilterService:
     ) -> list[CaseList]:
 
         # Выражение для статуса
-        stmt = select(RepairCaseEquipment, status_expr).distinct()
+        stmt = select(RepairCaseEquipment, status_expr)
         # Базовый запрос с выборкой статуса
         stmt = stmt.options(*load_list_relations())
 
@@ -50,19 +50,22 @@ class CaseFilterService:
         )
 
         result = await session.execute(stmt)
-        rows = result.unique().all()
+        rows = result.all()
 
         cases = []
         seen_ids = set()
 
-        for case, calculated_status in rows:
-            if case.id in seen_ids:
+        for row in rows:
+            case_obj = row[0]
+            calculated_val = row[1]
+
+            if case_obj.id in seen_ids:
                 continue
-            seen_ids.add(case.id)
+            seen_ids.add(case_obj.id)
 
-            case.status = calculated_status
+            case_obj.status = calculated_val
 
-            cases.append(CaseList.model_validate(case))
+            cases.append(CaseList.model_validate(case_obj))
 
         return cases
 
