@@ -84,7 +84,7 @@ class CaseCommonRelations(CaseOutputData):
     malfunction: AuxiliaryItem | None = None
     supplier: AuxiliaryItem | None = None
 
-    status: str = Field(..., validation_alias="calculated_status")
+    status: str | None = None
 
     warranty_work: WarrantyWorkResponse | None = None
 
