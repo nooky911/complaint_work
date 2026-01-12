@@ -30,8 +30,7 @@ class CaseFilterService:
     ) -> list[CaseList]:
 
         # Выражение для статуса
-        stmt = select(RepairCaseEquipment, status_expr)
-
+        stmt = select(RepairCaseEquipment, status_expr).distinct()
         # Базовый запрос с выборкой статуса
         stmt = stmt.options(*load_list_relations())
 

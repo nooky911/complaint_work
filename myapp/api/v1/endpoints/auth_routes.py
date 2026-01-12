@@ -46,13 +46,12 @@ async def login_user(
 
     access_token = create_access_token(data={"sub": str(user.id)})
 
-    # 1. Куку оставляем (пусть будет для порядка)
     response.set_cookie(
         key="access_token",
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=False,
+        secure=False,  # ПОМЕНЯТЬ
         samesite="lax",
         path="/",
     )
