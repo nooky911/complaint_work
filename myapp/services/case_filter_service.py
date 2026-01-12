@@ -58,10 +58,10 @@ class CaseFilterService:
         for case, calculated_status in rows:
             if case.id in seen_ids:
                 continue
-
             seen_ids.add(case.id)
 
-            setattr(case, "calculated_status", calculated_status)
+            case.status = calculated_status
+
             cases.append(CaseList.model_validate(case))
 
         return cases
