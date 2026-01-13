@@ -31,10 +31,14 @@ class CaseService:
 
         if row:
             case = row[0]
-            calculated_status = row[1]
+            setattr(case, "calculated_status", row[1])
 
-            # Прикрепляем вычисленное поле к объекту ORM для Pydantic
-            setattr(case, "calculated_status", calculated_status)
+            # Добавляем статус и ФИО
+            if hasattr(case, "user") and case.user:
+                setattr(case, "creator_full_name", case.user.full_name)
+            else:
+                setattr(case, "creator_full_name", "Система")
+
             return case
         return None
 
