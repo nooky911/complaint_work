@@ -83,6 +83,7 @@ class CaseCommonRelations(CaseOutputData):
     element_equipment: AuxiliaryItem | None = None
     malfunction: AuxiliaryItem | None = None
     supplier: AuxiliaryItem | None = None
+    creator_full_name: str | None = None
 
     status: str | None = None
 

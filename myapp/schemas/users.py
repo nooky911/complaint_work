@@ -7,6 +7,7 @@ class UserBase(BaseModel):
 
     login: str
     role: str
+    full_name: str | None = None
     is_active: bool = True
 
 

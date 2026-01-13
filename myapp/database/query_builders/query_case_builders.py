@@ -14,6 +14,7 @@ def load_list_relations():
         joinedload(RepairCaseEquipment.malfunction),
         joinedload(RepairCaseEquipment.repair_type),
         joinedload(RepairCaseEquipment.supplier),
+        joinedload(RepairCaseEquipment.user),
         joinedload(RepairCaseEquipment.warranty_work).joinedload(
             WarrantyWork.notification_summary
         ),

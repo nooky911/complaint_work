@@ -12,6 +12,7 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(Text, nullable=False)
+    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(
         String,
         server_default=text("'viewer'"),

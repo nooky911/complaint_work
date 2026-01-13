@@ -61,9 +61,15 @@ class CaseFilterService:
         cases = []
         for row in rows:
             case_obj = row[0]
+            # Считаем статус
             calculated_val = row[1] or "Ожидает уведомление поставщика"
-
             case_obj.status = calculated_val
+
+            # Достаем ФИО
+            if hasattr(case_obj, "user") and case_obj.user:
+                case_obj.creator_full_name = case_obj.user.full_name
+            else:
+                case_obj.creator_full_name = "Система"
 
             cases.append(CaseList.model_validate(case_obj))
 
