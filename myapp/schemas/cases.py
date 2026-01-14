@@ -1,8 +1,14 @@
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Optional
+from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 
 from .references import AuxiliaryItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
+
+
+class EquipmentItem(AuxiliaryItem):
+    parent: Optional["EquipmentItem"] = None
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CaseBase(BaseModel):
@@ -79,8 +85,8 @@ class CaseCommonRelations(CaseOutputData):
 
     regional_center: AuxiliaryItem | None = None
     locomotive_model: AuxiliaryItem | None = None
-    component_equipment: AuxiliaryItem | None = None
-    element_equipment: AuxiliaryItem | None = None
+    component_equipment: EquipmentItem | None = None
+    element_equipment: EquipmentItem | None = None
     malfunction: AuxiliaryItem | None = None
     supplier: AuxiliaryItem | None = None
     creator_full_name: str | None = None
