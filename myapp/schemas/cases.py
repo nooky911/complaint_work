@@ -1,4 +1,3 @@
-from typing import Optional
 from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 
@@ -6,8 +5,16 @@ from .references import AuxiliaryItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
 
 
+class ParentEquipment(AuxiliaryItem):
+    """Схема для родителя, у которой НЕТ вложенного parent"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class EquipmentItem(AuxiliaryItem):
-    parent: Optional["EquipmentItem"] = None
+    """Основная схема оборудования, которая берет только ОДИН уровень родителя"""
+
+    parent: ParentEquipment | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
