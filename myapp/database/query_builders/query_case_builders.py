@@ -1,5 +1,6 @@
 from sqlalchemy.orm import joinedload
 
+from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 
@@ -9,8 +10,10 @@ def load_list_relations():
     return [
         joinedload(RepairCaseEquipment.regional_center),
         joinedload(RepairCaseEquipment.locomotive_model),
-        joinedload(RepairCaseEquipment.component_equipment),
-        joinedload(RepairCaseEquipment.element_equipment),
+        joinedload(RepairCaseEquipment.component_equipment).joinedload(
+            Equipment.parent
+        ),
+        joinedload(RepairCaseEquipment.element_equipment).joinedload(Equipment.parent),
         joinedload(RepairCaseEquipment.malfunction),
         joinedload(RepairCaseEquipment.repair_type),
         joinedload(RepairCaseEquipment.supplier),

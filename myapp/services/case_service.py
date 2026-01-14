@@ -29,11 +29,11 @@ class CaseService:
 
         row = result.first()
 
+        # Добавляем статус и ФИО
         if row:
             case = row[0]
             setattr(case, "calculated_status", row[1])
 
-            # Добавляем статус и ФИО
             if hasattr(case, "user") and case.user:
                 setattr(case, "creator_full_name", case.user.full_name)
             else:
