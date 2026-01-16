@@ -32,7 +32,7 @@ class CaseService:
         # Добавляем статус и ФИО
         if row:
             case = row[0]
-            setattr(case, "calculated_status", row[1])
+            setattr(case, "status", row[1])
 
             if hasattr(case, "user") and case.user:
                 setattr(case, "creator_full_name", case.user.full_name)
