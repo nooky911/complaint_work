@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
@@ -6,10 +6,10 @@ from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.cases import CaseCreate, CaseUpdate
 from myapp.database.query_builders.query_case_builders import load_detail_relations
-from myapp.database.query_builders.query_case_filters import status_expr
 from myapp.database.transactional import transactional
 from myapp.services.equipment_service import EquipmentService
 from myapp.services.warranty_service import WarrantyService
+from myapp.services.case_status_service import CaseStatusService
 
 
 class CaseService:
@@ -19,28 +19,9 @@ class CaseService:
         session: AsyncSession, case_id: int
     ) -> RepairCaseEquipment | None:
         """Внутренний метод для загрузки случая со всеми связями"""
-        stmt = (
-            select(RepairCaseEquipment, status_expr)
-            .options(*load_detail_relations())
-            .outerjoin(RepairCaseEquipment.warranty_work)
-            .where(RepairCaseEquipment.id == case_id)
+        return await CaseStatusService.get_case_with_status(
+            session, case_id, load_detail_relations
         )
-        result = await session.execute(stmt)
-
-        row = result.first()
-
-        # Добавляем статус и ФИО
-        if row:
-            case = row[0]
-            setattr(case, "status", row[1])
-
-            if hasattr(case, "user") and case.user:
-                setattr(case, "creator_full_name", case.user.full_name)
-            else:
-                setattr(case, "creator_full_name", "Система")
-
-            return case
-        return None
 
     @staticmethod
     async def get_case(

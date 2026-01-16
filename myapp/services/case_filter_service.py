@@ -2,7 +2,6 @@ import asyncio
 from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.models.warranty_work import WarrantyWork
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.auxiliaries import (
     RegionalCenter,
@@ -18,8 +17,8 @@ from myapp.database.query_builders.query_case_builders import load_list_relation
 from myapp.database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
-    status_expr,
 )
+from myapp.services.case_status_service import CaseStatusService
 
 
 class CaseFilterService:
@@ -29,16 +28,10 @@ class CaseFilterService:
     async def filter_cases(
         session: AsyncSession, params: CaseFilterParams
     ) -> list[CaseList]:
-
-        status_subquery = (
-            select(status_expr)
-            .where(WarrantyWork.case_id == RepairCaseEquipment.id)
-            .scalar_subquery()
-            .label("calculated_status")
-        )
+        """Фильтрация случаев с загрузкой статуса"""
+        status_subquery = CaseStatusService.build_status_subquery()
 
         stmt = select(RepairCaseEquipment, status_subquery)
-
         stmt = stmt.options(*load_list_relations())
 
         all_conditions = []
@@ -61,16 +54,10 @@ class CaseFilterService:
         cases = []
         for row in rows:
             case_obj = row[0]
-            # Считаем статус
-            calculated_val = row[1] or "Ожидает уведомление поставщика"
-            case_obj.status = calculated_val
-
-            # Достаем ФИО
-            if hasattr(case_obj, "user") and case_obj.user:
-                case_obj.creator_full_name = case_obj.user.full_name
-            else:
-                case_obj.creator_full_name = "Система"
-
+            status_value = row[1]
+            CaseStatusService.enrich_case_with_status_and_creator(
+                case_obj, status_value
+            )
             cases.append(CaseList.model_validate(case_obj))
 
         return cases
