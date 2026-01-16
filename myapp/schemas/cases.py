@@ -6,7 +6,7 @@ from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
 
 
 class ParentEquipment(AuxiliaryItem):
-    """Схема для родителя, у которой НЕТ вложенного parent"""
+    """Схема для родителя, у которой нет вложенного parent"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -56,16 +56,16 @@ class CaseBase(BaseModel):
 class CaseCreate(CaseBase):
     """Схема создание случая"""
 
-    fault_date: date = ...
-    section_mask: int = ...
-    component_quantity: int = ...
+    fault_date: date
+    section_mask: int
+    component_quantity: int
 
-    regional_center_id: int = ...
-    locomotive_model_id: int = ...
-    fault_discovered_at_id: int = ...
-    component_equipment_id: int = ...
-    malfunction_id: int = ...
-    repair_type_id: int = ...
+    regional_center_id: int
+    locomotive_model_id: int
+    fault_discovered_at_id: int
+    component_equipment_id: int
+    malfunction_id: int
+    repair_type_id: int
 
     # Вложенная схема для данных о гарантийном ремонте
     warranty_work: WarrantyWorkUpdate | None = None
@@ -90,12 +90,14 @@ class CaseOutputData(CaseBase):
 class CaseCommonRelations(CaseOutputData):
     """Схема, используется как база для CaseList и CaseDetail"""
 
+    # Объекты-отношения, которые есть и в списке, и в деталях
     regional_center: AuxiliaryItem | None = None
     locomotive_model: AuxiliaryItem | None = None
     component_equipment: EquipmentItem | None = None
     element_equipment: EquipmentItem | None = None
     malfunction: AuxiliaryItem | None = None
     supplier: AuxiliaryItem | None = None
+    repair_type: AuxiliaryItem | None = None
     creator_full_name: str | None = None
 
     status: str | None = None
@@ -112,8 +114,8 @@ class CaseList(CaseCommonRelations):
 class CaseDetail(CaseCommonRelations):
     """Схема для детального просмотра карточки"""
 
+    # Дополнительные отношения только для детального просмотра
     fault_discovered_at: AuxiliaryItem | None = None
-    repair_type: AuxiliaryItem | None = None
     performed_by: AuxiliaryItem | None = None
     equipment_owner: AuxiliaryItem | None = None
     destination: AuxiliaryItem | None = None
