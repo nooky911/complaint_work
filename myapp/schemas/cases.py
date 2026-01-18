@@ -29,14 +29,14 @@ class CaseBase(BaseModel):
     component_quantity: int | None = None
     element_quantity: int | None = None
     component_serial_number_old: str | None = None
-    component_manufacture_date_old: date | None = None
+    component_manufacture_date_old: str | None = None
     element_serial_number_old: str | None = None
-    element_manufacture_date_old: date | None = None
+    element_manufacture_date_old: str | None = None
     notes: str | None = None
     component_serial_number_new: str | None = None
-    component_manufacture_date_new: date | None = None
+    component_manufacture_date_new: str | None = None
     element_serial_number_new: str | None = None
-    element_manufacture_date_new: date | None = None
+    element_manufacture_date_new: str | None = None
 
     # ID-поля
     regional_center_id: int | None = None

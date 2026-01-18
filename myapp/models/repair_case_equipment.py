@@ -21,14 +21,14 @@ class RepairCaseEquipment(Base):
     component_quantity: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     element_quantity: Mapped[int | None] = mapped_column(Integer)
     component_serial_number_old: Mapped[str | None] = mapped_column(String(100))
-    component_manufacture_date_old: Mapped[date | None] = mapped_column(Date)
+    component_manufacture_date_old: Mapped[str | None] = mapped_column(String(100))
     element_serial_number_old: Mapped[str | None] = mapped_column(String(100))
-    element_manufacture_date_old: Mapped[date | None] = mapped_column(Date)
+    element_manufacture_date_old: Mapped[str | None] = mapped_column(String(100))
     notes: Mapped[str | None] = mapped_column(Text)
     component_serial_number_new: Mapped[str | None] = mapped_column(String(100))
-    component_manufacture_date_new: Mapped[date | None] = mapped_column(Date)
+    component_manufacture_date_new: Mapped[str | None] = mapped_column(String(100))
     element_serial_number_new: Mapped[str | None] = mapped_column(String(100))
-    element_manufacture_date_new: Mapped[date | None] = mapped_column(Date)
+    element_manufacture_date_new: Mapped[str | None] = mapped_column(String(100))
 
     # Внешние ключи
     regional_center_id: Mapped[int] = mapped_column(
