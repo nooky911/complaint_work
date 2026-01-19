@@ -20,6 +20,8 @@ class RepairCaseEquipment(Base):
     mileage: Mapped[int | None] = mapped_column(Integer)
     component_quantity: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     element_quantity: Mapped[int | None] = mapped_column(Integer)
+    new_component_quantity: Mapped[int | None] = mapped_column(Integer)
+    new_element_quantity: Mapped[int | None] = mapped_column(Integer)
     component_serial_number_old: Mapped[str | None] = mapped_column(String(100))
     component_manufacture_date_old: Mapped[str | None] = mapped_column(String(100))
     element_serial_number_old: Mapped[str | None] = mapped_column(String(100))

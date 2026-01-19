@@ -28,6 +28,8 @@ class CaseBase(BaseModel):
     mileage: int | None = None
     component_quantity: int | None = None
     element_quantity: int | None = None
+    new_component_quantity: int | None = None
+    new_element_quantity: int | None = None
     component_serial_number_old: str | None = None
     component_manufacture_date_old: str | None = None
     element_serial_number_old: str | None = None
