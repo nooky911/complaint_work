@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+from .references import AuxiliaryItem
 
 
 class EquipmentWithPathResponse(BaseModel):
@@ -10,4 +11,17 @@ class EquipmentWithPathResponse(BaseModel):
     has_children: bool
     supplier_id: int | None
 
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ParentEquipment(AuxiliaryItem):
+    """Схема для родителя, у которой нет вложенного parent"""
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EquipmentItem(AuxiliaryItem):
+    """Основная схема оборудования, которая берет только ОДИН уровень родителя"""
+
+    parent: ParentEquipment | None = None
     model_config = ConfigDict(from_attributes=True)

@@ -3,19 +3,7 @@ from datetime import date, datetime
 
 from .references import AuxiliaryItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
-
-
-class ParentEquipment(AuxiliaryItem):
-    """Схема для родителя, у которой нет вложенного parent"""
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class EquipmentItem(AuxiliaryItem):
-    """Основная схема оборудования, которая берет только ОДИН уровень родителя"""
-
-    parent: ParentEquipment | None = None
-    model_config = ConfigDict(from_attributes=True)
+from .equipment import EquipmentItem
 
 
 class CaseBase(BaseModel):
