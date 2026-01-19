@@ -84,6 +84,16 @@ def build_repair_case_conditions(
         )
     if params.malfunction_id is not None:
         conditions.append(RepairCaseEquipment.malfunction_id == params.malfunction_id)
+    if params.new_component_equipment_id is not None:
+        conditions.append(
+            RepairCaseEquipment.new_component_equipment_id
+            == params.new_component_equipment_id
+        )
+    if params.new_element_equipment_id is not None:
+        conditions.append(
+            RepairCaseEquipment.new_element_equipment_id
+            == params.new_element_equipment_id
+        )
     if params.repair_type_id is not None:
         conditions.append(RepairCaseEquipment.repair_type_id == params.repair_type_id)
     if params.supplier_id is not None:

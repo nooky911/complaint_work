@@ -114,11 +114,23 @@ class CaseFilterService:
                 {"id": m.id, "name": m.name}
                 for m in malfunctions_result.scalars().all()
             ],
+            "new_components": [
+                {"id": equip.id, "name": equip.name}
+                for equip in equipment_result.scalars().all()
+            ],
+            "new_elements": [
+                {"id": equip.id, "name": equip.name}
+                for equip in elements_result.scalars().all()
+            ],
             "suppliers": [
                 {"id": s.id, "name": s.name} for s in suppliers_result.scalars().all()
             ],
             "repair_types": [
-                {"id": rt.id, "name": rt.name}
+                {
+                    "id": rt.id,
+                    "name": rt.name,
+                    "auto_fill_strategy": rt.auto_fill_strategy,
+                }
                 for rt in repair_types_result.scalars().all()
             ],
             "statuses": [

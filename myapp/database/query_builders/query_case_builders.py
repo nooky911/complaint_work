@@ -15,6 +15,12 @@ def load_list_relations():
         ),
         joinedload(RepairCaseEquipment.element_equipment).joinedload(Equipment.parent),
         joinedload(RepairCaseEquipment.malfunction),
+        joinedload(RepairCaseEquipment.new_component_equipment).joinedload(
+            Equipment.parent
+        ),
+        joinedload(RepairCaseEquipment.new_element_equipment).joinedload(
+            Equipment.parent
+        ),
         joinedload(RepairCaseEquipment.repair_type),
         joinedload(RepairCaseEquipment.supplier),
         joinedload(RepairCaseEquipment.user),

@@ -5,6 +5,7 @@ from datetime import date
 class FilterOption(BaseModel):
     id: int
     name: str
+    auto_fill_strategy: str | None = None
 
 
 class FilterOptionsResponse(BaseModel):
@@ -12,6 +13,8 @@ class FilterOptionsResponse(BaseModel):
     locomotive_models: list[FilterOption]
     components: list[FilterOption]
     malfunctions: list[FilterOption]
+    new_components: list[FilterOption]
+    new_elements: list[FilterOption]
     suppliers: list[FilterOption]
     repair_types: list[FilterOption]
     statuses: list[str]
@@ -32,6 +35,8 @@ class CaseFilterParams(BaseModel):
     component_equipment_id: int | None = None
     element_equipment_id: int | None = None
     malfunction_id: int | None = None
+    new_component_equipment_id: int | None = None
+    new_element_equipment_id: int | None = None
     repair_type_id: int | None = None
     supplier_id: int | None = None
     user_id: int | None = None

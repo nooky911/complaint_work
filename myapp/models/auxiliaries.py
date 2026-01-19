@@ -64,6 +64,7 @@ class RepairType(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     repair_types_name: Mapped[str] = mapped_column(String(255))
+    auto_fill_strategy: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     repair_cases: Mapped[list["RepairCaseEquipment"]] = relationship(
         "RepairCaseEquipment", back_populates="repair_type"

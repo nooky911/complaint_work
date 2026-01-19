@@ -27,8 +27,19 @@ class Equipment(Base):
         foreign_keys="[RepairCaseEquipment.element_equipment_id]",
         back_populates="element_equipment",
     )
+
     malfunctions: Mapped[list["Malfunction"]] = relationship(
         secondary="equipment_malfunctions", back_populates="equipment"
+    )
+    new_component_repair_cases: Mapped[list["RepairCaseEquipment"]] = relationship(
+        "RepairCaseEquipment",
+        foreign_keys="[RepairCaseEquipment.new_component_equipment_id]",
+        back_populates="new_component_equipment",
+    )
+    new_element_repair_cases: Mapped[list["RepairCaseEquipment"]] = relationship(
+        "RepairCaseEquipment",
+        foreign_keys="[RepairCaseEquipment.new_element_equipment_id]",
+        back_populates="new_element_equipment",
     )
 
     @property

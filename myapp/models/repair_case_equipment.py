@@ -47,6 +47,12 @@ class RepairCaseEquipment(Base):
     malfunction_id: Mapped[int] = mapped_column(
         ForeignKey("malfunctions.id"), nullable=False
     )
+    new_component_equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("equipment.id"), nullable=True
+    )
+    new_element_equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("equipment.id"), nullable=True
+    )
     repair_type_id: Mapped[int] = mapped_column(
         ForeignKey("repair_types.id"), nullable=False
     )
@@ -88,6 +94,16 @@ class RepairCaseEquipment(Base):
     )
     malfunction: Mapped["Malfunction"] = relationship(
         "Malfunction", back_populates="repair_cases"
+    )
+    new_component_equipment: Mapped["Equipment | None"] = relationship(
+        "Equipment",
+        foreign_keys=[new_component_equipment_id],
+        back_populates="new_component_repair_cases",
+    )
+    new_element_equipment: Mapped["Equipment | None"] = relationship(
+        "Equipment",
+        foreign_keys=[new_element_equipment_id],
+        back_populates="new_element_repair_cases",
     )
     repair_type: Mapped["RepairType"] = relationship(
         "RepairType", back_populates="repair_cases"

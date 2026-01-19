@@ -45,6 +45,8 @@ class CaseBase(BaseModel):
     component_equipment_id: int | None = None
     element_equipment_id: int | None = None
     malfunction_id: int | None = None
+    new_component_equipment_id: int | None = None
+    new_element_equipment_id: int | None = None
     repair_type_id: int | None = None
     performed_by_id: int | None = None
     equipment_owner_id: int | None = None
@@ -96,6 +98,8 @@ class CaseCommonRelations(CaseOutputData):
     component_equipment: EquipmentItem | None = None
     element_equipment: EquipmentItem | None = None
     malfunction: AuxiliaryItem | None = None
+    new_component_equipment: EquipmentItem | None = None
+    new_element_equipment: EquipmentItem | None = None
     supplier: AuxiliaryItem | None = None
     repair_type: AuxiliaryItem | None = None
     creator_full_name: str | None = None
