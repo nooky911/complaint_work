@@ -82,14 +82,27 @@ class CaseService:
         if not case:
             return None
 
-        # Автоматически определяем supplier_id если изменился component_equipment_id
+        # ИНИЦИАЛИЗИРУЕМ supplier_id из существующего случая
         supplier_id = case.supplier_id
 
-        # Если в обновлении передали component_equipment_id, переопределяем supplier_id
+        # ПРОВЕРЯЕМ ОБА ПОЛЯ: component_equipment_id И element_equipment_id
+        equipment_id_to_check = None
+
+        # Приоритет 1: Если передали component_equipment_id, ищем по нему
         if case_data.component_equipment_id is not None:
-            supplier_id = await EquipmentService.find_supplier_in_parents(
-                session, case_data.component_equipment_id
+            equipment_id_to_check = case_data.component_equipment_id
+        # Приоритет 2: Если не передали component_equipment_id, но передали element_equipment_id, ищем по нему
+        elif case_data.element_equipment_id is not None:
+            equipment_id_to_check = case_data.element_equipment_id
+
+        if equipment_id_to_check is not None:
+            new_supplier_id = await EquipmentService.find_supplier_in_parents(
+                session, equipment_id_to_check
             )
+            if new_supplier_id is not None:
+                supplier_id = new_supplier_id
+            else:
+                supplier_id = None
 
         update_data = case_data.model_dump(
             exclude_unset=True, exclude={"warranty_work"}
