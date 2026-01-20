@@ -53,7 +53,7 @@ async def get_equipment_chain(
     summary="Получить все справочники для формы создания/редактирования случая",
 )
 async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_db)]):
-    return ReferenceService.get_case_form_references(session)
+    return await ReferenceService.get_case_form_references(session)
 
 
 @router.get(
@@ -62,4 +62,4 @@ async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_
     summary="Получить опции для фильтров",
 )
 async def get_filter_options(session: Annotated[AsyncSession, Depends(get_db)]):
-    return CaseFilterService.get_filter_options(session)
+    return await CaseFilterService.get_filter_options(session)
