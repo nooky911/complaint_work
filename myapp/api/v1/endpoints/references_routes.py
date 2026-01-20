@@ -4,7 +4,11 @@ from typing import Annotated
 
 from myapp.database.base import get_db
 from myapp.schemas.equipment import EquipmentWithPathResponse
+from myapp.schemas.references import CaseFormReferencesResponse
+from myapp.schemas.filters import FilterOptionsResponse
 from myapp.services.equipment_service import EquipmentService
+from myapp.services.reference_service import ReferenceService
+from myapp.services.case_filter_service import CaseFilterService
 
 
 router = APIRouter(prefix="/references", tags=["Выпадающие списки"])
@@ -41,3 +45,21 @@ async def get_equipment_chain(
 ):
     """Автоматическое заполнение всех полей, которые находятся выше поля заполняемого пользователем"""
     return await EquipmentService.get_equipment_chain(session, equipment_id)
+
+
+@router.get(
+    "/case-form",
+    response_model=CaseFormReferencesResponse,
+    summary="Получить все справочники для формы создания/редактирования случая",
+)
+async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_db)]):
+    return ReferenceService.get_case_form_references(session)
+
+
+@router.get(
+    "/filter-options",
+    response_model=FilterOptionsResponse,
+    summary="Получить опции для фильтров",
+)
+async def get_filter_options(session: Annotated[AsyncSession, Depends(get_db)]):
+    return CaseFilterService.get_filter_options(session)

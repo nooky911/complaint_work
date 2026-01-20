@@ -6,7 +6,7 @@ from myapp.models.warranty_work import WarrantyWork
 
 
 def load_list_relations():
-    """Связи для отображения в списке фильтрации"""
+    """Связи для загрузки полных данных с БД"""
     return [
         joinedload(RepairCaseEquipment.regional_center),
         joinedload(RepairCaseEquipment.locomotive_model),

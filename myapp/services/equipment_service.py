@@ -11,10 +11,10 @@ class EquipmentService:
     async def get_equipment_by_level(
         session: AsyncSession, level: int, parent_id: int | None, query: str = ""
     ) -> list[EquipmentWithPathResponse]:
-        """Получить оборудование для конкретного уровня иерархии, включая проверку уровня родителя"""
+        """Получить оборудование для конкретного уровня иерархии"""
         conditions = []
 
-        # 1. Логика фильтрации по родителю и проверка уровня
+        # 1. Логика фильтрации по родителю
         if level == 0:
             conditions.append(Equipment.parent_id.is_(None))
         else:
@@ -66,7 +66,7 @@ class EquipmentService:
     ) -> list[EquipmentWithPathResponse]:
         """Получить полную цепочку от корня до выбранного оборудования"""
 
-        # 1. Находим все ID в цепочке, идя вверх.
+        # 1. Находим все ID в цепочке, идя вверх
         current_id = equipment_id
         chain_ids = []
 
@@ -84,7 +84,7 @@ class EquipmentService:
         if not chain_ids:
             return []
 
-        # 2. Получаем все объекты в цепочке одним запросом (Batching)
+        # 2. Получаем все объекты в цепочке одним запросом
         equipment_stmt = select(Equipment).where(Equipment.id.in_(chain_ids))
         result = await session.execute(equipment_stmt)
         equipment_list = result.scalars().all()
@@ -92,25 +92,67 @@ class EquipmentService:
         # Создаем карту ID -> Объект
         equipment_map = {eq.id: eq for eq in equipment_list}
 
-        # 3. Собираем цепочку в правильном порядке (от корня к выбранному)
+        # 3. Определяем уровень для каждого оборудования (рекурсивно)
+        def calculate_level(item_id: int) -> int:
+            """Вспомогательная функция для расчета уровня оборудования"""
+            equipment_item = equipment_map.get(item_id)
+            if not equipment_item:
+                return 0
+            if equipment_item.parent_id is None:
+                return 0
+            return calculate_level(equipment_item.parent_id) + 1
+
+        # 4. Проверяем наличие детей для каждого оборудования
+        all_equipment_ids = [eq.id for eq in equipment_map.values()]
+        children_stmt = (
+            select(Equipment.parent_id)
+            .where(Equipment.parent_id.in_(all_equipment_ids))
+            .distinct()
+        )
+        children_result = await session.execute(children_stmt)
+        parents_with_children = {row[0] for row in children_result}
+
+        # 5. Собираем цепочку в правильном порядке (от корня к выбранному)
         chain = []
-        # Инвертируем ID, чтобы идти от корня к выбранному элементу
         ordered_ids = list(reversed(chain_ids))
 
-        for index, eq_id in enumerate(ordered_ids):
-            equipment = equipment_map.get(eq_id)
-            if equipment:
+        for eq_id in ordered_ids:
+            eq = equipment_map.get(eq_id)
+            if eq:
+                level = calculate_level(eq.id)
+                has_children = eq_id in parents_with_children
+
                 chain.append(
                     EquipmentWithPathResponse(
-                        id=equipment.id,
-                        name=equipment.equipment_name,
-                        level=index,
-                        has_children=False,
-                        supplier_id=equipment.supplier_id,
+                        id=eq.id,
+                        name=eq.equipment_name,
+                        level=level,
+                        has_children=has_children,
+                        supplier_id=eq.supplier_id,
                     )
                 )
 
         return chain
+
+    @staticmethod
+    async def get_equipment_with_level(
+        session: AsyncSession, equipment_id: int
+    ) -> tuple[Equipment, int] | None:
+        """Получить оборудование с его реальным уровнем в иерархии"""
+        chain = await EquipmentService.get_equipment_chain(session, equipment_id)
+
+        if not chain:
+            return None
+
+        # Находим последний элемент (выбранное оборудование)
+        last_item = chain[-1]
+
+        # Получаем полный объект Equipment
+        equipment = await session.get(Equipment, equipment_id)
+        if not equipment:
+            return None
+
+        return equipment, last_item.level
 
     @staticmethod
     async def find_supplier_in_parents(

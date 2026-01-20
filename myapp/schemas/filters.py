@@ -1,22 +1,20 @@
 from pydantic import BaseModel
 from datetime import date
-
-
-class FilterOption(BaseModel):
-    id: int
-    name: str
-    auto_fill_strategy: str | None = None
+from .references import AuxiliaryItem, RepairTypeItem
 
 
 class FilterOptionsResponse(BaseModel):
-    regional_centers: list[FilterOption]
-    locomotive_models: list[FilterOption]
-    components: list[FilterOption]
-    malfunctions: list[FilterOption]
-    new_components: list[FilterOption]
-    new_elements: list[FilterOption]
-    suppliers: list[FilterOption]
-    repair_types: list[FilterOption]
+    """Схема для фильтров"""
+
+    regional_centers: list[AuxiliaryItem]
+    locomotive_models: list[AuxiliaryItem]
+    components: list[AuxiliaryItem]
+    elements: list[AuxiliaryItem]
+    malfunctions: list[AuxiliaryItem]
+    new_components: list[AuxiliaryItem]
+    new_elements: list[AuxiliaryItem]
+    suppliers: list[AuxiliaryItem]
+    repair_types: list[RepairTypeItem]
     statuses: list[str]
 
 
