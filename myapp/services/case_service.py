@@ -82,33 +82,40 @@ class CaseService:
         if not case:
             return None
 
-        # ИНИЦИАЛИЗИРУЕМ supplier_id из существующего случая
-        supplier_id = case.supplier_id
-
-        # ПРОВЕРЯЕМ ОБА ПОЛЯ: component_equipment_id И element_equipment_id
-        equipment_id_to_check = None
-
-        # Приоритет 1: Если передали component_equipment_id, ищем по нему
-        if case_data.component_equipment_id is not None:
-            equipment_id_to_check = case_data.component_equipment_id
-        # Приоритет 2: Если не передали component_equipment_id, но передали element_equipment_id, ищем по нему
-        elif case_data.element_equipment_id is not None:
-            equipment_id_to_check = case_data.element_equipment_id
-
-        if equipment_id_to_check is not None:
-            new_supplier_id = await EquipmentService.find_supplier_in_parents(
-                session, equipment_id_to_check
-            )
-            if new_supplier_id is not None:
-                supplier_id = new_supplier_id
-            else:
-                supplier_id = None
-
         update_data = case_data.model_dump(
             exclude_unset=True, exclude={"warranty_work"}
         )
-        update_data["supplier_id"] = supplier_id
 
+        # Проверяем, переданы ли поля оборудования в запросе
+        component_changed = "component_equipment_id" in update_data
+        element_changed = "element_equipment_id" in update_data
+
+        # ЛОГИКА ОПРЕДЕЛЕНИЯ ПОСТАВЩИКА:
+        # 1. Если изменилось оборудование (переданы component_equipment_id или element_equipment_id)
+        if component_changed or element_changed:
+            equipment_id_for_search = None
+
+            # Приоритет: component_equipment_id > element_equipment_id
+            if component_changed:
+                equipment_id_for_search = update_data.get("component_equipment_id")
+            elif element_changed:
+                equipment_id_for_search = update_data.get("element_equipment_id")
+
+            # Если equipment_id передан как null (сброс выбора), то поставщик = null
+            if equipment_id_for_search is None:
+                update_data["supplier_id"] = None
+            # Если equipment_id передан (число), ищем поставщика
+            else:
+                found_supplier_id = await EquipmentService.find_supplier_in_parents(
+                    session, equipment_id_for_search
+                )
+                update_data["supplier_id"] = found_supplier_id
+        # 2. Если оборудование не менялось, НЕ трогаем supplier_id
+        else:
+            # Не добавляем supplier_id в update_data, чтобы не менять его
+            pass
+
+        # Обновляем поля
         for field, value in update_data.items():
             setattr(case, field, value)
 
