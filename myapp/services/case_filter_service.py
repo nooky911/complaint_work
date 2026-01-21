@@ -2,7 +2,6 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
-from myapp.models.equipment_malfunctions import Malfunction
 from myapp.schemas.cases import CaseList
 from myapp.schemas.filters import FilterOptionsResponse
 from myapp.schemas.filters import CaseFilterParams
@@ -58,19 +57,18 @@ class CaseFilterService:
 
     @staticmethod
     async def get_filter_options(session: AsyncSession) -> FilterOptionsResponse:
-        """Получение опций для фильтров (для выпадающих списков на фронте)"""
-        # Получаем справочники для фильтров
-        filter_refs = await ReferenceService.get_filter_references(session)
-        equipment_refs = await ReferenceService.get_equipment_references(session)
-        malfunctions = await session.execute(select(Malfunction))
+        """Получение опций для фильтров (используем все справочники)"""
+        # Получаем ВСЕ справочники для формы
+        form_refs = await ReferenceService.get_case_form_references(session)
 
-        # Добавление статуса
+        # Получаем оборудование
+        equipment_refs = await ReferenceService.get_equipment_references(session)
+
+        # Добавляем статусы и оборудование к справочникам
         data = {
-            **filter_refs,
-            **equipment_refs,
-            "malfunctions": [
-                {"id": m.id, "name": m.name} for m in malfunctions.scalars().all()
-            ],
+            **form_refs,  # Все основные справочники
+            "components": equipment_refs["components"],
+            "elements": equipment_refs["elements"],
             "new_components": equipment_refs["components"],
             "new_elements": equipment_refs["elements"],
             "statuses": [
@@ -79,7 +77,7 @@ class CaseFilterService:
                 "Ответ получен",
                 "Решение принято",
                 "Ожидает АВР",
-                "Ожидает рекламационный акт",
+                "Ожидает рекламационного акта",
                 "Ожидает ответа поставщика",
                 "Ожидает повторного уведомления поставщика",
                 "Завершено",

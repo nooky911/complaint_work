@@ -1,6 +1,13 @@
 from pydantic import BaseModel, ConfigDict
 
 
+class EquipmentMalfunctionLink(BaseModel):
+    """Схема для связи оборудования и неисправности"""
+
+    equipment_id: int
+    malfunction_id: int
+
+
 class AuxiliaryItem(BaseModel):
     """Базовая схема для справочников, встраиваемых в Caselist/CaseDetail"""
 
@@ -33,3 +40,4 @@ class CaseFormReferencesResponse(BaseModel):
     notification_summaries: list[AuxiliaryItem]
     response_summaries: list[AuxiliaryItem]
     decision_summaries: list[AuxiliaryItem]
+    equipment_malfunctions: list[EquipmentMalfunctionLink]

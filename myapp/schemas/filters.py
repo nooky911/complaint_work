@@ -4,18 +4,32 @@ from .references import AuxiliaryItem, RepairTypeItem
 
 
 class FilterOptionsResponse(BaseModel):
-    """Схема для фильтров"""
+    """Схема для фильтров - ВСЕ возможные поля фильтрации"""
 
+    # Все справочники из формы
     regional_centers: list[AuxiliaryItem]
     locomotive_models: list[AuxiliaryItem]
-    components: list[AuxiliaryItem]
-    elements: list[AuxiliaryItem]
+    fault_discovered_at: list[AuxiliaryItem]
     malfunctions: list[AuxiliaryItem]
-    new_components: list[AuxiliaryItem]
-    new_elements: list[AuxiliaryItem]
     suppliers: list[AuxiliaryItem]
     repair_types: list[RepairTypeItem]
+    equipment_owners: list[AuxiliaryItem]
+    performed_by: list[AuxiliaryItem]
+    destinations: list[AuxiliaryItem]
+
+    # Оборудование
+    components: list[AuxiliaryItem]
+    elements: list[AuxiliaryItem]
+    new_components: list[AuxiliaryItem]
+    new_elements: list[AuxiliaryItem]
+
+    # Статус
     statuses: list[str]
+
+    # Дополнительно для документации
+    notification_summaries: list[AuxiliaryItem]
+    response_summaries: list[AuxiliaryItem]
+    decision_summaries: list[AuxiliaryItem]
 
 
 class CaseFilterParams(BaseModel):

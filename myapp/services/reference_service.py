@@ -12,7 +12,11 @@ from myapp.models.auxiliaries import (
     RepairPerformer,
     DestinationType,
 )
-from myapp.models.equipment_malfunctions import Equipment, Malfunction
+from myapp.models.equipment_malfunctions import (
+    Equipment,
+    Malfunction,
+    EquipmentMalfunction,
+)
 from myapp.models.warranty_work import (
     NotificationSummary,
     ResponseSummary,
@@ -39,6 +43,7 @@ class ReferenceService:
             notification_summaries_result,
             response_summaries_result,
             decision_summaries_result,
+            equipment_malfunctions_result,
         ) = await asyncio.gather(
             session.execute(select(RegionalCenter)),
             session.execute(select(LocomotiveModel)),
@@ -52,6 +57,7 @@ class ReferenceService:
             session.execute(select(NotificationSummary)),
             session.execute(select(ResponseSummary)),
             session.execute(select(DecisionSummary)),
+            session.execute(select(EquipmentMalfunction)),
         )
 
         return {
@@ -91,6 +97,13 @@ class ReferenceService:
                 {"id": m.id, "name": m.name}
                 for m in malfunctions_result.scalars().all()
             ],
+            "equipment_malfunctions": [
+                {
+                    "equipment_id": em.equipment_id,
+                    "malfunction_id": em.malfunction_id,
+                }
+                for em in equipment_malfunctions_result.scalars().all()
+            ],
             "suppliers": [
                 {"id": s.id, "name": s.name} for s in suppliers_result.scalars().all()
             ],
@@ -105,43 +118,6 @@ class ReferenceService:
             "decision_summaries": [
                 {"id": ds.id, "name": ds.name}
                 for ds in decision_summaries_result.scalars().all()
-            ],
-        }
-
-    @staticmethod
-    async def get_filter_references(session: AsyncSession):
-        """Получить только те справочники, которые нужны для фильтров"""
-        (
-            regional_centers_result,
-            locomotive_models_result,
-            suppliers_result,
-            repair_types_result,
-        ) = await asyncio.gather(
-            session.execute(select(RegionalCenter)),
-            session.execute(select(LocomotiveModel)),
-            session.execute(select(Supplier)),
-            session.execute(select(RepairType)),
-        )
-
-        return {
-            "regional_centers": [
-                {"id": rc.id, "name": rc.name}
-                for rc in regional_centers_result.scalars().all()
-            ],
-            "locomotive_models": [
-                {"id": lm.id, "name": lm.name}
-                for lm in locomotive_models_result.scalars().all()
-            ],
-            "suppliers": [
-                {"id": s.id, "name": s.name} for s in suppliers_result.scalars().all()
-            ],
-            "repair_types": [
-                {
-                    "id": rt.id,
-                    "name": rt.name,
-                    "auto_fill_strategy": rt.auto_fill_strategy,  # <-- Включаем стратегию
-                }
-                for rt in repair_types_result.scalars().all()
             ],
         }
 
