@@ -55,6 +55,7 @@ class EquipmentService:
                 name=equipment.equipment_name,
                 level=level,
                 has_children=has_children_map.get(equipment.id, False),
+                parent_id=equipment.parent_id,
                 supplier_id=equipment.supplier_id,
             )
             for equipment in equipment_list
@@ -128,6 +129,7 @@ class EquipmentService:
                         name=eq.equipment_name,
                         level=level,
                         has_children=has_children,
+                        parent_id=eq.parent_id,
                         supplier_id=eq.supplier_id,
                     )
                 )
