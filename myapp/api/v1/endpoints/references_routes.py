@@ -63,3 +63,13 @@ async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_
 )
 async def get_filter_options(session: Annotated[AsyncSession, Depends(get_db)]):
     return await CaseFilterService.get_filter_options(session)
+
+
+@router.get(
+    "/equipment-all-flat",
+    response_model=list[EquipmentWithPathResponse],
+    summary="Получить весь справочник оборудования плоским списком",
+)
+async def get_all_equipment_flat(session: Annotated[AsyncSession, Depends(get_db)]):
+    """Используется для умного поиска и автозаполнения иерархии на фронтенде"""
+    return await EquipmentService.get_all_equipment_flat(session)

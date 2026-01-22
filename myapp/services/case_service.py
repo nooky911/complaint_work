@@ -86,12 +86,11 @@ class CaseService:
             exclude_unset=True, exclude={"warranty_work"}
         )
 
-        # Проверяем, переданы ли поля оборудования в запросе
         component_changed = "component_equipment_id" in update_data
         element_changed = "element_equipment_id" in update_data
 
         # ЛОГИКА ОПРЕДЕЛЕНИЯ ПОСТАВЩИКА:
-        # 1. Если изменилось оборудование (переданы component_equipment_id или element_equipment_id)
+        # 1. Если изменилось оборудование
         if component_changed or element_changed:
             equipment_id_for_search = None
 
@@ -104,7 +103,7 @@ class CaseService:
             # Если equipment_id передан как null (сброс выбора), то поставщик = null
             if equipment_id_for_search is None:
                 update_data["supplier_id"] = None
-            # Если equipment_id передан (число), ищем поставщика
+            # Если equipment_id передан, ищем поставщика
             else:
                 found_supplier_id = await EquipmentService.find_supplier_in_parents(
                     session, equipment_id_for_search

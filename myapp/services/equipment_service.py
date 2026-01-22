@@ -172,3 +172,14 @@ class EquipmentService:
             current_id = equipment.parent_id
 
         return None
+
+    @staticmethod
+    async def get_all_equipment_flat(
+        session: AsyncSession,
+    ) -> list[EquipmentWithPathResponse]:
+        """Получить ВСЕ оборудование плоским списком"""
+        stmt = select(Equipment)
+        result = await session.execute(stmt)
+        equipment_list = result.scalars().all()
+
+        return [EquipmentWithPathResponse.model_validate(eq) for eq in equipment_list]
