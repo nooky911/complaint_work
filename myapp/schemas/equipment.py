@@ -8,9 +8,10 @@ class EquipmentWithPathResponse(BaseModel):
     id: int
     name: str
     level: int
-    has_children: bool
-    parent_id: int | None
-    supplier_id: int | None
+    parent_id: int | None = None
+    level: int = 0
+    has_children: bool = False
+    supplier_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
