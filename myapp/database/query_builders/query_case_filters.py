@@ -5,8 +5,7 @@ from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.filters import CaseFilterParams
 
-
-# SQL-выражение для статуса
+# SQL-выражение для статуса (остается без изменений)
 status_expr = func.calculate_case_status(
     WarrantyWork.notification_summary_id,
     WarrantyWork.response_summary_id,
@@ -22,88 +21,53 @@ status_expr = func.calculate_case_status(
 def build_repair_case_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
-    """WHERE фильтрация для repair_case_equipment"""
     conditions = []
 
-    # Даты
+    # Даты отказа
     if params.date_from:
         conditions.append(RepairCaseEquipment.fault_date >= params.date_from)
     if params.date_to:
         conditions.append(RepairCaseEquipment.fault_date <= params.date_to)
 
-    # Числа/строки
-    if params.locomotive_number:
-        conditions.append(
-            RepairCaseEquipment.locomotive_number.ilike(f"%{params.locomotive_number}%")
-        )
-    if params.component_serial_number_old:
-        conditions.append(
-            RepairCaseEquipment.component_serial_number_old.ilike(
-                f"%{params.component_serial_number_old}%"
-            )
-        )
-    if params.element_serial_number_old:
-        conditions.append(
-            RepairCaseEquipment.element_serial_number_old.ilike(
-                f"%{params.element_serial_number_old}%"
-            )
-        )
-    if params.component_serial_number_new:
-        conditions.append(
-            RepairCaseEquipment.component_serial_number_new.ilike(
-                f"%{params.component_serial_number_new}%"
-            )
-        )
-    if params.element_serial_number_new:
-        conditions.append(
-            RepairCaseEquipment.element_serial_number_new.ilike(
-                f"%{params.element_serial_number_new}%"
-            )
-        )
+    # Маппинг ID полей
+    id_fields = [
+        (params.regional_center_id, RepairCaseEquipment.regional_center_id),
+        (params.locomotive_model_id, RepairCaseEquipment.locomotive_model_id),
+        (params.component_equipment_id, RepairCaseEquipment.component_equipment_id),
+        (params.element_equipment_id, RepairCaseEquipment.element_equipment_id),
+        (params.malfunction_id, RepairCaseEquipment.malfunction_id),
+        (params.repair_type_id, RepairCaseEquipment.repair_type_id),
+        (params.supplier_id, RepairCaseEquipment.supplier_id),
+        (params.equipment_owner_id, RepairCaseEquipment.equipment_owner_id),
+        (params.performed_by_id, RepairCaseEquipment.performed_by_id),
+        (params.destination_id, RepairCaseEquipment.destination_id),
+    ]
 
-    # Битовая маска для секции
-    if params.section_mask is not None:
-        conditions.append(RepairCaseEquipment.section_mask == params.section_mask)
+    # Маппинг строковых полей и масок
+    str_fields = [
+        (params.section_mask, RepairCaseEquipment.section_mask),
+        (params.locomotive_number, RepairCaseEquipment.locomotive_number),
+        (
+            params.component_serial_number_old,
+            RepairCaseEquipment.component_serial_number_old,
+        ),
+        (
+            params.element_serial_number_old,
+            RepairCaseEquipment.element_serial_number_old,
+        ),
+        (
+            params.component_serial_number_new,
+            RepairCaseEquipment.component_serial_number_new,
+        ),
+        (
+            params.element_serial_number_new,
+            RepairCaseEquipment.element_serial_number_new,
+        ),
+    ]
 
-    # Для ID
-    if params.regional_center_id is not None:
-        conditions.append(
-            RepairCaseEquipment.regional_center_id == params.regional_center_id
-        )
-    if params.locomotive_model_id is not None:
-        conditions.append(
-            RepairCaseEquipment.locomotive_model_id == params.locomotive_model_id
-        )
-    if params.component_equipment_id is not None:
-        conditions.append(
-            RepairCaseEquipment.component_equipment_id == params.component_equipment_id
-        )
-    if params.element_equipment_id is not None:
-        conditions.append(
-            RepairCaseEquipment.element_equipment_id == params.element_equipment_id
-        )
-    if params.malfunction_id is not None:
-        conditions.append(RepairCaseEquipment.malfunction_id == params.malfunction_id)
-    if params.new_component_equipment_id is not None:
-        conditions.append(
-            RepairCaseEquipment.new_component_equipment_id
-            == params.new_component_equipment_id
-        )
-    if params.new_element_equipment_id is not None:
-        conditions.append(
-            RepairCaseEquipment.new_element_equipment_id
-            == params.new_element_equipment_id
-        )
-    if params.repair_type_id is not None:
-        conditions.append(RepairCaseEquipment.repair_type_id == params.repair_type_id)
-    if params.supplier_id is not None:
-        conditions.append(RepairCaseEquipment.supplier_id == params.supplier_id)
-    if params.user_id is not None:
-        conditions.append(RepairCaseEquipment.user_id == params.user_id)
-
-    # Статус
-    if params.status:
-        conditions.append(status_expr == params.status)
+    for p_val, col in id_fields + str_fields:
+        if p_val:
+            conditions.append(col.in_(p_val))
 
     return conditions
 
@@ -111,71 +75,35 @@ def build_repair_case_conditions(
 def build_warranty_work_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
-    """WHERE фильтрация для warranty"""
     conditions = []
 
-    # Уведомления
-    if params.notification_number:
-        conditions.append(
-            WarrantyWork.notification_number.ilike(f"%{params.notification_number}%")
-        )
-    if params.notification_date:
-        conditions.append(WarrantyWork.notification_date == params.notification_date)
+    # Номера документов
+    doc_nums = [
+        (params.notification_number, WarrantyWork.notification_number),
+        (params.re_notification_number, WarrantyWork.re_notification_number),
+        (params.response_letter_number, WarrantyWork.response_letter_number),
+        (params.claim_act_number, WarrantyWork.claim_act_number),
+        (params.work_completion_act_number, WarrantyWork.work_completion_act_number),
+    ]
 
-    if params.re_notification_number:
-        conditions.append(
-            WarrantyWork.re_notification_number.ilike(
-                f"%{params.re_notification_number}%"
-            )
-        )
-    if params.re_notification_date:
-        conditions.append(
-            WarrantyWork.re_notification_date == params.re_notification_date
-        )
+    # Даты документов
+    doc_dates = [
+        (params.notification_date, WarrantyWork.notification_date),
+        (params.re_notification_date, WarrantyWork.re_notification_date),
+        (params.response_letter_date, WarrantyWork.response_letter_date),
+        (params.claim_act_date, WarrantyWork.claim_act_date),
+        (params.work_completion_act_date, WarrantyWork.work_completion_act_date),
+    ]
 
-    # Ответ
-    if params.response_letter_number:
-        conditions.append(
-            WarrantyWork.response_letter_number.ilike(
-                f"%{params.response_letter_number}%"
-            )
-        )
-    if params.response_letter_date:
-        conditions.append(
-            WarrantyWork.response_letter_date == params.response_letter_date
-        )
+    # Содержания (Summaries)
+    summaries = [
+        (params.notification_summary_id, WarrantyWork.notification_summary_id),
+        (params.response_summary_id, WarrantyWork.response_summary_id),
+        (params.decision_summary_id, WarrantyWork.decision_summary_id),
+    ]
 
-    # РА/АВР
-    if params.claim_act_number:
-        conditions.append(
-            WarrantyWork.claim_act_number.ilike(f"%{params.claim_act_number}%")
-        )
-    if params.claim_act_date:
-        conditions.append(WarrantyWork.claim_act_date == params.claim_act_date)
-
-    if params.work_completion_act_number:
-        conditions.append(
-            WarrantyWork.work_completion_act_number.ilike(
-                f"%{params.work_completion_act_number}%"
-            )
-        )
-    if params.work_completion_act_date:
-        conditions.append(
-            WarrantyWork.work_completion_act_date == params.work_completion_act_date
-        )
-
-    # Фильтры по ID
-    if params.notification_summary_id is not None:
-        conditions.append(
-            WarrantyWork.notification_summary_id == params.notification_summary_id
-        )
-    if params.response_summary_id is not None:
-        conditions.append(
-            WarrantyWork.response_summary_id == params.response_summary_id
-        )
-    if params.decision_summary_id is not None:
-        conditions.append(
-            WarrantyWork.decision_summary_id == params.decision_summary_id
-        )
+    for p_val, col in doc_nums + doc_dates + summaries:
+        if p_val:
+            conditions.append(col.in_(p_val))
 
     return conditions
