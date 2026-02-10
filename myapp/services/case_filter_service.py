@@ -44,7 +44,6 @@ class CaseFilterService:
         stmt = select(RepairCaseEquipment, status_subquery)
         stmt = stmt.options(*load_list_relations())
 
-        # Собираем условия из двух строителей
         repair_conditions = build_repair_case_conditions(params)
         warranty_conditions = build_warranty_work_conditions(params)
 
