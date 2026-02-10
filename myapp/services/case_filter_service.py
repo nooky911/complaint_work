@@ -180,6 +180,12 @@ class CaseFilterService:
                 RepairCaseEquipment.element_equipment_id,
                 Equipment.equipment_name,
             ),
+            "component_serial_numbers": await get_distinct_values(
+                RepairCaseEquipment.component_serial_number_old
+            ),
+            "element_serial_numbers": await get_distinct_values(
+                RepairCaseEquipment.element_serial_number_old
+            ),
             "new_components": await get_used_items(
                 Equipment,
                 RepairCaseEquipment.new_component_equipment_id,
