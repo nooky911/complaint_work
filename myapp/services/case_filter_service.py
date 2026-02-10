@@ -83,9 +83,9 @@ class CaseFilterService:
 
     @staticmethod
     async def get_filter_options(session: AsyncSession) -> FilterOptionsResponse:
-        """Получение опций, которые реально есть в базе (динамические фильтры)"""
+        """Получение опций, которые реально есть в базе"""
 
-        # 1. Вспомогательная функция для получения объектов {id, name}
+        # 1. Для простых справочников, привязанных к RepairCaseEquipment
         async def get_used_items(model, fk_column, name_column):
             stmt = (
                 select(model.id, name_column)
@@ -96,84 +96,92 @@ class CaseFilterService:
             res = await session.execute(stmt)
             return [{"id": row[0], "name": row[1]} for row in res.all()]
 
-        # 2. Вспомогательная функция для получения простых списков строк (номера локомотивов и т.д.)
-        async def get_distinct_values(column, join_model=None):
+        # 2. Для справочников Документации
+        async def get_used_warranty_summaries(model, fk_column, name_column):
+            stmt = (
+                select(model.id, name_column)
+                # Соединяем Справочник -> WarrantyWork
+                .join(WarrantyWork, fk_column == model.id)
+                # Соединяем WarrantyWork -> RepairCaseEquipment (по case_id)
+                .join(
+                    RepairCaseEquipment, RepairCaseEquipment.id == WarrantyWork.case_id
+                )
+                .distinct()
+                .order_by(name_column)
+            )
+            res = await session.execute(stmt)
+            return [{"id": row[0], "name": row[1]} for row in res.all()]
+
+        # 3. Для уникальных строк (номера локомотивов/уведомлений)
+        async def get_distinct_values(column, join_to_main=False):
             stmt = select(distinct(column)).where(column.is_not(None), column != "")
-            if join_model:
-                stmt = stmt.join(join_model)
+            if join_to_main:
+                stmt = stmt.join(
+                    RepairCaseEquipment, RepairCaseEquipment.id == WarrantyWork.case_id
+                )
             stmt = stmt.order_by(column)
             res = await session.execute(stmt)
             return list(res.scalars().all())
 
-        # 3. Собираем данные по факту наличия в RepairCaseEquipment
         data = {
             "regional_centers": await get_used_items(
                 RegionalCenter,
                 RepairCaseEquipment.regional_center_id,
-                RegionalCenter.regional_center_name,
+                RegionalCenter.name,
             ),
             "locomotive_models": await get_used_items(
                 LocomotiveModel,
                 RepairCaseEquipment.locomotive_model_id,
-                LocomotiveModel.locomotive_model_name,
+                LocomotiveModel.name,
             ),
             "suppliers": await get_used_items(
-                Supplier, RepairCaseEquipment.supplier_id, Supplier.supplier_name
+                Supplier, RepairCaseEquipment.supplier_id, Supplier.name
             ),
             "malfunctions": await get_used_items(
-                Malfunction, RepairCaseEquipment.malfunction_id, Malfunction.defect_name
+                Malfunction, RepairCaseEquipment.malfunction_id, Malfunction.name
             ),
             "equipment_owners": await get_used_items(
                 EquipmentOwner,
                 RepairCaseEquipment.equipment_owner_id,
-                EquipmentOwner.equipment_owners_name,
+                EquipmentOwner.name,
             ),
             "performed_by": await get_used_items(
                 RepairPerformer,
                 RepairCaseEquipment.performed_by_id,
-                RepairPerformer.repair_performers_name,
+                RepairPerformer.name,
             ),
             "destinations": await get_used_items(
                 DestinationType,
                 RepairCaseEquipment.destination_id,
-                DestinationType.destination_types_name,
+                DestinationType.name,
             ),
             "fault_discovered_at": await get_used_items(
                 FaultDiscoveryPlace,
                 RepairCaseEquipment.fault_discovered_at_id,
-                FaultDiscoveryPlace.fault_discovery_places_name,
+                FaultDiscoveryPlace.name,
             ),
+            "repair_types": await get_used_items(
+                RepairType, RepairCaseEquipment.repair_type_id, RepairType.name
+            ),
+            # Оборудование
             "components": await get_used_items(
-                Equipment,
-                RepairCaseEquipment.component_equipment_id,
-                Equipment.equipment_name,
+                Equipment, RepairCaseEquipment.component_equipment_id, Equipment.name
             ),
             "elements": await get_used_items(
-                Equipment,
-                RepairCaseEquipment.element_equipment_id,
-                Equipment.equipment_name,
+                Equipment, RepairCaseEquipment.element_equipment_id, Equipment.name
             ),
-            "new_components": await get_used_items(
-                Equipment,
-                RepairCaseEquipment.new_component_equipment_id,
-                Equipment.equipment_name,
-            ),
-            "new_elements": await get_used_items(
-                Equipment,
-                RepairCaseEquipment.new_element_equipment_id,
-                Equipment.equipment_name,
-            ),
-            "notification_summaries": await get_used_items(
+            # Документация
+            "notification_summaries": await get_used_warranty_summaries(
                 NotificationSummary,
                 WarrantyWork.notification_summary_id,
                 NotificationSummary.notification_summary_name,
             ),
-            "response_summaries": await get_used_items(
+            "response_summaries": await get_used_warranty_summaries(
                 ResponseSummary,
                 WarrantyWork.response_summary_id,
                 ResponseSummary.response_summary_name,
             ),
-            "decision_summaries": await get_used_items(
+            "decision_summaries": await get_used_warranty_summaries(
                 DecisionSummary,
                 WarrantyWork.decision_summary_id,
                 DecisionSummary.decision_summary_name,
@@ -182,10 +190,8 @@ class CaseFilterService:
                 RepairCaseEquipment.locomotive_number
             ),
             "notification_numbers": await get_distinct_values(
-                WarrantyWork.notification_number,
-                join_model=RepairCaseEquipment.warranty_work,
+                WarrantyWork.notification_number, join_to_main=True
             ),
-            # Статусы
             "statuses": [
                 "Ожидает уведомление поставщика",
                 "Уведомление отправлено",
@@ -194,12 +200,6 @@ class CaseFilterService:
                 "Ожидает АВР",
                 "Завершено",
             ],
-            # Если в FilterOptionsResponse есть поле repair_types
-            "repair_types": await get_used_items(
-                RepairType,
-                RepairCaseEquipment.repair_type_id,
-                RepairType.repair_types_name,
-            ),
         }
 
         return FilterOptionsResponse.model_validate(data)
