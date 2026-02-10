@@ -175,6 +175,16 @@ class CaseFilterService:
                 RepairCaseEquipment.element_equipment_id,
                 Equipment.equipment_name,
             ),
+            "new_components": await get_used_items(
+                Equipment,
+                RepairCaseEquipment.new_component_equipment_id,
+                Equipment.equipment_name,
+            ),
+            "new_elements": await get_used_items(
+                Equipment,
+                RepairCaseEquipment.new_element_equipment_id,
+                Equipment.equipment_name,
+            ),
             # Документация
             "notification_summaries": await get_used_warranty_summaries(
                 NotificationSummary,
