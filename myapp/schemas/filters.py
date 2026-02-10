@@ -52,7 +52,7 @@ class CaseFilterParams(BaseModel):
     destination_id: list[int] | None = Query(None)
 
     # Строки (RepairCaseEquipment)
-    section_mask: list[int] | None = Query(None)
+    section_mask: int | None = None
     locomotive_number: list[str] | None = Query(None)
     component_serial_number_old: list[str] | None = Query(None)
     element_serial_number_old: list[str] | None = Query(None)

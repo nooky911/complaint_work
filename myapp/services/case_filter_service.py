@@ -52,6 +52,11 @@ class CaseFilterService:
 
         all_conditions = repair_conditions + warranty_conditions
 
+        if params.section_mask is not None and params.section_mask > 0:
+            all_conditions.append(
+                RepairCaseEquipment.section_mask == params.section_mask
+            )
+
         # Фильтрация по рассчитанному статусу (через SQL функцию)
         if params.status:
             all_conditions.append(status_expr.in_(params.status))
@@ -207,6 +212,11 @@ class CaseFilterService:
             "notification_numbers": await get_distinct_values(
                 WarrantyWork.notification_number, join_to_main=True
             ),
+            "section_masks": [
+                {"id": 1, "name": "А"},
+                {"id": 2, "name": "Б"},
+                {"id": 4, "name": "Бустер"},
+            ],
             "statuses": [
                 "Ожидает уведомление поставщика",
                 "Уведомление отправлено",
