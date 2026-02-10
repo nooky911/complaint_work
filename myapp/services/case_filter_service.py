@@ -127,48 +127,54 @@ class CaseFilterService:
             "regional_centers": await get_used_items(
                 RegionalCenter,
                 RepairCaseEquipment.regional_center_id,
-                RegionalCenter.name,
+                RegionalCenter.regional_center_name,
             ),
             "locomotive_models": await get_used_items(
                 LocomotiveModel,
                 RepairCaseEquipment.locomotive_model_id,
-                LocomotiveModel.name,
+                LocomotiveModel.locomotive_model_name,
             ),
             "suppliers": await get_used_items(
-                Supplier, RepairCaseEquipment.supplier_id, Supplier.name
+                Supplier, RepairCaseEquipment.supplier_id, Supplier.supplier_name
             ),
             "malfunctions": await get_used_items(
-                Malfunction, RepairCaseEquipment.malfunction_id, Malfunction.name
+                Malfunction, RepairCaseEquipment.malfunction_id, Malfunction.defect_name
             ),
             "equipment_owners": await get_used_items(
                 EquipmentOwner,
                 RepairCaseEquipment.equipment_owner_id,
-                EquipmentOwner.name,
+                EquipmentOwner.equipment_owners_name,
             ),
             "performed_by": await get_used_items(
                 RepairPerformer,
                 RepairCaseEquipment.performed_by_id,
-                RepairPerformer.name,
+                RepairPerformer.repair_performers_name,
             ),
             "destinations": await get_used_items(
                 DestinationType,
                 RepairCaseEquipment.destination_id,
-                DestinationType.name,
+                DestinationType.destination_types_name,
             ),
             "fault_discovered_at": await get_used_items(
                 FaultDiscoveryPlace,
                 RepairCaseEquipment.fault_discovered_at_id,
-                FaultDiscoveryPlace.name,
+                FaultDiscoveryPlace.fault_discovery_places_name,
             ),
             "repair_types": await get_used_items(
-                RepairType, RepairCaseEquipment.repair_type_id, RepairType.name
+                RepairType,
+                RepairCaseEquipment.repair_type_id,
+                RepairType.repair_types_name,
             ),
             # Оборудование
             "components": await get_used_items(
-                Equipment, RepairCaseEquipment.component_equipment_id, Equipment.name
+                Equipment,
+                RepairCaseEquipment.component_equipment_id,
+                Equipment.equipment_name,
             ),
             "elements": await get_used_items(
-                Equipment, RepairCaseEquipment.element_equipment_id, Equipment.name
+                Equipment,
+                RepairCaseEquipment.element_equipment_id,
+                Equipment.equipment_name,
             ),
             # Документация
             "notification_summaries": await get_used_warranty_summaries(
