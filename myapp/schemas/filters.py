@@ -24,10 +24,11 @@ class FilterOptionsResponse(BaseModel):
     notification_summaries: list[AuxiliaryItem]
     response_summaries: list[AuxiliaryItem]
     decision_summaries: list[AuxiliaryItem]
-    locomotive_numbers: list[str] = []
-    notification_numbers: list[str] = []
-    component_serial_numbers: list[str] = []
-    element_serial_numbers: list[str] = []
+    locomotive_numbers: list[str]
+    notification_numbers: list[str]
+    component_serial_numbers: list[str]
+    element_serial_numbers: list[str]
+    notes: list[str]
 
 
 class CaseFilterParams(BaseModel):
@@ -59,6 +60,7 @@ class CaseFilterParams(BaseModel):
     element_serial_number_old: list[str] | None = Query(None)
     component_serial_number_new: list[str] | None = Query(None)
     element_serial_number_new: list[str] | None = Query(None)
+    notes: list[str] | None = Query(None)
 
     # Статус
     status: list[str] | None = Query(None)

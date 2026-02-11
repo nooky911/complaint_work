@@ -63,6 +63,7 @@ def build_repair_case_conditions(
             params.element_serial_number_new,
             RepairCaseEquipment.element_serial_number_new,
         ),
+        (params.notes, RepairCaseEquipment.notes),
     ]
 
     for p_val, col in id_fields + str_fields:

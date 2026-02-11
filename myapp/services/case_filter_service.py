@@ -196,6 +196,7 @@ class CaseFilterService:
                 RepairCaseEquipment.new_element_equipment_id,
                 Equipment.equipment_name,
             ),
+            "notes": await get_distinct_values(RepairCaseEquipment.notes),
             # Документация
             "notification_summaries": await get_used_warranty_summaries(
                 NotificationSummary,
