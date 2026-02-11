@@ -24,9 +24,10 @@ class FilterOptionsResponse(BaseModel):
     notification_summaries: list[AuxiliaryItem]
     response_summaries: list[AuxiliaryItem]
     decision_summaries: list[AuxiliaryItem]
-    # Списки строк
     locomotive_numbers: list[str] = []
     notification_numbers: list[str] = []
+    component_serial_numbers: list[str] = []
+    element_serial_numbers: list[str] = []
 
 
 class CaseFilterParams(BaseModel):
