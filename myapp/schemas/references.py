@@ -9,7 +9,7 @@ class EquipmentMalfunctionLink(BaseModel):
 
 
 class AuxiliaryItem(BaseModel):
-    """Базовая схема для справочников, встраиваемых в Caselist/CaseDetail"""
+    """Базовая схема для справочных таблиц"""
 
     id: int
     name: str

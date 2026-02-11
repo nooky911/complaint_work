@@ -41,6 +41,7 @@ def build_repair_case_conditions(
         (params.equipment_owner_id, RepairCaseEquipment.equipment_owner_id),
         (params.performed_by_id, RepairCaseEquipment.performed_by_id),
         (params.destination_id, RepairCaseEquipment.destination_id),
+        (params.user_id, RepairCaseEquipment.user_id),
     ]
 
     # Маппинг строковых полей и масок

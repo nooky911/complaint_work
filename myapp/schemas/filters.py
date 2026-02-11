@@ -29,6 +29,7 @@ class FilterOptionsResponse(BaseModel):
     component_serial_numbers: list[str]
     element_serial_numbers: list[str]
     notes: list[str]
+    users: list[AuxiliaryItem]
 
 
 class CaseFilterParams(BaseModel):
@@ -84,3 +85,4 @@ class CaseFilterParams(BaseModel):
     notification_summary_id: list[int] | None = Query(None)
     response_summary_id: list[int] | None = Query(None)
     decision_summary_id: list[int] | None = Query(None)
+    user_id: list[int] | None = Query(None)

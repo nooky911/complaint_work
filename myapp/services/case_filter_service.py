@@ -2,6 +2,7 @@ from sqlalchemy import select, and_, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.user import User
 from myapp.models.warranty_work import (
     WarrantyWork,
     NotificationSummary,
@@ -128,6 +129,14 @@ class CaseFilterService:
             return list(res.scalars().all())
 
         data = {
+            "locomotive_numbers": await get_distinct_values(
+                RepairCaseEquipment.locomotive_number
+            ),
+            "section_masks": [
+                {"id": 1, "name": "А"},
+                {"id": 2, "name": "Б"},
+                {"id": 4, "name": "Бустер"},
+            ],
             "regional_centers": await get_used_items(
                 RegionalCenter,
                 RepairCaseEquipment.regional_center_id,
@@ -198,6 +207,21 @@ class CaseFilterService:
             ),
             "notes": await get_distinct_values(RepairCaseEquipment.notes),
             # Документация
+            "notification_numbers": await get_distinct_values(
+                WarrantyWork.notification_number, join_to_main=True
+            ),
+            "re_notification_numbers": await get_distinct_values(
+                WarrantyWork.re_notification_number, join_to_main=True
+            ),
+            "response_letter_numbers": await get_distinct_values(
+                WarrantyWork.response_letter_number, join_to_main=True
+            ),
+            "claim_act_numbers": await get_distinct_values(
+                WarrantyWork.claim_act_number, join_to_main=True
+            ),
+            "work_completion_act_numbers": await get_distinct_values(
+                WarrantyWork.work_completion_act_number, join_to_main=True
+            ),
             "notification_summaries": await get_used_warranty_summaries(
                 NotificationSummary,
                 WarrantyWork.notification_summary_id,
@@ -213,17 +237,7 @@ class CaseFilterService:
                 WarrantyWork.decision_summary_id,
                 DecisionSummary.decision_summary_name,
             ),
-            "locomotive_numbers": await get_distinct_values(
-                RepairCaseEquipment.locomotive_number
-            ),
-            "notification_numbers": await get_distinct_values(
-                WarrantyWork.notification_number, join_to_main=True
-            ),
-            "section_masks": [
-                {"id": 1, "name": "А"},
-                {"id": 2, "name": "Б"},
-                {"id": 4, "name": "Бустер"},
-            ],
+            "users": await get_used_items(User, User.id, User.full_name),
             "statuses": [
                 "Ожидает уведомление поставщика",
                 "Уведомление отправлено",
