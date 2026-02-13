@@ -50,10 +50,10 @@ class RepairCaseEquipment(Base):
         ForeignKey("malfunctions.id"), nullable=False
     )
     new_component_equipment_id: Mapped[int | None] = mapped_column(
-        ForeignKey("equipment.id"), nullable=True
+        ForeignKey("equipment.id")
     )
     new_element_equipment_id: Mapped[int | None] = mapped_column(
-        ForeignKey("equipment.id"), nullable=True
+        ForeignKey("equipment.id")
     )
     repair_type_id: Mapped[int] = mapped_column(
         ForeignKey("repair_types.id"), nullable=False
