@@ -7,9 +7,7 @@ class EquipmentWithPathResponse(BaseModel):
 
     id: int
     name: str
-    level: int
     parent_id: int | None = None
-    level: int = 0
     has_children: bool = False
     supplier_id: int | None = None
 
