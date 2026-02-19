@@ -1,4 +1,4 @@
-from sqlalchemy import delete
+import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime
 
@@ -10,6 +10,7 @@ from myapp.database.transactional import transactional
 from myapp.services.equipment_service import EquipmentService
 from myapp.services.warranty_service import WarrantyService
 from myapp.services.case_status_service import CaseStatusService
+from myapp.services.storage_service import StorageService
 
 
 class CaseService:
@@ -131,7 +132,21 @@ class CaseService:
     @staticmethod
     @transactional
     async def delete_case(session: AsyncSession, case_id: int) -> int:
-        """Удаление случая"""
-        stmt = delete(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)
-        result = await session.execute(stmt)
-        return result.rowcount
+        """Удаление случая, его документов и физических файлов"""
+
+        case = await CaseService.get_case(session, case_id)
+
+        if not case:
+            return 0
+
+        if case.files:
+            for file_rec in case.files:
+                full_path = StorageService.get_full_path(file_rec)
+                try:
+                    await asyncio.to_thread(full_path.unlink, missing_ok=True)
+                except Exception as e:
+                    print(f"Ошибка при удалении файла {full_path}: {e}")
+
+        await session.delete(case)
+
+        return 1
