@@ -135,7 +135,7 @@ class CaseService:
     @staticmethod
     @transactional
     async def delete_case(session: AsyncSession, case_id: int) -> int:
-        """Удаление случая с физическим удалением файлов"""
+        """Удаление случая со всеми его данными"""
         stmt = (
             select(RepairCaseEquipment)
             .where(RepairCaseEquipment.id == case_id)
