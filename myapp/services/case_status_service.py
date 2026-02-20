@@ -14,6 +14,7 @@ class CaseStatusService:
         """Создает подзапрос для вычисления статуса"""
         return (
             select(status_expr)
+            .select_from(WarrantyWork)
             .where(WarrantyWork.case_id == RepairCaseEquipment.id)
             .scalar_subquery()
             .label("calculated_status")
@@ -22,7 +23,11 @@ class CaseStatusService:
     @staticmethod
     async def get_case_status(session: AsyncSession, case_id: int) -> str:
         """Получает статус конкретного случая"""
-        status_stmt = select(status_expr).where(WarrantyWork.case_id == case_id)
+        status_stmt = (
+            select(status_expr)
+            .select_from(WarrantyWork)
+            .where(WarrantyWork.case_id == case_id)
+        )
         result = await session.execute(status_stmt)
         status_value = result.scalar_one_or_none()
         return status_value or "Ожидает уведомление поставщика"
