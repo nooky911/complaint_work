@@ -43,7 +43,7 @@ class CaseFilterService:
 
         stmt = stmt.options(*load_list_relations())
 
-        stmt = stmt.join(RepairCaseEquipment.warranty_work)
+        stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
 
         all_conditions = []
         all_conditions.extend(build_repair_case_conditions(params))
@@ -69,6 +69,8 @@ class CaseFilterService:
                 case_obj, status_value
             )
             cases.append(CaseList.model_validate(case_obj))
+
+        print("Received params:", params.model_dump())
 
         return cases
 
