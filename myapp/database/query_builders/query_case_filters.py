@@ -18,19 +18,33 @@ status_expr = func.calculate_case_status(
 ).label("calculated_status")
 
 
+def apply_filter_conditions(conditions: list, fields_mapping: list):
+    """Функция обработки списков и одиночных значений"""
+    for p_val, col in fields_mapping:
+        if p_val is not None:
+            # Если пришел список (multiple select на фронте)
+            if isinstance(p_val, list):
+                clean_list = [v for v in p_val if v != "" and v is not None]
+                if clean_list:
+                    conditions.append(col.in_(clean_list))
+            # Если пришло одиночное значение
+            elif p_val != "":
+                conditions.append(col == p_val)
+
+
 def build_repair_case_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
     conditions = []
 
-    # Даты отказа
+    # 1. Даты
     if params.date_from:
         conditions.append(RepairCaseEquipment.fault_date >= params.date_from)
     if params.date_to:
         conditions.append(RepairCaseEquipment.fault_date <= params.date_to)
 
-    # Маппинг ID полей
-    id_fields = [
+    # 2. Маппинг всех полей RepairCase
+    repair_fields = [
         (params.regional_center_id, RepairCaseEquipment.regional_center_id),
         (params.locomotive_model_id, RepairCaseEquipment.locomotive_model_id),
         (params.component_equipment_id, RepairCaseEquipment.component_equipment_id),
@@ -42,11 +56,6 @@ def build_repair_case_conditions(
         (params.performed_by_id, RepairCaseEquipment.performed_by_id),
         (params.destination_id, RepairCaseEquipment.destination_id),
         (params.user_id, RepairCaseEquipment.user_id),
-    ]
-
-    # Маппинг строковых полей и масок
-    str_fields = [
-        (params.section_mask, RepairCaseEquipment.section_mask),
         (params.locomotive_number, RepairCaseEquipment.locomotive_number),
         (
             params.component_serial_number_old,
@@ -67,13 +76,11 @@ def build_repair_case_conditions(
         (params.notes, RepairCaseEquipment.notes),
     ]
 
-    for p_val, col in id_fields + str_fields:
-        if p_val is not None and p_val != "" and p_val != []:
-            if isinstance(p_val, list):
-                if len(p_val) > 0:
-                    conditions.append(col.in_(p_val))
-            else:
-                conditions.append(col == p_val)
+    apply_filter_conditions(conditions, repair_fields)
+
+    # 3. Специфические поля
+    if params.section_mask is not None and params.section_mask != 0:
+        conditions.append(RepairCaseEquipment.section_mask == params.section_mask)
 
     return conditions
 
@@ -83,33 +90,22 @@ def build_warranty_work_conditions(
 ) -> list[expression.ColumnElement]:
     conditions = []
 
-    # Номера документов
-    doc_nums = [
+    warranty_fields = [
         (params.notification_number, WarrantyWork.notification_number),
         (params.re_notification_number, WarrantyWork.re_notification_number),
         (params.response_letter_number, WarrantyWork.response_letter_number),
         (params.claim_act_number, WarrantyWork.claim_act_number),
         (params.work_completion_act_number, WarrantyWork.work_completion_act_number),
-    ]
-
-    # Даты документов
-    doc_dates = [
         (params.notification_date, WarrantyWork.notification_date),
         (params.re_notification_date, WarrantyWork.re_notification_date),
         (params.response_letter_date, WarrantyWork.response_letter_date),
         (params.claim_act_date, WarrantyWork.claim_act_date),
         (params.work_completion_act_date, WarrantyWork.work_completion_act_date),
-    ]
-
-    # Содержания (Summaries)
-    summaries = [
         (params.notification_summary_id, WarrantyWork.notification_summary_id),
         (params.response_summary_id, WarrantyWork.response_summary_id),
         (params.decision_summary_id, WarrantyWork.decision_summary_id),
     ]
 
-    for p_val, col in doc_nums + doc_dates + summaries:
-        if p_val:
-            conditions.append(col.in_(p_val))
+    apply_filter_conditions(conditions, warranty_fields)
 
     return conditions
