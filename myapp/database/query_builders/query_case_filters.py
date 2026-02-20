@@ -4,6 +4,7 @@ from sqlalchemy import func
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.filters import CaseFilterParams
+from myapp.services.case_status_service import CaseStatusService
 
 # SQL-выражение для статуса (остается без изменений)
 status_expr = func.calculate_case_status(
@@ -19,16 +20,13 @@ status_expr = func.calculate_case_status(
 
 
 def apply_filter_conditions(conditions: list, fields_mapping: list):
-    """Функция обработки списков и одиночных значений"""
     for p_val, col in fields_mapping:
         if p_val is not None:
-            # Если пришел список (multiple select на фронте)
             if isinstance(p_val, list):
                 clean_list = [v for v in p_val if v != "" and v is not None]
                 if clean_list:
                     conditions.append(col.in_(clean_list))
-            # Если пришло одиночное значение
-            elif p_val != "":
+            elif str(p_val).strip() != "" and p_val != 0:
                 conditions.append(col == p_val)
 
 
@@ -81,6 +79,13 @@ def build_repair_case_conditions(
     # 3. Специфические поля
     if params.section_mask is not None and params.section_mask != 0:
         conditions.append(RepairCaseEquipment.section_mask == params.section_mask)
+
+    if params.status:
+        # Убираем пустые значения, если они есть
+        clean_statuses = [s for s in params.status if s]
+        if clean_statuses:
+            status_subquery = CaseStatusService.build_status_subquery()
+            conditions.append(status_subquery.in_(clean_statuses))
 
     return conditions
 

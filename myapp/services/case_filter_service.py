@@ -40,22 +40,14 @@ class CaseFilterService:
         status_subquery = CaseStatusService.build_status_subquery()
 
         stmt = select(RepairCaseEquipment, status_subquery)
+
         stmt = stmt.options(*load_list_relations())
 
         stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
 
-        repair_conditions = build_repair_case_conditions(params)
-        warranty_conditions = build_warranty_work_conditions(params)
-
-        all_conditions = repair_conditions + warranty_conditions
-
-        if params.section_mask is not None and params.section_mask > 0:
-            all_conditions.append(
-                RepairCaseEquipment.section_mask == params.section_mask
-            )
-
-        if params.status:
-            all_conditions.append(status_subquery.in_(params.status))
+        all_conditions = []
+        all_conditions.extend(build_repair_case_conditions(params))
+        all_conditions.extend(build_warranty_work_conditions(params))
 
         if all_conditions:
             stmt = stmt.where(and_(*all_conditions))
