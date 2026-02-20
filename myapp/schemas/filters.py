@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 from datetime import date
-from fastapi import Query
 from .references import AuxiliaryItem, RepairTypeItem
 
 
@@ -43,46 +42,43 @@ class CaseFilterParams(BaseModel):
     date_to: date | None = None
 
     # Идентификаторы (RepairCaseEquipment)
-    regional_center_id: list[int] | None = Query(None)
-    locomotive_model_id: list[int] | None = Query(None)
-    component_equipment_id: list[int] | None = Query(None)
-    element_equipment_id: list[int] | None = Query(None)
-    malfunction_id: list[int] | None = Query(None)
-    repair_type_id: list[int] | None = Query(None)
-    supplier_id: list[int] | None = Query(None)
-    equipment_owner_id: list[int] | None = Query(None)
-    performed_by_id: list[int] | None = Query(None)
-    destination_id: list[int] | None = Query(None)
+    regional_center_id: list[int] | None = None
+    locomotive_model_id: list[int] | None = None
+    component_equipment_id: list[int] | None = None
+    element_equipment_id: list[int] | None = None
+    malfunction_id: list[int] | None = None
+    repair_type_id: list[int] | None = None
+    supplier_id: list[int] | None = None
+    equipment_owner_id: list[int] | None = None
+    performed_by_id: list[int] | None = None
+    destination_id: list[int] | None = None
 
     # Строки (RepairCaseEquipment)
     section_mask: int | None = None
-    locomotive_number: list[str] | None = Query(None)
-    component_serial_number_old: list[str] | None = Query(None)
-    element_serial_number_old: list[str] | None = Query(None)
-    component_serial_number_new: list[str] | None = Query(None)
-    element_serial_number_new: list[str] | None = Query(None)
-    notes: list[str] | None = Query(None)
+    locomotive_number: list[str] | None = None
+    component_serial_number_old: list[str] | None = None
+    element_serial_number_old: list[str] | None = None
+    component_serial_number_new: list[str] | None = None
+    element_serial_number_new: list[str] | None = None
+    notes: list[str] | None = None
 
     # Статус
-    status: list[str] | None = Query(None)
+    status: list[str] | None = None
 
     # --- WARRANTY WORK (Документация) ---
-    # Номера документов
-    notification_number: list[str] | None = Query(None)
-    re_notification_number: list[str] | None = Query(None)
-    response_letter_number: list[str] | None = Query(None)
-    claim_act_number: list[str] | None = Query(None)
-    work_completion_act_number: list[str] | None = Query(None)
+    notification_number: list[str] | None = None
+    re_notification_number: list[str] | None = None
+    response_letter_number: list[str] | None = None
+    claim_act_number: list[str] | None = None
+    work_completion_act_number: list[str] | None = None
 
-    # Даты документов
-    notification_date: list[date] | None = Query(None)
-    re_notification_date: list[date] | None = Query(None)
-    response_letter_date: list[date] | None = Query(None)
-    claim_act_date: list[date] | None = Query(None)
-    work_completion_act_date: list[date] | None = Query(None)
+    notification_date: list[date] | None = None
+    re_notification_date: list[date] | None = None
+    response_letter_date: list[date] | None = None
+    claim_act_date: list[date] | None = None
+    work_completion_act_date: list[date] | None = None
 
-    # Содержания (ID)
-    notification_summary_id: list[int] | None = Query(None)
-    response_summary_id: list[int] | None = Query(None)
-    decision_summary_id: list[int] | None = Query(None)
-    user_id: list[int] | None = Query(None)
+    notification_summary_id: list[int] | None = None
+    response_summary_id: list[int] | None = None
+    decision_summary_id: list[int] | None = None
+    user_id: list[int] | None = None
