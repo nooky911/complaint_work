@@ -68,9 +68,10 @@ def build_repair_case_conditions(
     ]
 
     for p_val, col in id_fields + str_fields:
-        if p_val:
+        if p_val is not None and p_val != "" and p_val != []:
             if isinstance(p_val, list):
-                conditions.append(col.in_(p_val))
+                if len(p_val) > 0:
+                    conditions.append(col.in_(p_val))
             else:
                 conditions.append(col == p_val)
 
