@@ -18,7 +18,6 @@ def apply_filter_conditions(conditions: list, fields_mapping: list):
             val_str = str(p_val).strip()
             if val_str != "" and val_str.lower() != "none" and p_val != 0:
                 conditions.append(col == p_val)
-        print(f"Processing {p_val} for column {col}")
 
 
 def build_repair_case_conditions(

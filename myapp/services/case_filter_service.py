@@ -70,8 +70,6 @@ class CaseFilterService:
             )
             cases.append(CaseList.model_validate(case_obj))
 
-        print("Received params:", params.model_dump())
-
         return cases
 
     @staticmethod
@@ -225,7 +223,9 @@ class CaseFilterService:
                 WarrantyWork.decision_summary_id,
                 DecisionSummary.decision_summary_name,
             ),
-            "users": await get_used_items(User, User.id, User.full_name),
+            "users": await get_used_items(
+                User, RepairCaseEquipment.user_id, User.full_name
+            ),
             "statuses": [
                 "Ожидает уведомление поставщика",
                 "Уведомление отправлено",
