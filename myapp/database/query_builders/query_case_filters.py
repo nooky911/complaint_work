@@ -10,11 +10,13 @@ def apply_filter_conditions(conditions: list, fields_mapping: list):
     for p_val, col in fields_mapping:
         if p_val is not None:
             if isinstance(p_val, list):
-                clean_list = [v for v in p_val if v != "" and v is not None]
+                clean_list = [v for v in p_val if v != "" and v is not None and v != 0]
                 if clean_list:
                     conditions.append(col.in_(clean_list))
-            elif str(p_val).strip() != "" and p_val != 0:
-                conditions.append(col == p_val)
+            else:
+                val_str = str(p_val).strip()
+                if val_str != "" and p_val != 0:
+                    conditions.append(col == p_val)
 
 
 def build_repair_case_conditions(
