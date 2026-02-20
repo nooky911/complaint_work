@@ -8,15 +8,16 @@ from myapp.services.case_status_service import CaseStatusService
 
 def apply_filter_conditions(conditions: list, fields_mapping: list):
     for p_val, col in fields_mapping:
-        if p_val is not None:
-            if isinstance(p_val, list):
-                clean_list = [v for v in p_val if v != "" and v is not None and v != 0]
-                if clean_list:
-                    conditions.append(col.in_(clean_list))
-            else:
-                val_str = str(p_val).strip()
-                if val_str != "" and p_val != 0:
-                    conditions.append(col == p_val)
+        if p_val is None:
+            continue
+        if isinstance(p_val, list):
+            clean_list = [v for v in p_val if v != "" and v is not None and v != 0]
+            if clean_list:
+                conditions.append(col.in_(clean_list))
+        else:
+            val_str = str(p_val).strip()
+            if val_str != "" and val_str.lower() != "none" and p_val != 0:
+                conditions.append(col == p_val)
 
 
 def build_repair_case_conditions(
@@ -70,7 +71,6 @@ def build_repair_case_conditions(
         conditions.append(RepairCaseEquipment.section_mask == params.section_mask)
 
     if params.status:
-        # Убираем пустые значения, если они есть
         clean_statuses = [s for s in params.status if s]
         if clean_statuses:
             status_subquery = CaseStatusService.build_status_subquery()
