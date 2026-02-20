@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, status, HTTPException
+from fastapi import APIRouter, Depends, Path, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
@@ -29,7 +29,7 @@ router.include_router(warranty_router, prefix="/{case_id}/warranty")
     status_code=status.HTTP_200_OK,
 )
 async def list_and_filter_cases(
-    params: Annotated[CaseFilterParams, Depends()],
+    params: Annotated[CaseFilterParams, Query()],
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_viewer_or_higher)],
 ):
