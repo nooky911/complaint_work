@@ -26,7 +26,6 @@ from myapp.database.query_builders.query_case_builders import load_list_relation
 from myapp.database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
-    status_expr,
 )
 from myapp.services.case_status_service import CaseStatusService
 
@@ -38,18 +37,15 @@ class CaseFilterService:
     async def filter_cases(
         session: AsyncSession, params: CaseFilterParams
     ) -> list[CaseList]:
-        """Фильтрация случаев с поддержкой мульти-выбора (массивов)"""
         status_subquery = CaseStatusService.build_status_subquery()
 
-        # Начинаем выборку
         stmt = select(RepairCaseEquipment, status_subquery)
         stmt = stmt.options(*load_list_relations())
 
+        stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
+
         repair_conditions = build_repair_case_conditions(params)
         warranty_conditions = build_warranty_work_conditions(params)
-
-        if warranty_conditions or params.status:
-            stmt = stmt.join(RepairCaseEquipment.warranty_work)
 
         all_conditions = repair_conditions + warranty_conditions
 
@@ -58,14 +54,12 @@ class CaseFilterService:
                 RepairCaseEquipment.section_mask == params.section_mask
             )
 
-        # Фильтрация по рассчитанному статусу (через SQL функцию)
         if params.status:
-            all_conditions.append(status_expr.in_(params.status))
+            all_conditions.append(status_subquery.in_(params.status))
 
         if all_conditions:
             stmt = stmt.where(and_(*all_conditions))
 
-        # Сортировка и пагинация
         stmt = (
             stmt.offset(params.skip)
             .limit(params.limit)
