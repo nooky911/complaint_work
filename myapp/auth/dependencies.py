@@ -53,11 +53,11 @@ async def get_current_user(
     # Получаем пользователя из БД
     user = await session.get(User, user_id_int)
     if user is None:
-        raise_401("User not found")
+        raise_401("Пользователь не найден")
 
     # Проверка на активность
     if not user.is_active:
-        raise_401("User account is disabled")
+        raise_401("Аккаунт деактивирован")
 
     return user  # type: ignore[valid-type]
 
@@ -88,7 +88,7 @@ async def require_can_edit_case(
     if not case:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Case not found",
+            detail="Случай не найден",
         )
 
     # superadmin может всё
@@ -101,7 +101,7 @@ async def require_can_edit_case(
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="You can edit only cases you created",
+        detail="Вы можете редактировать только свои случаи",
     )
 
 
