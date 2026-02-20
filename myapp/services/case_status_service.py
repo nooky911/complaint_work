@@ -16,6 +16,7 @@ class CaseStatusService:
             select(status_expr)
             .select_from(WarrantyWork)
             .where(WarrantyWork.case_id == RepairCaseEquipment.id)
+            .correlate(RepairCaseEquipment)
             .scalar_subquery()
             .label("calculated_status")
         )
