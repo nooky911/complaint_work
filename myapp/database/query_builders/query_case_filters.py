@@ -1,22 +1,9 @@
 from sqlalchemy.sql import expression
-from sqlalchemy import func
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.filters import CaseFilterParams
 from myapp.services.case_status_service import CaseStatusService
-
-# SQL-выражение для статуса (остается без изменений)
-status_expr = func.calculate_case_status(
-    WarrantyWork.notification_summary_id,
-    WarrantyWork.response_summary_id,
-    WarrantyWork.decision_summary_id,
-    WarrantyWork.work_completion_act_number,
-    WarrantyWork.claim_act_number,
-    WarrantyWork.re_notification_number,
-    WarrantyWork.re_notification_date,
-    WarrantyWork.notification_date,
-).label("calculated_status")
 
 
 def apply_filter_conditions(conditions: list, fields_mapping: list):

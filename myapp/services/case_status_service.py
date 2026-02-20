@@ -1,9 +1,9 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.database.query_builders.query_case_filters import status_expr
 from myapp.models.warranty_work import WarrantyWork
 from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.database.query_builders.expressions import status_expr
 
 
 class CaseStatusService:
