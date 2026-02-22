@@ -223,6 +223,22 @@ class CaseFilterService:
                 WarrantyWork.decision_summary_id,
                 DecisionSummary.decision_summary_name,
             ),
+            # Даты документации
+            "notification_dates": await get_distinct_values(
+                WarrantyWork.notification_date, join_to_main=True
+            ),
+            "re_notification_dates": await get_distinct_values(
+                WarrantyWork.re_notification_date, join_to_main=True
+            ),
+            "response_letter_dates": await get_distinct_values(
+                WarrantyWork.response_letter_date, join_to_main=True
+            ),
+            "claim_act_dates": await get_distinct_values(
+                WarrantyWork.claim_act_date, join_to_main=True
+            ),
+            "work_completion_act_dates": await get_distinct_values(
+                WarrantyWork.work_completion_act_date, join_to_main=True
+            ),
             "users": await get_used_items(
                 User, RepairCaseEquipment.user_id, User.full_name
             ),
