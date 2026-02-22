@@ -105,7 +105,7 @@ class CaseFilterService:
 
         # 3. Для уникальных строк (номера локомотивов/уведомлений)
         async def get_distinct_values(column, join_to_main=False):
-            stmt = select(distinct(column)).where(column.is_not(None), column != "")
+            stmt = select(distinct(column)).where(column.is_not(None))
             if join_to_main:
                 stmt = stmt.join(
                     RepairCaseEquipment, RepairCaseEquipment.id == WarrantyWork.case_id
