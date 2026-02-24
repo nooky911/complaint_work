@@ -77,6 +77,7 @@ class CaseOutputData(CaseBase):
     id: int
     date_recorded: datetime
     supplier_id: int | None = None
+    user_id: int
 
     model_config = ConfigDict(from_attributes=True)
 
