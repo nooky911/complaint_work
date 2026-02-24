@@ -23,15 +23,19 @@ class UserService:
         session: AsyncSession, user: User, data: UserPasswordChange
     ) -> User:
         """Меняет пароль пользователя"""
-        # 1. Проверяем старый пароль (сравниваем plain text с хешем в БД)
         if not verify_password(data.old_password, user.hashed_password):
             raise ValueError("Старый пароль указан неверно")
 
-        # 2. Проверяем, что новый пароль не совпадает со старым
         if data.old_password == data.new_password:
             raise ValueError("Новый пароль не может совпадать со старым")
 
-        # 3. Хешируем новый пароль и сохраняем
         user.hashed_password = get_password_hash(data.new_password)
 
         return user
+
+    @staticmethod
+    async def get_all_active_users(session: AsyncSession) -> list[User]:
+        """Возвращает список всех активных пользователей"""
+        stmt = select(User).where(User.is_active == True).order_by(User.full_name)
+        result = await session.execute(stmt)
+        return list(result.scalars().all())

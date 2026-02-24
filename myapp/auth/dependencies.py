@@ -69,7 +69,7 @@ async def require_superadmin(
     if current_user.role != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Superadmin access required",
+            detail="Недостаточно прав. Требуется роль superadmin",
         )
     return current_user
 

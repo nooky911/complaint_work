@@ -43,8 +43,8 @@ class CaseService:
     ) -> RepairCaseEquipment:
         """Создание случая"""
 
-        # 1. Разделяем данные: извлекаем вложенную модель warranty_work
-        case_creation_data = case_data.model_dump(exclude={"warranty_work"})
+        # 1. Разделяем данные
+        case_creation_data = case_data.model_dump(exclude={"warranty_work", "user_id"})
         warranty_work_data = (
             case_data.warranty_work.model_dump(exclude_unset=True)
             if case_data.warranty_work

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
-from myapp.auth.dependencies import get_current_user
+from myapp.auth.dependencies import get_current_user, require_superadmin
 from myapp.database.base import get_db
 from myapp.models.user import User
 from myapp.schemas.users import UserResponse, UserPasswordChange
@@ -43,3 +43,16 @@ async def change_user_password(
 
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.get(
+    "/",
+    response_model=list[UserResponse],
+    summary="Список всех активных пользователей",
+)
+async def get_users_list(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_superadmin)],
+):
+    """Возвращает список всех доступных пользователей"""
+    return await UserService.get_all_active_users(session)

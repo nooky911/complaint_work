@@ -50,7 +50,12 @@ async def create_case(
     current_user: Annotated[User, Depends(require_editor_or_superadmin)],
 ):
     """Создает новый случай неисправности от имени текущего пользователя"""
-    return await CaseService.create_case(session, case_data, current_user.id)
+    target_user_id = current_user.id
+
+    if current_user.role == "superadmin" and case_data.user_id is not None:
+        target_user_id = case_data.user_id
+
+    return await CaseService.create_case(session, case_data, target_user_id)
 
 
 # Детали случаи
@@ -66,11 +71,13 @@ async def get_case_detail(
 ):
     """Получает полную информацию о случае по его ID, включая все связанные данные"""
     case = await CaseService.get_case(session, case_id)
+
     if not case:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Случай с ID {case_id} не найден.",
         )
+
     return case
 
 

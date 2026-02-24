@@ -59,6 +59,8 @@ class CaseCreate(CaseBase):
     malfunction_id: int
     repair_type_id: int
 
+    user_id: int | None = None
+
     # Вложенная схема для данных о гарантийном ремонте
     warranty_work: WarrantyWorkUpdate | None = None
 
