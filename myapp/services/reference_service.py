@@ -13,7 +13,6 @@ from myapp.models.auxiliaries import (
     DestinationType,
 )
 from myapp.models.equipment_malfunctions import (
-    Equipment,
     Malfunction,
     EquipmentMalfunction,
 )
@@ -118,27 +117,5 @@ class ReferenceService:
             "decision_summaries": [
                 {"id": ds.id, "name": ds.name}
                 for ds in decision_summaries_result.scalars().all()
-            ],
-        }
-
-    @staticmethod
-    async def get_equipment_references(session: AsyncSession):
-        """Получить оборудование для выпадающих списков"""
-        equipment_stmt = select(Equipment).where(Equipment.parent_id == None)
-        elements_stmt = select(Equipment).where(Equipment.parent_id != None)
-
-        equipment_result, elements_result = await asyncio.gather(
-            session.execute(equipment_stmt),
-            session.execute(elements_stmt),
-        )
-
-        return {
-            "components": [
-                {"id": equip.id, "name": equip.name}
-                for equip in equipment_result.scalars().all()
-            ],
-            "elements": [
-                {"id": equip.id, "name": equip.name}
-                for equip in elements_result.scalars().all()
             ],
         }
