@@ -107,14 +107,14 @@ class FileService:
         total_case_size = await FileService._get_total_case_size(session, case_id)
         total_new_size = 0
         for file in files:
-            current_size = file.size
+            f_size = file.size
 
-            if current_size is None:
+            if f_size is None:
                 await file.seek(0, 2)
-                current_size = await file.tell()
+                f_size = await file.tell()
                 await file.seek(0)
 
-            total_new_size += current_size
+            total_new_size += f_size
 
         if total_case_size + total_new_size > MAX_CASE_SIZE:
             raise ValueError(
