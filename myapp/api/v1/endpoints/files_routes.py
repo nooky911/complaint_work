@@ -47,13 +47,13 @@ def delete_temp_file(file_path: Path):
 
 
 @router.post(
-    "/upload",
+    "/cases/{case_id}/upload",
     response_model=FileInfo,
     status_code=status.HTTP_201_CREATED,
-    summary="Загрузка файла (Primary/Warranty)",
+    summary="Загрузка одного файла (Primary/Warranty)",
 )
 async def upload_single_file(
-    case_id: Annotated[int, Form(description="ID случая ремонта")],
+    case_id: int,
     category: Annotated[
         FileCategory, Form(description="Категория файла (primary/warranty)")
     ],
@@ -86,20 +86,16 @@ async def upload_single_file(
 
 
 @router.post(
-    "/upload-files",
+    "/cases/{case_id}/upload-files",
     response_model=list[FileInfo],
     status_code=status.HTTP_201_CREATED,
     summary="Загрузка нескольких файлов",
 )
 async def upload_multiple_files(
-    case_id: Annotated[int, Form(description="ID случая ремонта.")],
-    category: Annotated[
-        FileCategory, Form(description="Категория файла (primary/warranty).")
-    ],
-    files: Annotated[list[UploadFile], File(description="Список файлов для загрузки")],
-    related_field: Annotated[
-        WarrantyDocumentField | None, Form(description="Поле для warranty файлов.")
-    ] = None,
+    case_id: int,
+    category: Annotated[FileCategory, Form()],
+    files: Annotated[list[UploadFile], File()],
+    related_field: Annotated[WarrantyDocumentField | None, Form()] = None,
     session: AsyncSession = Depends(get_db),
     _user_and_case=Depends(require_can_edit_case),
 ):
