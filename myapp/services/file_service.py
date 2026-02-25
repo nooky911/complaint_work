@@ -138,7 +138,8 @@ class FileService:
             logger.error(
                 f"Error uploading files for case {case_id}: {e}", exc_info=True
             )
-            for case_file in uploaded_files:
+            raise e
+            """for case_file in uploaded_files:
                 try:
                     full_path = StorageService.get_full_path(case_file)
                     if full_path.exists():
@@ -147,7 +148,7 @@ class FileService:
                     print(
                         f"Ошибка при удалении файла {case_file.original_name}: {cleanup_err}"
                     )
-            raise e
+            raise e"""
 
     @staticmethod
     @transactional

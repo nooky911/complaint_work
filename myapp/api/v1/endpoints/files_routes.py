@@ -1,3 +1,4 @@
+import logging
 from fastapi import (
     APIRouter,
     Depends,
@@ -26,12 +27,14 @@ from myapp.auth.dependencies import (
 )
 
 router = APIRouter(prefix="/files", tags=["Файлы случая неисправности"])
+logger = logging.getLogger(__name__)
 
 
 def handle_file_not_found(e: Exception):
-    """Преобразует исключение FileNotFoundError в HTTP 404"""
+    """Преобразует исключение FileNotFoundError в HTTP 404, остальное – 500 с логированием"""
     if isinstance(e, FileNotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    logger.error("Unexpected error in file endpoint", exc_info=True)
     raise HTTPException(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         detail=f"Произошла непредвиденная ошибка сервера: {type(e).__name__}",
