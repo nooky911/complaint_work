@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,12 +107,14 @@ class FileService:
         total_case_size = await FileService._get_total_case_size(session, case_id)
         total_new_size = 0
         for file in files:
-            if file.size is None:
-                file.file.seek(0, 2)
-                file.size = file.file.tell()
-                file.file.seek(0)
+            current_size = file.size
 
-            total_new_size += file.size
+            if current_size is None:
+                await file.seek(0, 2)
+                current_size = await file.tell()
+                await file.seek(0)
+
+            total_new_size += current_size
 
         if total_case_size + total_new_size > MAX_CASE_SIZE:
             raise ValueError(
@@ -138,9 +141,10 @@ class FileService:
                 try:
                     full_path = StorageService.get_full_path(case_file)
                     if full_path.exists():
-                        await asyncio.to_thread(full_path.unlink)
+                        await asyncio.to_thread(os.remove, str(full_path))
                 except Exception:
                     pass
+
             raise e
 
     @staticmethod
