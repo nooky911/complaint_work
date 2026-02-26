@@ -68,6 +68,7 @@ class CaseCreate(CaseBase):
 class CaseUpdate(CaseBase):
     """Схема для обновления случая"""
 
+    user_id: int | None = None
     warranty_work: WarrantyWorkUpdate | None = None
 
 

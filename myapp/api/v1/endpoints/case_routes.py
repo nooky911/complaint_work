@@ -87,11 +87,20 @@ async def update_case(
     case_data: CaseUpdate,
     case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    _user_and_case: Annotated[
+    user_and_case: Annotated[
         tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
     ],
 ):
     """Обновляет основные поля случая и связанные данные WarrantyWork"""
+    current_user, _case = user_and_case
+    
+    # Проверка прав на смену владельца случая
+    if case_data.user_id is not None and current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Только superadmin может менять владельца случая",
+        )
+    
     updated_case = await CaseService.update_case(session, case_id, case_data)
 
     if not updated_case:

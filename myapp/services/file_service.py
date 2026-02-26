@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from pathlib import Path
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,8 +13,6 @@ from myapp.models.case_files import (
     FileCategory,
     WarrantyDocumentField,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class FileService:
@@ -135,11 +132,7 @@ class FileService:
             return uploaded_files
 
         except Exception as e:
-            logger.error(
-                f"Error uploading files for case {case_id}: {e}", exc_info=True
-            )
-            raise e
-            """for case_file in uploaded_files:
+            for case_file in uploaded_files:
                 try:
                     full_path = StorageService.get_full_path(case_file)
                     if full_path.exists():
@@ -148,7 +141,7 @@ class FileService:
                     print(
                         f"Ошибка при удалении файла {case_file.original_name}: {cleanup_err}"
                     )
-            raise e"""
+            raise e
 
     @staticmethod
     @transactional
