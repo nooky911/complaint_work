@@ -10,13 +10,14 @@ def apply_filter_conditions(conditions: list, fields_mapping: list):
     for p_val, col in fields_mapping:
         if p_val is None:
             continue
+
         if isinstance(p_val, list):
-            clean_list = [v for v in p_val if v != "" and v is not None and v != 0]
+            clean_list = [v for v in p_val if v is not None and str(v).strip() != ""]
             if clean_list:
                 conditions.append(col.in_(clean_list))
         else:
             val_str = str(p_val).strip()
-            if val_str != "" and val_str.lower() != "none" and p_val != 0:
+            if val_str != "" and val_str.lower() != "none":
                 conditions.append(col == p_val)
 
 
@@ -60,6 +61,14 @@ def build_repair_case_conditions(
         (
             params.element_serial_number_new,
             RepairCaseEquipment.element_serial_number_new,
+        ),
+        (
+            params.new_component_equipment_id,
+            RepairCaseEquipment.new_component_equipment_id,
+        ),
+        (
+            params.new_element_equipment_id,
+            RepairCaseEquipment.new_element_equipment_id,
         ),
         (params.notes, RepairCaseEquipment.notes),
     ]
