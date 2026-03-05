@@ -1,5 +1,6 @@
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import Annotated, NoReturn
 
 from myapp.auth.tokens import decode_token
@@ -78,18 +79,18 @@ async def require_can_edit_case(
     case_id: int,
     session: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)],
-) -> tuple[User, RepairCaseEquipment]:
+) -> tuple[User, RepairCaseEquipment | None]:
     """
     Разрешает редактирование только:
     - superadmin для любого случая
     - создателю случая (по полю user_id)
     """
-    case = await CaseService.get_case(session, case_id)
+    stmt = select(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)
+    result = await session.execute(stmt)
+    case = result.scalar_one_or_none()
+
     if not case:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Случай не найден",
-        )
+        return current_user, None
 
     # superadmin может всё
     if current_user.role == "superadmin":
