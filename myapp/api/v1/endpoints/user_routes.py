@@ -52,7 +52,7 @@ async def change_user_password(
 )
 async def get_users_list(
     session: Annotated[AsyncSession, Depends(get_db)],
-    current_user: Annotated[User, Depends(require_superadmin)],
+    _current_user: Annotated[User, Depends(require_superadmin)],
 ):
     """Возвращает список всех доступных пользователей"""
     return await UserService.get_all_active_users(session)

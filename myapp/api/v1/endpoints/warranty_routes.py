@@ -18,7 +18,7 @@ router = APIRouter(tags=["Рекламационная работа"])
 async def get_warranty_work_data(
     case_id: Annotated[int, Path(description="ID случая", ge=1)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    _current_user: Annotated[User, Depends(require_viewer_or_higher)],
 ):
     """Выводит данные вкладки рекламационной работе"""
     warranty_work = await WarrantyService.get_warranty_by_case(session, case_id)
