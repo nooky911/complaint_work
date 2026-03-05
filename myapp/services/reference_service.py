@@ -1,7 +1,9 @@
 import asyncio
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
+from myapp.database.base import async_session_maker
+from myapp.services.cache_service import cached
+from myapp.constants.filter_constants import DB_SEMAPHORE_LIMIT
 from myapp.models.auxiliaries import (
     RegionalCenter,
     LocomotiveModel,
@@ -26,96 +28,143 @@ from myapp.models.warranty_work import (
 class ReferenceService:
     """Сервис для работы со справочниками"""
 
+    _db_semaphore = asyncio.Semaphore(DB_SEMAPHORE_LIMIT)
+
     @staticmethod
-    async def get_case_form_references(session: AsyncSession):
+    def _map_to_id_name(rows):
+        """Вспомогательная функция для формирования стандартного списка id/name"""
+        return [{"id": r[0], "name": r[1]} for r in rows]
+
+    @staticmethod
+    @cached(ttl_seconds=600)
+    async def get_case_form_references():
         """Получить ВСЕ справочники для формы создания/редактирования случая"""
-        (
-            regional_centers_result,
-            locomotive_models_result,
-            fault_discovery_places_result,
-            repair_types_result,
-            equipment_owners_result,
-            repair_performers_result,
-            destination_types_result,
-            malfunctions_result,
-            suppliers_result,
-            notification_summaries_result,
-            response_summaries_result,
-            decision_summaries_result,
-            equipment_malfunctions_result,
-        ) = await asyncio.gather(
-            session.execute(select(RegionalCenter)),
-            session.execute(select(LocomotiveModel)),
-            session.execute(select(FaultDiscoveryPlace)),
-            session.execute(select(RepairType)),
-            session.execute(select(EquipmentOwner)),
-            session.execute(select(RepairPerformer)),
-            session.execute(select(DestinationType)),
-            session.execute(select(Malfunction)),
-            session.execute(select(Supplier)),
-            session.execute(select(NotificationSummary)),
-            session.execute(select(ResponseSummary)),
-            session.execute(select(DecisionSummary)),
-            session.execute(select(EquipmentMalfunction)),
-        )
+
+        tasks = [
+            (
+                "regional_centers",
+                select(RegionalCenter.id, RegionalCenter.regional_center_name),
+            ),
+            (
+                "locomotive_models",
+                select(
+                    LocomotiveModel.id, LocomotiveModel.locomotive_model_name
+                ),
+            ),
+            (
+                "fault_discovery_places",
+                select(
+                    FaultDiscoveryPlace.id,
+                    FaultDiscoveryPlace.fault_discovery_places_name,
+                ),
+            ),
+            (
+                "repair_types",
+                select(
+                    RepairType.id,
+                    RepairType.repair_types_name,
+                    RepairType.auto_fill_strategy,
+                ),
+            ),
+            (
+                "equipment_owners",
+                select(
+                    EquipmentOwner.id, EquipmentOwner.equipment_owners_name
+                ),
+            ),
+            (
+                "repair_performers",
+                select(
+                    RepairPerformer.id, RepairPerformer.repair_performers_name
+                ),
+            ),
+            (
+                "destination_types",
+                select(
+                    DestinationType.id, DestinationType.destination_types_name
+                ),
+            ),
+            (
+                "malfunctions",
+                select(Malfunction.id, Malfunction.defect_name),
+            ),
+            (
+                "suppliers",
+                select(Supplier.id, Supplier.supplier_name),
+            ),
+            (
+                "notification_summaries",
+                select(
+                    NotificationSummary.id,
+                    NotificationSummary.notification_summary_name,
+                ),
+            ),
+            (
+                "response_summaries",
+                select(
+                    ResponseSummary.id, ResponseSummary.response_summary_name
+                ),
+            ),
+            (
+                "decision_summaries",
+                select(
+                    DecisionSummary.id, DecisionSummary.decision_summary_name
+                ),
+            ),
+            (
+                "equipment_malfunctions",
+                select(
+                    EquipmentMalfunction.equipment_id,
+                    EquipmentMalfunction.malfunction_id,
+                ),
+            ),
+        ]
+
+        async def run_query(name, stmt):
+            async with ReferenceService._db_semaphore:
+                async with async_session_maker() as session:
+                    result = await session.execute(stmt)
+                    return name, result.all()
+
+        results = await asyncio.gather(*(run_query(name, stmt) for name, stmt in tasks))
+        res_dict = {name: rows for name, rows in results}
 
         return {
-            "regional_centers": [
-                {"id": rc.id, "name": rc.name}
-                for rc in regional_centers_result.scalars().all()
-            ],
-            "locomotive_models": [
-                {"id": lm.id, "name": lm.name}
-                for lm in locomotive_models_result.scalars().all()
-            ],
-            "fault_discovered_at": [
-                {"id": fd.id, "name": fd.name}
-                for fd in fault_discovery_places_result.scalars().all()
-            ],
+            "regional_centers": ReferenceService._map_to_id_name(
+                res_dict["regional_centers"]
+            ),
+            "locomotive_models": ReferenceService._map_to_id_name(
+                res_dict["locomotive_models"]
+            ),
+            "fault_discovered_at": ReferenceService._map_to_id_name(
+                res_dict["fault_discovery_places"]
+            ),
             "repair_types": [
-                {
-                    "id": rt.id,
-                    "name": rt.name,
-                    "auto_fill_strategy": rt.auto_fill_strategy,
-                }
-                for rt in repair_types_result.scalars().all()
+                {"id": r[0], "name": r[1], "auto_fill_strategy": r[2]}
+                for r in res_dict["repair_types"]
             ],
-            "equipment_owners": [
-                {"id": eo.id, "name": eo.name}
-                for eo in equipment_owners_result.scalars().all()
-            ],
-            "performed_by": [
-                {"id": rp.id, "name": rp.name}
-                for rp in repair_performers_result.scalars().all()
-            ],
-            "destinations": [
-                {"id": dt.id, "name": dt.name}
-                for dt in destination_types_result.scalars().all()
-            ],
-            "malfunctions": [
-                {"id": m.id, "name": m.name}
-                for m in malfunctions_result.scalars().all()
-            ],
+            "equipment_owners": ReferenceService._map_to_id_name(
+                res_dict["equipment_owners"]
+            ),
+            "performed_by": ReferenceService._map_to_id_name(
+                res_dict["repair_performers"]
+            ),
+            "destinations": ReferenceService._map_to_id_name(
+                res_dict["destination_types"]
+            ),
+            "malfunctions": ReferenceService._map_to_id_name(res_dict["malfunctions"]),
             "equipment_malfunctions": [
-                {
-                    "equipment_id": em.equipment_id,
-                    "malfunction_id": em.malfunction_id,
-                }
-                for em in equipment_malfunctions_result.scalars().all()
+                {"equipment_id": r[0], "malfunction_id": r[1]}
+                for r in res_dict["equipment_malfunctions"]
             ],
-            "suppliers": [
-                {"id": s.id, "name": s.name} for s in suppliers_result.scalars().all()
-            ],
-            "notification_summaries": [
-                {"id": ns.id, "name": ns.name}
-                for ns in notification_summaries_result.scalars().all()
-            ],
-            "response_summaries": [
-                {"id": rs.id, "name": rs.name}
-                for rs in response_summaries_result.scalars().all()
-            ],
-            "decision_summaries": [
-                {"id": ds.id, "name": ds.name}
-                for ds in decision_summaries_result.scalars().all()
-            ],
+            "suppliers": ReferenceService._map_to_id_name(res_dict["suppliers"]),
+            "notification_summaries": ReferenceService._map_to_id_name(
+                res_dict["notification_summaries"]
+            ),
+            "response_summaries": ReferenceService._map_to_id_name(
+                res_dict["response_summaries"]
+            ),
+            "decision_summaries": ReferenceService._map_to_id_name(
+                res_dict["decision_summaries"]
+            ),
         }

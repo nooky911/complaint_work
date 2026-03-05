@@ -5,7 +5,7 @@ from typing import Annotated
 from myapp.database.base import get_db
 from myapp.schemas.equipment import EquipmentWithPathResponse
 from myapp.schemas.references import CaseFormReferencesResponse
-from myapp.schemas.filters import FilterOptionsResponse
+from myapp.schemas.filters import FilterOptionsResponse, CaseFilterParams
 from myapp.services.equipment_service import EquipmentService
 from myapp.services.reference_service import ReferenceService
 from myapp.services.case_filter_service import CaseFilterService
@@ -52,8 +52,8 @@ async def get_equipment_chain(
     response_model=CaseFormReferencesResponse,
     summary="Получить все справочники для формы создания/редактирования случая",
 )
-async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_db)]):
-    return await ReferenceService.get_case_form_references(session)
+async def get_case_form_references():
+    return await ReferenceService.get_case_form_references()
 
 
 @router.get(
@@ -61,15 +61,27 @@ async def get_case_form_references(session: Annotated[AsyncSession, Depends(get_
     response_model=FilterOptionsResponse,
     summary="Получить опции для фильтров",
 )
-async def get_filter_options(session: Annotated[AsyncSession, Depends(get_db)]):
-    return await CaseFilterService.get_filter_options(session)
+async def get_filter_options():
+    return await CaseFilterService.get_filter_options()
+
+
+@router.get(
+    "/dynamic-filter-options",
+    response_model=FilterOptionsResponse,
+    summary="Получить динамические опции для фильтров на основе выбранных значений",
+)
+async def get_dynamic_filter_options(
+    params: Annotated[CaseFilterParams, Query()] = CaseFilterParams(),
+):
+    """Получить опции фильтров с учетом уже выбранных значений"""
+    return await CaseFilterService.get_dynamic_filter_options(params)
 
 
 @router.get(
     "/equipment-all-flat",
     response_model=list[EquipmentWithPathResponse],
-    summary="Получить весь справочник оборудования плоским списком",
+    summary="Получить всё оборудование плоским списком с путями иерархии",
 )
 async def get_all_equipment_flat(session: Annotated[AsyncSession, Depends(get_db)]):
-    """Используется для умного поиска и автозаполнения иерархии на фронтенде"""
+    """Возвращает всё оборудование в плоском виде с полным путем иерархии"""
     return await EquipmentService.get_all_equipment_flat(session)

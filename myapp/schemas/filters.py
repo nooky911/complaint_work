@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from pydantic import Field
 from datetime import date
 from .references import AuxiliaryItem, RepairTypeItem
 
@@ -6,34 +7,36 @@ from .references import AuxiliaryItem, RepairTypeItem
 class FilterOptionsResponse(BaseModel):
     """Справочники, которые прилетят на фронт для заполнения выпадающих списков"""
 
-    regional_centers: list[AuxiliaryItem]
-    locomotive_models: list[AuxiliaryItem]
-    fault_discovered_at: list[AuxiliaryItem]
-    malfunctions: list[AuxiliaryItem]
-    suppliers: list[AuxiliaryItem]
-    repair_types: list[RepairTypeItem]
-    equipment_owners: list[AuxiliaryItem]
-    performed_by: list[AuxiliaryItem]
-    destinations: list[AuxiliaryItem]
-    components: list[AuxiliaryItem]
-    elements: list[AuxiliaryItem]
-    new_components: list[AuxiliaryItem]
-    new_elements: list[AuxiliaryItem]
-    statuses: list[str]
-    notification_summaries: list[AuxiliaryItem]
-    response_summaries: list[AuxiliaryItem]
-    decision_summaries: list[AuxiliaryItem]
-    locomotive_numbers: list[str]
-    notification_numbers: list[str]
-    notification_dates: list[date]
-    re_notification_dates: list[date]
-    response_letter_dates: list[date]
-    claim_act_dates: list[date]
-    work_completion_act_dates: list[date]
-    component_serial_numbers: list[str]
-    element_serial_numbers: list[str]
-    notes: list[str]
-    users: list[AuxiliaryItem]
+    regional_centers: list[AuxiliaryItem] = Field(default_factory=list)
+    locomotive_models: list[AuxiliaryItem] = Field(default_factory=list)
+    fault_discovered_at: list[AuxiliaryItem] = Field(default_factory=list)
+    malfunctions: list[AuxiliaryItem] = Field(default_factory=list)
+    suppliers: list[AuxiliaryItem] = Field(default_factory=list)
+    repair_types: list[RepairTypeItem] = Field(default_factory=list)
+    equipment_owners: list[AuxiliaryItem] = Field(default_factory=list)
+    performed_by: list[AuxiliaryItem] = Field(default_factory=list)
+    destinations: list[AuxiliaryItem] = Field(default_factory=list)
+    components: list[AuxiliaryItem] = Field(default_factory=list)
+    elements: list[AuxiliaryItem] = Field(default_factory=list)
+    new_components: list[AuxiliaryItem] = Field(default_factory=list)
+    new_elements: list[AuxiliaryItem] = Field(default_factory=list)
+    statuses: list[str] = Field(default_factory=list)
+    notification_summaries: list[AuxiliaryItem] = Field(default_factory=list)
+    response_summaries: list[AuxiliaryItem] = Field(default_factory=list)
+    decision_summaries: list[AuxiliaryItem] = Field(default_factory=list)
+    locomotive_numbers: list[str] = Field(default_factory=list)
+    notification_numbers: list[str] = Field(default_factory=list)
+    notification_dates: list[date] = Field(default_factory=list)
+    re_notification_dates: list[date] = Field(default_factory=list)
+    response_letter_dates: list[date] = Field(default_factory=list)
+    claim_act_dates: list[date] = Field(default_factory=list)
+    work_completion_act_dates: list[date] = Field(default_factory=list)
+    component_serial_numbers: list[str] = Field(default_factory=list)
+    element_serial_numbers: list[str] = Field(default_factory=list)
+    component_serial_numbers_new: list[str] = Field(default_factory=list)
+    element_serial_numbers_new: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+    users: list[AuxiliaryItem] = Field(default_factory=list)
 
 
 class CaseFilterParams(BaseModel):
@@ -57,6 +60,10 @@ class CaseFilterParams(BaseModel):
     equipment_owner_id: list[int] | None = None
     performed_by_id: list[int] | None = None
     destination_id: list[int] | None = None
+
+    # Новое оборудование (установленное при ремонте)
+    new_component_equipment_id: list[int] | None = None
+    new_element_equipment_id: list[int] | None = None
 
     # Строки (RepairCaseEquipment)
     section_mask: int | None = None
