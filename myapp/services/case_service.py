@@ -145,7 +145,7 @@ class CaseService:
         case = result.scalar_one_or_none()
 
         if not case:
-            return 0
+            return 1
 
         if case.files:
             for file_rec in case.files:
