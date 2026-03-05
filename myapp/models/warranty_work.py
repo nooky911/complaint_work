@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, ForeignKey
+from sqlalchemy import Integer, String, Date, ForeignKey, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date
 
@@ -7,6 +7,24 @@ from myapp.database.base import Base
 
 class WarrantyWork(Base):
     __tablename__ = "warranty_work"
+
+    # Индексы для оптимизации фильтров документации
+    __table_args__ = (
+        Index("idx_warranty_work_case_id", "case_id"),
+        Index("idx_warranty_work_notification_number", "notification_number"),
+        Index("idx_warranty_work_re_notification_number", "re_notification_number"),
+        Index("idx_warranty_work_response_letter_number", "response_letter_number"),
+        Index("idx_warranty_work_claim_act_number", "claim_act_number"),
+        Index(
+            "idx_warranty_work_work_completion_act_number", "work_completion_act_number"
+        ),
+        # Даты документации
+        Index("idx_warranty_work_notification_date", "notification_date"),
+        Index("idx_warranty_work_re_notification_date", "re_notification_date"),
+        Index("idx_warranty_work_response_letter_date", "response_letter_date"),
+        Index("idx_warranty_work_claim_act_date", "claim_act_date"),
+        Index("idx_warranty_work_work_completion_act_date", "work_completion_act_date"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     notification_number: Mapped[str | None] = mapped_column(String(50))

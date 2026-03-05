@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP, text
+from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP, text, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 
@@ -8,6 +8,24 @@ from myapp.database.base import Base
 # Основная таблица со случаями неисправности
 class RepairCaseEquipment(Base):
     __tablename__ = "repair_case_equipment"
+
+    # Индексы для оптимизации фильтров
+    __table_args__ = (
+        Index("idx_repair_case_equipment_malfunction_id", "malfunction_id"),
+        Index(
+            "idx_repair_case_equipment_equipment_combo",
+            "component_equipment_id",
+            "element_equipment_id",
+        ),
+        Index(
+            "idx_repair_case_equipment_new_component_equipment_id",
+            "new_component_equipment_id",
+        ),
+        Index(
+            "idx_repair_case_equipment_component_equipment_id", "component_equipment_id"
+        ),
+        Index("idx_repair_case_equipment_supplier_id", "supplier_id"),
+    )
 
     # Основные поля
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
