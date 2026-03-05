@@ -65,4 +65,10 @@ async def login_user(
 @router.post("/logout", status_code=status.HTTP_200_OK, summary="Выход из системы")
 async def logout(response: Response):
     """Удаляет cookie с токеном"""
-    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=False,  # ПОМЕНЯТЬ
+    )
