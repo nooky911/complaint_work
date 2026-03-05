@@ -6,8 +6,14 @@ from myapp.config import settings
 
 DATABASE_URL = settings.get_db_url()
 
-engine = create_async_engine(url=DATABASE_URL)
-
+engine = create_async_engine(
+    url=DATABASE_URL,
+    pool_size=20,
+    max_overflow=10,
+    pool_recycle=1800,
+    pool_pre_ping=True,
+    pool_timeout=30,
+)
 async_session_maker = async_sessionmaker(engine, expire_on_commit=False)
 
 
