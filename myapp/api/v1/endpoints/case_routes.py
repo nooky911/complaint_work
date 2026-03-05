@@ -88,11 +88,17 @@ async def update_case(
     case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
     session: Annotated[AsyncSession, Depends(get_db)],
     user_and_case: Annotated[
-        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+        tuple[User, RepairCaseEquipment | None], Depends(require_can_edit_case)
     ],
 ):
     """Обновляет основные поля случая и связанные данные WarrantyWork"""
-    current_user, _case = user_and_case
+    current_user, case = user_and_case
+    
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Случай с ID {case_id} не найден.",
+        )
     
     # Проверка прав на смену владельца случая
     if case_data.user_id is not None and current_user.role != "superadmin":
@@ -119,17 +125,15 @@ async def update_case(
 async def delete_case(
     case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
     session: Annotated[AsyncSession, Depends(get_db)],
-    _user_and_case: Annotated[
+    user_and_case: Annotated[
         tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
     ],
 ):
     """Удаляет случай по его ID. Также удаляет связанные записи WarrantyWork"""
-    deleted_count = await CaseService.delete_case(session, case_id)
-
-    if deleted_count == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Случай с ID {case_id} не найден.",
-        )
-
+    current_user, case = user_and_case
+    
+    if case is None:
+        return None
+    
+    await CaseService.delete_case(session, case_id)
     return None
