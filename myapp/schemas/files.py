@@ -5,30 +5,13 @@ from myapp.models.case_files import (
 )
 
 
-class FileBase(BaseModel):
-    """Базовая схема с общими полями"""
-
-    original_name: str
-    mime_type: str
-    size_bytes: int
-
-
-class PrimaryFileUploadRequest(BaseModel):
-    """Схема для загрузки первичной документации"""
-
-    pass
-
-
-class WarrantyFileUploadRequest(BaseModel):
-    """Схема для загрузки файлов для рекламационной работы"""
-
-    related_field: WarrantyDocumentField
-
-
-class FileInfo(FileBase):
+class FileInfo(BaseModel):
     """Схема ответа с информацией о файле (для обеих категорий)"""
 
     id: int
+    original_name: str
+    mime_type: str
+    size_bytes: int
     stored_name: str
     file_path: str
     category: FileCategory
