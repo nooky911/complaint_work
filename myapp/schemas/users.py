@@ -17,13 +17,6 @@ class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
 
 
-class UserLogin(BaseModel):
-    """Схема для входа в систему"""
-
-    login: str
-    password: str
-
-
 class UserResponse(UserBase):
     """Схема ответа с данными пользователя"""
 
@@ -31,14 +24,6 @@ class UserResponse(UserBase):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class TokenResponse(BaseModel):
-    """Схема ответа с JWT токеном"""
-
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
 
 
 class UserPasswordChange(BaseModel):
