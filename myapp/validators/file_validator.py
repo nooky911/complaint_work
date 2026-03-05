@@ -38,6 +38,7 @@ ALLOWED_MIME_TYPES = {
     FileCategory.warranty: {
         "application/pdf",
         "image/jpeg",
+        "image/png",
         "application/vnd.ms-outlook",
     },
 }
