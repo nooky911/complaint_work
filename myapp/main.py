@@ -3,6 +3,7 @@ import uvicorn
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from typing import Any
 
 from myapp.database.base import Base
 from myapp.database.base import engine
@@ -15,7 +16,7 @@ import logging
 
 
 # -ФУНКЦИЯ СОЗДАНИЯ ТАБЛИЦ -
-async def create_db_and_tables():
+async def create_db_and_tables() -> None:
     """Создает все таблицы в базе данных на основе Base"""
     try:
         async with engine.begin() as conn:
@@ -55,7 +56,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # Middleware для логирования всех запросов
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next) -> Any:
     print(f"Метод: {request.method}")
     print(f"URL: {request.url}")
     print(f"Заголовки: {dict(request.headers)}")

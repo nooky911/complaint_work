@@ -1,7 +1,7 @@
 import logging
 
 
-def setup_debug_logging():
+def setup_debug_logging() -> None:
     logger = logging.getLogger("fastapi")
     logger.setLevel(logging.DEBUG)
 

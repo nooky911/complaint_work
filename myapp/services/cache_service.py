@@ -1,6 +1,6 @@
 import asyncio
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from functools import wraps
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,7 +12,7 @@ class SimpleCache:
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._lock = asyncio.Lock()
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Получить значение из кеша"""
         async with self._lock:
             if key in self._cache:

@@ -1,4 +1,5 @@
 import asyncio
+from typing import Any
 from sqlalchemy import select
 
 from myapp.database.base import async_session_maker
@@ -31,13 +32,13 @@ class ReferenceService:
     _db_semaphore = asyncio.Semaphore(DB_SEMAPHORE_LIMIT)
 
     @staticmethod
-    def _map_to_id_name(rows):
+    def _map_to_id_name(rows) -> list[dict]:
         """Вспомогательная функция для формирования стандартного списка id/name"""
         return [{"id": r[0], "name": r[1]} for r in rows]
 
     @staticmethod
     @cached(ttl_seconds=600)
-    async def get_case_form_references():
+    async def get_case_form_references() -> dict[str, Any]:
         """Получить ВСЕ справочники для формы создания/редактирования случая"""
 
         tasks = [

@@ -34,7 +34,7 @@ class CaseStatusService:
         return status_value or "Ожидает уведомление поставщика"
 
     @staticmethod
-    def enrich_case_with_status_and_creator(case_obj, status_value):
+    def enrich_case_with_status_and_creator(case_obj, status_value) -> RepairCaseEquipment:
         """Добавляет статус и ФИО создателя"""
         case_obj.status = status_value or "Ожидает уведомление поставщика"
 

@@ -47,7 +47,7 @@ ALLOWED_MIME_TYPES = {
 class FileValidator:
 
     @staticmethod
-    def validate_mime_type(file: UploadFile, category: FileCategory):
+    def validate_mime_type(file: UploadFile, category: FileCategory) -> None:
         """Валидация на расширение"""
         allowed_types = ALLOWED_MIME_TYPES[category]
         if file.content_type not in allowed_types:
@@ -56,19 +56,19 @@ class FileValidator:
             )
 
     @staticmethod
-    def validate_not_empty(file: UploadFile):
+    def validate_not_empty(file: UploadFile) -> None:
         """Валидация на пустой файл"""
         if file.size == 0:
             raise ValueError("Файл не должен быть пустым")
 
     @staticmethod
-    def validate_file_size(file: UploadFile, max_size: int = MAX_FILE_SIZE):
+    def validate_file_size(file: UploadFile, max_size: int = MAX_FILE_SIZE) -> None:
         """Валидация по размеру файла"""
         if file.size > max_size:
             raise ValueError(f"Размер файла превышает {max_size}")
 
     @staticmethod
-    def validate_file(file: UploadFile, category: FileCategory):
+    def validate_file(file: UploadFile, category: FileCategory) -> None:
         """Комплексная валидация файла"""
         FileValidator.validate_not_empty(file)
         FileValidator.validate_file_size(file)

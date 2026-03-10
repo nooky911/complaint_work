@@ -1,11 +1,12 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from functools import wraps
 import logging
+from typing import Callable, Any
 
 logger = logging.getLogger(__name__)
 
 
-def transactional(func):
+def transactional(func) -> Callable[..., Any]:
     """Декоратор управления транзакцией"""
 
     @wraps(func)

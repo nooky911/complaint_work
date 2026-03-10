@@ -1,9 +1,10 @@
 import logging
 from pathlib import Path
 from fastapi import HTTPException, status
+from typing import NoReturn
 
 
-def handle_file_not_found(e: Exception):
+def handle_file_not_found(e: Exception) -> NoReturn:
     """Преобразует исключение FileNotFoundError в HTTP 404, остальное 500 с логированием"""
     if isinstance(e, FileNotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -17,7 +18,7 @@ def handle_file_not_found(e: Exception):
     )
 
 
-def delete_temp_file(file_path: Path):
+def delete_temp_file(file_path: Path) -> None:
     """Удаляет временный файл после отправки"""
     try:
         file_path.unlink(missing_ok=True)
