@@ -1,10 +1,11 @@
 import asyncio
+from typing import Any
 from sqlalchemy import select, and_, distinct
 
 from myapp.database.base import async_session_maker
 from myapp.models.repair_case_equipment import RepairCaseEquipment
-from myapp.models.warranty_work import WarrantyWork
 from myapp.models.warranty_work import (
+    WarrantyWork,
     NotificationSummary,
     ResponseSummary,
     DecisionSummary,
@@ -27,8 +28,11 @@ from myapp.database.query_builders.query_case_filters import (
     build_warranty_work_conditions,
 )
 from myapp.services.cache_service import cached
-from myapp.constants.filter_constants import STATUSES
-from myapp.constants.filter_constants import DB_SEMAPHORE_LIMIT
+from myapp.services.case_status_service import CaseStatusService
+from myapp.constants.filter_constants import (
+    DB_SEMAPHORE_LIMIT,
+    FILTER_TASK_CONFIGS,
+)
 
 
 class FilterOptionsService:
@@ -161,21 +165,30 @@ class FilterOptionsService:
             },
             {
                 "name": "notification_summaries",
-                "func": FilterOptionsService._get_all_reference_items_separate_session,
+                "func": FilterOptionsService._get_used_items_from_warranty,
                 "args": [
                     NotificationSummary,
+                    WarrantyWork.notification_summary_id,
                     NotificationSummary.notification_summary_name,
                 ],
             },
             {
                 "name": "response_summaries",
-                "func": FilterOptionsService._get_all_reference_items_separate_session,
-                "args": [ResponseSummary, ResponseSummary.response_summary_name],
+                "func": FilterOptionsService._get_used_items_from_warranty,
+                "args": [
+                    ResponseSummary,
+                    WarrantyWork.response_summary_id,
+                    ResponseSummary.response_summary_name,
+                ],
             },
             {
                 "name": "decision_summaries",
-                "func": FilterOptionsService._get_all_reference_items_separate_session,
-                "args": [DecisionSummary, DecisionSummary.decision_summary_name],
+                "func": FilterOptionsService._get_used_items_from_warranty,
+                "args": [
+                    DecisionSummary,
+                    WarrantyWork.decision_summary_id,
+                    DecisionSummary.decision_summary_name,
+                ],
             },
             {
                 "name": "users",
@@ -189,32 +202,37 @@ class FilterOptionsService:
             },
             {
                 "name": "notification_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.notification_number, None],
             },
             {
                 "name": "notification_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.notification_date, None],
             },
             {
                 "name": "re_notification_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.re_notification_date, None],
             },
             {
+                "name": "re_notification_numbers",
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "args": [WarrantyWork.re_notification_number, None],
+            },
+            {
                 "name": "response_letter_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.response_letter_date, None],
             },
             {
                 "name": "claim_act_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.claim_act_date, None],
             },
             {
                 "name": "work_completion_act_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.work_completion_act_date, None],
             },
             {
@@ -242,9 +260,14 @@ class FilterOptionsService:
                 "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [RepairCaseEquipment.notes, None],
             },
+            {
+                "name": "statuses",
+                "func": FilterOptionsService._get_distinct_statuses,
+                "args": [None],
+            },
         ]
 
-        # Выполняем все задачи параллельно
+        # Параллельное выполнение задач
         task_results = await FilterOptionsService._execute_parallel_tasks_optimized(
             async_session_maker, reference_tasks
         )
@@ -252,15 +275,32 @@ class FilterOptionsService:
         return FilterOptionsService._build_filter_response(task_results)
 
     @staticmethod
-    def _build_filter_response(task_results):
-        """Build FilterOptionsResponse from task results"""
-        # Формируем результат
+    def _build_tasks_from_configs(configs, conditions):
+        """Строит конфигурации задач для параллельного выполнения из констант"""
+
+        tasks = []
+        for config in configs:
+            func_name = config["func"].split(".")[-1]
+            func = getattr(FilterOptionsService, func_name)
+
+            args = config["args"] + [conditions]
+
+            tasks.append(
+                {
+                    "name": config["name"],
+                    "func": func,
+                    "args": args,
+                }
+            )
+
+        return tasks
+
+    @staticmethod
+    def _build_filter_response(task_results) -> FilterOptionsResponse:
+        """Формирует объект FilterOptionsResponse из результатов параллельных задач"""
         result_dict = {}
         for task_name, items in task_results:
             result_dict[task_name] = items
-
-        if "statuses" not in result_dict:
-            result_dict["statuses"] = STATUSES
 
         return FilterOptionsResponse(**result_dict)
 
@@ -270,163 +310,23 @@ class FilterOptionsService:
         params: CaseFilterParams,
     ) -> FilterOptionsResponse:
         """Получает опции фильтров с учетом уже выбранных значений"""
-        from myapp.database.base import async_session_maker
 
         # Условия фильтрации
         repair_conditions = build_repair_case_conditions(params)
         warranty_conditions = build_warranty_work_conditions(params)
+        combined_conditions = repair_conditions + warranty_conditions
 
-        # Задачи для параллельного выполнения
-        tasks = [
+        tasks = FilterOptionsService._build_tasks_from_configs(
+            FILTER_TASK_CONFIGS, combined_conditions
+        )
+
+        tasks.append(
             {
-                "name": "locomotive_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
-                "args": [RepairCaseEquipment.locomotive_number, repair_conditions],
-            },
-            {
-                "name": "component_serial_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
-                "args": [
-                    RepairCaseEquipment.component_serial_number_old,
-                    repair_conditions,
-                ],
-            },
-            {
-                "name": "element_serial_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
-                "args": [
-                    RepairCaseEquipment.element_serial_number_old,
-                    repair_conditions,
-                ],
-            },
-            {
-                "name": "component_serial_numbers_new",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
-                "args": [
-                    RepairCaseEquipment.component_serial_number_new,
-                    repair_conditions,
-                ],
-            },
-            {
-                "name": "element_serial_numbers_new",
-                "func": FilterOptionsService._get_distinct_values_separate_session,
-                "args": [
-                    RepairCaseEquipment.element_serial_number_new,
-                    repair_conditions,
-                ],
-            },
-            {
-                "name": "regional_centers",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    RegionalCenter,
-                    RepairCaseEquipment.regional_center_id,
-                    RegionalCenter.regional_center_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "locomotive_models",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    LocomotiveModel,
-                    RepairCaseEquipment.locomotive_model_id,
-                    LocomotiveModel.locomotive_model_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "suppliers",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    Supplier,
-                    RepairCaseEquipment.supplier_id,
-                    Supplier.supplier_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "equipment_owners",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    EquipmentOwner,
-                    RepairCaseEquipment.equipment_owner_id,
-                    EquipmentOwner.equipment_owners_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "performed_by",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    RepairPerformer,
-                    RepairCaseEquipment.performed_by_id,
-                    RepairPerformer.repair_performers_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "destinations",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    DestinationType,
-                    RepairCaseEquipment.destination_id,
-                    DestinationType.destination_types_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "fault_discovered_at",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    FaultDiscoveryPlace,
-                    RepairCaseEquipment.fault_discovered_at_id,
-                    FaultDiscoveryPlace.fault_discovery_places_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "repair_types",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    RepairType,
-                    RepairCaseEquipment.repair_type_id,
-                    RepairType.repair_types_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            # Оборудование и неисправности
-            {
-                "name": "components",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    Equipment,
-                    RepairCaseEquipment.component_equipment_id,
-                    Equipment.equipment_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "elements",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    Equipment,
-                    RepairCaseEquipment.element_equipment_id,
-                    Equipment.equipment_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-            {
-                "name": "malfunctions",
-                "func": FilterOptionsService._get_used_items_with_warranty_join,
-                "args": [
-                    Malfunction,
-                    RepairCaseEquipment.malfunction_id,
-                    Malfunction.defect_name,
-                    repair_conditions + warranty_conditions,
-                ],
-            },
-        ]
+                "name": "statuses",
+                "func": FilterOptionsService._get_distinct_statuses,
+                "args": [combined_conditions],
+            }
+        )
 
         task_results = await FilterOptionsService._execute_parallel_tasks_optimized(
             async_session_maker, tasks
@@ -436,9 +336,7 @@ class FilterOptionsService:
 
     @staticmethod
     async def _execute_parallel_tasks_optimized(session_factory, task_configs):
-        """
-        Запускает все задачи сразу, но их количество ограничивается только глобальным семафором
-        """
+        """Запускает все задачи сразу, но их количество ограничивается глобальным семафором"""
 
         async def run_task(config):
             async with session_factory() as session:
@@ -455,10 +353,50 @@ class FilterOptionsService:
 
     @staticmethod
     async def _execute_with_semaphore(func, args, kwargs, operation_name: str):
-        """Выполняет функцию ТОЛЬКО после получения разрешения от семафора"""
+        """Выполняет функцию только после получения разрешения от семафора"""
         async with FilterOptionsService._db_semaphore:
             result = await func(*args, **kwargs)
             return operation_name, result
+
+    @staticmethod
+    async def _get_used_items_with_base_join(
+        session,
+        model,
+        fk_column,
+        name_column,
+        filtered_conditions=None,
+        additional_joins=None,
+    ):
+        """Базовый метод для получения используемых элементов справочника с JOIN"""
+        stmt = select(model.id, name_column).join(
+            RepairCaseEquipment, fk_column == model.id
+        )
+
+        if additional_joins:
+            for join_clause in additional_joins:
+                stmt = stmt.join(*join_clause)
+
+        stmt = stmt.distinct()
+
+        if filtered_conditions:
+            stmt = stmt.where(and_(*filtered_conditions))
+
+        return await FilterOptionsService._execute_query_and_format_results(
+            session, stmt
+        )
+
+    @staticmethod
+    async def _get_used_items_with_case_join(
+        session,
+        model,
+        fk_column,
+        name_column,
+        filtered_conditions=None,
+    ):
+        """Получить используемые элементы справочника с JOIN к RepairCaseEquipment"""
+        return await FilterOptionsService._get_used_items_with_base_join(
+            session, model, fk_column, name_column, filtered_conditions
+        )
 
     @staticmethod
     async def _get_used_items_with_warranty_join(
@@ -469,39 +407,95 @@ class FilterOptionsService:
         filtered_conditions=None,
     ):
         """Получить используемые элементы справочника с JOIN к WarrantyWork"""
-        stmt = (
-            select(model.id, name_column)
-            .join(RepairCaseEquipment, fk_column == model.id)
-            .join(WarrantyWork, WarrantyWork.case_id == RepairCaseEquipment.id)
-            .distinct()
+        warranty_joins = [
+            (WarrantyWork, WarrantyWork.case_id == RepairCaseEquipment.id)
+        ]
+        return await FilterOptionsService._get_used_items_with_base_join(
+            session, model, fk_column, name_column, filtered_conditions, warranty_joins
         )
 
-        if filtered_conditions:
-            stmt = stmt.where(and_(*filtered_conditions))
-
-        res = await session.execute(stmt)
-        return [{"id": row[0], "name": row[1]} for row in res.all()]
-
     @staticmethod
-    async def _get_used_items_with_case_join(
+    async def _get_used_items_from_warranty(
         session,
         model,
         fk_column,
         name_column,
         filtered_conditions=None,
     ):
-        """Получить используемые элементы справочника на основе RepairCaseEquipment"""
+        """Получить используемые элементы справочника из WarrantyWork с JOIN к RepairCaseEquipment"""
         stmt = (
             select(model.id, name_column)
-            .join(RepairCaseEquipment, fk_column == model.id)
+            .join(WarrantyWork, fk_column == model.id)
+            .join(RepairCaseEquipment, WarrantyWork.case_id == RepairCaseEquipment.id)
             .distinct()
         )
 
         if filtered_conditions:
             stmt = stmt.where(and_(*filtered_conditions))
 
+        return await FilterOptionsService._execute_query_and_format_results(
+            session, stmt
+        )
+
+    @staticmethod
+    async def _get_distinct_values_with_join(
+        session,
+        column,
+        join_model,
+        join_condition,
+        filtered_conditions=None,
+    ):
+        """Получить уникальные значения колонки с JOIN к другой модели"""
+        stmt = (
+            select(distinct(column))
+            .join(join_model, join_condition)
+            .where(column.isnot(None))
+        )
+
+        if filtered_conditions:
+            stmt = stmt.where(and_(*filtered_conditions))
+
         res = await session.execute(stmt)
-        return [{"id": row[0], "name": row[1]} for row in res.all()]
+        return FilterOptionsService._process_query_results(res)
+
+    @staticmethod
+    async def _get_distinct_values_separate_session_warranty(
+        session,
+        column,
+        filtered_conditions=None,
+    ):
+        """Получить уникальные значения колонки из WarrantyWork с JOIN к RepairCaseEquipment"""
+        return await FilterOptionsService._get_distinct_values_with_join(
+            session,
+            column,
+            RepairCaseEquipment,
+            WarrantyWork.case_id == RepairCaseEquipment.id,
+            filtered_conditions,
+        )
+
+    @staticmethod
+    def _process_query_results(res) -> list[Any]:
+        """Обработать результаты запроса, отфильтровав пустые значения"""
+        return [
+            row[0]
+            for row in res.all()
+            if row[0] is not None and str(row[0]).strip() != ""
+        ]
+
+    @staticmethod
+    async def _get_distinct_values_repair_with_warranty(
+        session,
+        column,
+        filtered_conditions=None,
+    ):
+        """Получить уникальные значения колонки из RepairCaseEquipment с JOIN к WarrantyWork"""
+        return await FilterOptionsService._get_distinct_values_with_join(
+            session,
+            column,
+            WarrantyWork,
+            RepairCaseEquipment.id == WarrantyWork.case_id,
+            filtered_conditions,
+        )
 
     @staticmethod
     async def _get_distinct_values_separate_session(
@@ -520,19 +514,37 @@ class FilterOptionsService:
         column,
         filtered_conditions=None,
     ):
-        """Получить уникальные значения колонки - основная реализация"""
+        """Получить уникальные значения колонки"""
         stmt = select(distinct(column)).where(column.isnot(None))
 
         if filtered_conditions:
             stmt = stmt.where(and_(*filtered_conditions))
 
         res = await session.execute(stmt)
-        values = [row[0] for row in res.all() if row[0] is not None]
-        return values
+        return FilterOptionsService._process_query_results(res)
 
     @staticmethod
-    async def _get_all_reference_items_separate_session(session, model, name_column):
-        """Получить все элементы справочника без JOIN"""
-        stmt = select(model.id, name_column)
+    async def _get_distinct_statuses(
+        session,
+        filtered_conditions=None,
+    ) -> list[Any]:
+        """Получить уникальные вычисленные статусы из базы данных"""
+
+        status_subquery = CaseStatusService.build_status_subquery()
+
+        stmt = select(distinct(status_subquery)).select_from(RepairCaseEquipment)
+
+        if filtered_conditions:
+            stmt = stmt.outerjoin(
+                WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+            )
+            stmt = stmt.where(and_(*filtered_conditions))
+
+        res = await session.execute(stmt)
+        return FilterOptionsService._process_query_results(res)
+
+    @staticmethod
+    async def _execute_query_and_format_results(session, stmt) -> list[dict]:
+        """Выполнить запрос и вернуть отформатированные результаты с id и name"""
         res = await session.execute(stmt)
         return [{"id": row[0], "name": row[1]} for row in res.all()]

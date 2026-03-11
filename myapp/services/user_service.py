@@ -20,7 +20,7 @@ class UserService:
     @staticmethod
     @transactional
     async def change_password(
-        session: AsyncSession, user: User, data: UserPasswordChange
+        _session: AsyncSession, user: User, data: UserPasswordChange
     ) -> User:
         """Меняет пароль пользователя"""
         if not verify_password(data.old_password, user.hashed_password):

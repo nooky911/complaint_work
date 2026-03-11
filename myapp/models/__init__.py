@@ -1,4 +1,9 @@
-from .warranty_work import WarrantyWork
+from .warranty_work import (
+    WarrantyWork,
+    NotificationSummary,
+    ResponseSummary,
+    DecisionSummary,
+)
 from .equipment_malfunctions import Equipment, EquipmentMalfunction, Malfunction
 from .repair_case_equipment import RepairCaseEquipment
 from .case_files import (
