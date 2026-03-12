@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
 
+from myapp.config import settings
 from myapp.database.base import Base
 from myapp.database.base import engine
 from myapp.api import api_router
@@ -69,7 +70,7 @@ async def log_requests(request: Request, call_next) -> Any:
 # Настройка CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

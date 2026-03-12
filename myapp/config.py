@@ -13,6 +13,13 @@ class Settings(BaseSettings):
 
     FILE_STORAGE_PATH: str = "/app/storage"
 
+    CORS_ORIGINS: str = "http://localhost:5173"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Превращает строку из .env в список"""
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     def get_db_url(self, use_async: bool = True) -> str:
