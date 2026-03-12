@@ -51,7 +51,7 @@ export function RepairCaseDetails({
     setShowError,
     serverError,
     closeServerError,
-  } = useRepairCaseForm(repairCase, onUpdate);
+  } = useRepairCaseForm(repairCase, onUpdate, currentUser);
 
   const canEdit =
     currentUser?.role === "superadmin" ||

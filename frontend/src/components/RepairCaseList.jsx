@@ -44,8 +44,9 @@ const EquipmentBlock = ({ label, value, serial, icon: Icon, color }) => (
     </div>
     <p className="text-sm font-black text-slate-900">{value}</p>
     {serial && (
-      <p className="mt-1 text-xs font-medium text-slate-700">
-        зав. № <span className="font-black text-slate-950">{serial}</span>
+      <p className="mt-1 text-[12px] font-medium text-slate-900">
+        зав. №{" "}
+        <span className="text-[13px] font-black text-slate-900">{serial}</span>
       </p>
     )}
   </div>
@@ -63,17 +64,31 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
   return (
     <div className="text-sm">
       <Icon
-        className={`mr-2 inline h-4 w-4 align-text-bottom ${colorMap[color].split(" ")[0]}`}
+        className={`mr-2 inline h-4 w-4 align-text-bottom ${color && colorMap[color] ? colorMap[color].split(" ")[0] : "text-slate-700"}`}
       />
       <span
-        className={`mr-2 text-[10px] font-black uppercase ${colorMap[color].split(" ")[0].replace("700", "800")}`}
+        className={`mr-2 text-[10px] font-black uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
       >
         {label}
       </span>
-      {num && <span className="mr-2 font-black text-slate-900">{num}</span>}
-      {date && <span className="text-slate-600">{formatDate(date)}</span>}
+      {num || date ? (
+        <div className="flex items-center whitespace-nowrap">
+          {num && (
+            <span className="mr-1 font-bold text-slate-900">№ {num}</span>
+          )}
+          {date && (
+            <span className="text-slate-900">
+              от <span className="font-bold">{formatDate(date)}</span>
+            </span>
+          )}
+        </div>
+      ) : (
+        <span className="font-bold text-slate-900">—</span>
+      )}
       {summary && (
-        <p className="mt-1 border-l-2 pl-2 text-xs text-slate-600 italic">
+        <p
+          className={`mt-1 border-l-2 pl-2 text-[13px] font-bold text-slate-800 ${color && colorMap[color] ? colorMap[color].split(" ")[1] : "border-slate-600"}`}
+        >
           {typeof summary === "object"
             ? summary.name || summary.summary
             : summary}
@@ -129,7 +144,6 @@ export function RepairCaseList({ cases, onCaseClick }) {
                 </div>
               </div>
 
-              {/* Остальной код без изменений */}
               <div className="flex flex-wrap items-center gap-6">
                 <DataHeader
                   label="Тип эл-за"
@@ -162,7 +176,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
                     <p className="text-[10px] font-bold text-violet-700 uppercase">
                       Поставщик
                     </p>
-                    <p className="text-sm font-black text-slate-900">
+                    <p className="text-sm font-bold text-slate-900">
                       {getText(item.supplier)}
                     </p>
                   </div>

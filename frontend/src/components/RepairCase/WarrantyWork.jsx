@@ -51,7 +51,7 @@ function FileRow({
       </label>
       {isEditing ? (
         <div className="flex items-center gap-1">
-          <div className="w-20 shrink-0">
+          <div className="flex-1">
             <EditableField
               value={num}
               isEditing={true}
@@ -59,7 +59,7 @@ function FileRow({
               placeholder="№"
             />
           </div>
-          <div className="flex-1">
+          <div className="w-36 shrink-0">
             <DatePickerField
               value={date}
               isEditing={true}
@@ -75,7 +75,7 @@ function FileRow({
               : "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
           }`}
         >
-          <span className="truncate">
+          <span className="whitespace-nowrap">
             {isMissing ? "—" : `№ ${num} от ${formatDate(date)}`}
           </span>
         </div>
@@ -138,7 +138,7 @@ function FileRow({
 
   return (
     <div className="space-y-1">
-      <div className="grid min-w-0 grid-cols-1 items-end gap-4 md:grid-cols-[215px_1fr]">
+      <div className="grid min-w-0 grid-cols-1 items-end gap-4 md:grid-cols-[minmax(215px,_max-content)_1fr]">
         {LeftPart}
         <div className="flex w-full min-w-0 flex-col">
           <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase">
@@ -377,7 +377,7 @@ export const WarrantyWork = ({
         blockColor="purple"
       >
         <div className="space-y-1">
-          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[215px_1fr]">
+          <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-[minmax(215px,_max-content)_1fr]">
             <div className="flex min-w-0 flex-col gap-3">
               <FileRow
                 label="№ и дата РА"
@@ -402,7 +402,6 @@ export const WarrantyWork = ({
                 isMissing={!data?.work_completion_act_number}
               />
             </div>
-
             <div className="flex w-full min-w-0 flex-col justify-center">
               <FileRow
                 label="Краткое содержание"

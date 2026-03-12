@@ -16,7 +16,7 @@ const getDepth = (item, all) => {
   return depth;
 };
 
-export const useRepairCaseForm = (repairCase, onUpdate) => {
+export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -64,13 +64,15 @@ export const useRepairCaseForm = (repairCase, onUpdate) => {
       setReferences(refsRes.data);
       setAllEquipment(allEquip);
 
-      // Загружаем пользователей, если есть права
-      try {
-        const usersRes = await api.get("/users/");
-        setUsers(usersRes.data || []);
-      } catch (err) {
-        console.warn("Не удалось загрузить пользователей:", err);
-        setUsers([]);
+      // Загружаем пользователей, только если superadmin
+      if (currentUser?.role === "superadmin") {
+        try {
+          const usersRes = await api.get("/users/");
+          setUsers(usersRes.data || []);
+        } catch (err) {
+          console.warn("Не удалось загрузить пользователей:", err);
+          setUsers([]);
+        }
       }
 
       const targetId =
@@ -146,6 +148,11 @@ export const useRepairCaseForm = (repairCase, onUpdate) => {
     setSaving(true);
     try {
       const cleanedData = { ...editData };
+      
+      // Удаляем user_id если пользователь не superadmin
+      if (currentUser?.role !== "superadmin") {
+        delete cleanedData.user_id;
+      }
       const idFields = [
         "repair_type_id",
         "performed_by_id",
