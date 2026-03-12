@@ -87,7 +87,7 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
       )}
       {summary && (
         <p
-          className={`mt-1 border-l-2 pl-2 text-[13px] font-bold text-slate-800 ${color && colorMap[color] ? colorMap[color].split(" ")[1] : "border-slate-600"}`}
+          className={`mt-1 border-l-2 pl-2 text-[13px] font-bold text-slate-900 ${color && colorMap[color] ? colorMap[color].split(" ")[1] : "border-slate-600"}`}
         >
           {typeof summary === "object"
             ? summary.name || summary.summary
