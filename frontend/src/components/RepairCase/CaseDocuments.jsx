@@ -104,7 +104,7 @@ export const CaseDocuments = ({
         <div className="absolute top-0 bottom-0 left-0 w-1 rounded-l-lg bg-slate-600"></div>
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-slate-600" />
-          <h3 className="text-xs font-bold tracking-wider text-slate-700 uppercase">
+          <h3 className="text-xs font-bold tracking-wider antialiased text-slate-700 uppercase">
             {BLOCK_TITLES.primary_docs}
           </h3>
           {displayFiles.length > 0 && (
@@ -230,7 +230,7 @@ export const CaseDocuments = ({
                     {isEditing ? (
                       <button
                         onClick={() => fileInputRef.current.click()}
-                        className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-indigo-600 uppercase transition-colors hover:text-indigo-800"
+                        className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider antialiased text-indigo-600 uppercase transition-colors hover:text-indigo-800"
                       >
                         <Plus className="h-3.5 w-3.5" /> Добавить еще
                       </button>

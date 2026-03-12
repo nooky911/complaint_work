@@ -201,7 +201,7 @@ export default React.memo(function DashboardPage() {
         {currentUser?.role !== "viewer" && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black tracking-widest text-white uppercase shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-indigo-200 active:scale-95"
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-xs font-black tracking-wider antialiased text-white uppercase shadow-lg shadow-indigo-100 transition-all hover:bg-indigo-700 hover:shadow-indigo-200 active:scale-95"
           >
             <Plus className="h-4 w-4 stroke-[3px]" />
             Создать

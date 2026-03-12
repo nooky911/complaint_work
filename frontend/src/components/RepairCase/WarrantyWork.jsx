@@ -46,7 +46,7 @@ function FileRow({
 
   const LeftPart = (
     <div className="flex min-w-0 flex-col">
-      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase">
+      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
         {label}
       </label>
       {isEditing ? (
@@ -85,7 +85,7 @@ function FileRow({
 
   const RightPart = (
     <div className="flex w-full min-w-0 flex-col">
-      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase">
+      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
         {summaryLabel || "Содержание"}
       </label>
       <Tooltip
@@ -141,7 +141,7 @@ function FileRow({
       <div className="grid min-w-0 grid-cols-1 items-end gap-4 md:grid-cols-[minmax(215px,_max-content)_1fr]">
         {LeftPart}
         <div className="flex w-full min-w-0 flex-col">
-          <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase">
+          <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
             {summaryLabel || "Содержание"}
           </label>
           <Tooltip
