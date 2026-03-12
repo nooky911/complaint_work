@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 export const FilterSidebarHeader = ({ onClose }) => {
   return (
     <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3">
-      <h3 className="text-lg font-black tracking-tighter text-slate-800 uppercase">
+      <h3 className="text-lg font-bold tracking-tighter text-slate-800 uppercase">
         Параметры поиска
       </h3>
       <button

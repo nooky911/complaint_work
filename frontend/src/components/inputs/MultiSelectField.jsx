@@ -94,7 +94,7 @@ export const MultiSelectField = ({
                     }`}
                   >
                     <span
-                      className={`text-xs font-bold ${isSelected ? "text-indigo-900" : "text-slate-600"}`}
+                      className={`text-xs font-bold ${isSelected ? "text-indigo-900" : "text-slate-900"}`}
                     >
                       {name}
                     </span>
