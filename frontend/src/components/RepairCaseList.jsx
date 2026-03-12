@@ -67,7 +67,7 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
         className={`mr-2 inline h-4 w-4 align-text-bottom ${color && colorMap[color] ? colorMap[color].split(" ")[0] : "text-slate-700"}`}
       />
       <span
-        className={`mr-2 text-[12px] font-black uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
+        className={`mr-2 text-[12px] font-bold uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
       >
         {label}
       </span>
