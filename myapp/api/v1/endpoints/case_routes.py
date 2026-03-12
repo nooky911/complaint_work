@@ -107,11 +107,12 @@ async def update_case(
         )
 
     # Проверка прав на смену владельца случая
-    if case_data.user_id is not None and current_user.role != "superadmin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Только superadmin может менять владельца случая",
-        )
+    if case_data.user_id is not None and case_data.user_id != case.user_id:
+        if current_user.role != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Только superadmin может менять владельца случая",
+            )
 
     updated_case = await CaseService.update_case(session, case_id, case_data)
 
