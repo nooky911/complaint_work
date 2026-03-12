@@ -13,9 +13,9 @@ class Settings(BaseSettings):
 
     FILE_STORAGE_PATH: str = "/app/storage"
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    def get_db_url(self, use_async: bool = True):
+    def get_db_url(self, use_async: bool = True) -> str:
         driver = "asyncpg" if use_async else "psycopg2"
         return f"postgresql+{driver}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
 
