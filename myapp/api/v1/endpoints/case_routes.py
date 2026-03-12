@@ -55,7 +55,13 @@ async def create_case(
     if current_user.role == "superadmin" and case_data.user_id is not None:
         target_user_id = case_data.user_id
 
-    return await CaseService.create_case(session, case_data, target_user_id)
+    try:
+        return await CaseService.create_case(session, case_data, target_user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Такой случай уже существует.",
+        )
 
 
 # Детали случаи
@@ -93,20 +99,20 @@ async def update_case(
 ):
     """Обновляет основные поля случая и связанные данные WarrantyWork"""
     current_user, case = user_and_case
-    
+
     if case is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Случай с ID {case_id} не найден.",
         )
-    
+
     # Проверка прав на смену владельца случая
     if case_data.user_id is not None and current_user.role != "superadmin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Только superadmin может менять владельца случая",
         )
-    
+
     updated_case = await CaseService.update_case(session, case_id, case_data)
 
     if not updated_case:
@@ -131,9 +137,9 @@ async def delete_case(
 ):
     """Удаляет случай по его ID. Также удаляет связанные записи WarrantyWork"""
     current_user, case = user_and_case
-    
+
     if case is None:
         return None
-    
+
     await CaseService.delete_case(session, case_id)
     return None

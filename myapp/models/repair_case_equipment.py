@@ -18,13 +18,20 @@ class RepairCaseEquipment(Base):
             "element_equipment_id",
         ),
         Index(
-            "idx_repair_case_equipment_new_component_equipment_id",
+            "idx_repair_case_equipment_new_component_id",
             "new_component_equipment_id",
         ),
-        Index(
-            "idx_repair_case_equipment_component_equipment_id", "component_equipment_id"
-        ),
         Index("idx_repair_case_equipment_supplier_id", "supplier_id"),
+        Index(
+            "idx_unique_repair_case_core",
+            "fault_date",
+            "locomotive_number",
+            "mileage",
+            "component_equipment_id",
+            "malfunction_id",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+        ),
     )
 
     # Основные поля

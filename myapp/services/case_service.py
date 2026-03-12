@@ -1,6 +1,6 @@
 import asyncio
 
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import datetime
@@ -42,6 +42,23 @@ class CaseService:
         user_id: int,
     ) -> RepairCaseEquipment:
         """Создание случая"""
+
+        # Проверка на точный дубликат перед созданием
+        existing_case = await session.execute(
+            select(RepairCaseEquipment).where(
+                RepairCaseEquipment.fault_date == case_data.fault_date,
+                RepairCaseEquipment.locomotive_number == case_data.locomotive_number,
+                RepairCaseEquipment.component_equipment_id
+                == case_data.component_equipment_id,
+                RepairCaseEquipment.malfunction_id == case_data.malfunction_id,
+                or_(
+                    RepairCaseEquipment.mileage == case_data.mileage,
+                    RepairCaseEquipment.mileage.is_(None) & (case_data.mileage is None),
+                ),
+            )
+        )
+        if existing_case.scalar_one_or_none():
+            raise ValueError("Случай уже существует")
 
         # 1. Разделяем данные
         case_creation_data = case_data.model_dump(exclude={"warranty_work", "user_id"})
