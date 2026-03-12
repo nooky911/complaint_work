@@ -42,7 +42,7 @@ const EquipmentBlock = ({ label, value, serial, icon: Icon, color }) => (
       <Icon className="h-5 w-5" />
       <span className="text-xs tracking-wider uppercase">{label}</span>
     </div>
-    <p className="text-sm font-black text-slate-900">{value}</p>
+    <p className="text-sm font-bold text-slate-900">{value}</p>
     {serial && (
       <p className="mt-1 text-[12px] font-medium text-slate-900">
         зав. №{" "}
@@ -67,7 +67,7 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
         className={`mr-2 inline h-4 w-4 align-text-bottom ${color && colorMap[color] ? colorMap[color].split(" ")[0] : "text-slate-700"}`}
       />
       <span
-        className={`mr-2 text-[10px] font-black uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
+        className={`mr-2 text-[12px] font-black uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
       >
         {label}
       </span>
@@ -127,7 +127,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
                     # {item.displayNumber}
                   </span>
                   <div
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-black tracking-wide uppercase shadow-sm ${status.style}`}
+                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
                   >
                     <StatusIcon className="h-4 w-4" />
                     {item.status || "Ожидает уведомление"}

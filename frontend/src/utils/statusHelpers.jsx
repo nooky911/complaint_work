@@ -69,7 +69,7 @@ export const getStatusConfig = (item) => {
 
     // Обычное ожидание
     return {
-      style: `bg-yellow-400 text-yellow-950 shadow-md ring-2 ring-inset ring-black/10`,
+      style: `bg-yellow-400 text-slate-900 shadow-md ring-2 ring-inset ring-black/10`,
       icon:
         rawStatus === "Ожидает уведомление поставщика" || rawStatus === "Новый"
           ? AlertCircle
