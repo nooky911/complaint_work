@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { validateFilterDates } from "../utils/validators";
 import { formatFullName } from "../utils/formatters";
 import { FILTER_DATE_FIELDS } from "../constants/filters";
@@ -21,7 +21,7 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-export const useFilterSidebar = (filters, options, appliedFilters = {}) => {
+export const useFilterSidebar = (filters, options) => {
   const [openSections, setOpenSections] = useState({
     locomotive: false,
     equipment: false,
@@ -34,24 +34,34 @@ export const useFilterSidebar = (filters, options, appliedFilters = {}) => {
   const [dynamicOptions, setDynamicOptions] = useState(null);
   const [isDynamicMode, setIsDynamicMode] = useState(false);
 
-  const debouncedAppliedFilters = useDebounce(appliedFilters, 500);
+  const frozenOptionsRef = useRef({});
+
+  const debouncedFilters = useDebounce(filters, 500);
+
+  const activeKeysInstant = useMemo(() => {
+    return Object.keys(filters).filter((key) => {
+      const val = filters[key];
+      if (Array.isArray(val)) return val.length > 0;
+      return val !== "" && val !== null && val !== undefined && val !== 0;
+    });
+  }, [filters]);
 
   const hasActiveFilters = useMemo(() => {
-    return Object.entries(debouncedAppliedFilters).some(([key, value]) => {
+    return Object.entries(debouncedFilters).some(([key, value]) => {
       if (key === "skip" || key === "limit") return false;
       if (Array.isArray(value)) return value.length > 0;
       return (
         value !== "" && value !== null && value !== undefined && value !== 0
       );
     });
-  }, [debouncedAppliedFilters]);
+  }, [debouncedFilters]);
 
   useEffect(() => {
     setIsDynamicMode(hasActiveFilters);
   }, [hasActiveFilters]);
 
   const { data: dynamicOptionsData, isLoading: isDynamicLoading } =
-    useDynamicFilterOptions(isDynamicMode ? debouncedAppliedFilters : {});
+    useDynamicFilterOptions(debouncedFilters);
 
   useEffect(() => {
     if (dynamicOptionsData) {
@@ -60,10 +70,10 @@ export const useFilterSidebar = (filters, options, appliedFilters = {}) => {
   }, [dynamicOptionsData]);
 
   useEffect(() => {
-    if (!isDynamicMode) {
+    if (!hasActiveFilters) {
       setDynamicOptions(null);
     }
-  }, [isDynamicMode]);
+  }, [hasActiveFilters]);
 
   const toggleSection = (section) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
@@ -81,49 +91,50 @@ export const useFilterSidebar = (filters, options, appliedFilters = {}) => {
       name: formatFullName(user.name),
     })) || [];
 
-  const selectedFields = useMemo(() => {
-    return Object.keys(appliedFilters).filter((key) => {
-      const value = appliedFilters[key];
-      if (Array.isArray(value)) return value.length > 0;
-      return (
-        value !== "" && value !== null && value !== undefined && value !== 0
-      );
-    });
-  }, [appliedFilters]);
-
   const mergedOptions = useMemo(() => {
-    if (!isDynamicMode || !dynamicOptions) return options;
-
+    const currentDynamic = dynamicOptions || {};
     const merged = { ...options };
 
     const optionsToFiltersMap = {
-      models: "locomotive_model",
-      series: "locomotive_series",
+      locomotive_models: "locomotive_model_id",
+      locomotive_numbers: "locomotive_number",
+      regional_centers: "regional_center_id",
+      equipment_types: "equipment_type_id",
+      malfunction_types: "malfunction_id",
+      repair_types: "repair_type_id",
+      equipment_owners: "equipment_owner_id",
+      performed_by: "performed_by_id",
+      destinations: "destination_id",
+      components: "component_equipment_id",
+      elements: "element_equipment_id",
+      new_components: "new_component_equipment_id",
+      new_elements: "new_element_equipment_id",
+      suppliers: "supplier_id",
       statuses: "status",
-      suppliers: "supplier",
-      equipment_types: "equipment_type",
-      regional_centers: "regional_center",
-      malfunction_types: "malfunction",
-      repair_types: "repair_type",
-      equipment_owners: "equipment_owner",
-      performed_by: "performed_by",
-      destinations: "destination",
-      components: "component",
-      elements: "element",
-      new_components: "new_component",
-      new_elements: "new_element",
+      malfunctions: "malfunction_id",
+      component_serial_numbers: "component_serial_number_old",
+      element_serial_numbers: "element_serial_number_old",
+      component_serial_numbers_new: "component_serial_number_new",
+      element_serial_numbers_new: "element_serial_number_new",
     };
 
-    Object.keys(dynamicOptions).forEach((key) => {
+    Object.keys(options).forEach((key) => {
       const filterKey = optionsToFiltersMap[key] || key;
+      const isBeingEdited = activeKeysInstant.includes(filterKey);
 
-      if (!selectedFields.includes(filterKey)) {
-        merged[key] = dynamicOptions[key];
+      if (isBeingEdited) {
+        if (!frozenOptionsRef.current[key]) {
+          frozenOptionsRef.current[key] = currentDynamic[key] || options[key];
+        }
+        merged[key] = frozenOptionsRef.current[key];
+      } else {
+        delete frozenOptionsRef.current[key];
+        merged[key] = currentDynamic[key] || options[key];
       }
     });
 
     return merged;
-  }, [isDynamicMode, dynamicOptions, options, selectedFields]);
+  }, [options, dynamicOptions, activeKeysInstant]);
 
   const getSectionCount = (keys, filtersToCount) => {
     if (!filtersToCount) return 0;
@@ -195,7 +206,7 @@ export const useFilterSidebar = (filters, options, appliedFilters = {}) => {
     userOptions,
     getSectionCount,
     sectionThemes,
-    selectedFields,
+    selectedFields: activeKeysInstant,
     mergedOptions,
     isDynamicLoading,
     isDynamicMode,

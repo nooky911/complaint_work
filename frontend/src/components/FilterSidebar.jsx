@@ -17,7 +17,6 @@ export const FilterSidebar = ({
   options,
 }) => {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
-  const [filtersBeforeReset, setFiltersBeforeReset] = useState(null);
 
   const {
     openSections,
@@ -29,18 +28,13 @@ export const FilterSidebar = ({
     sectionThemes,
     isDynamicLoading,
     isDynamicMode,
-  } = useFilterSidebar(filters, options, appliedFilters);
+  } = useFilterSidebar(filters, options);
 
   useEffect(() => {
     if (isOpen) {
-      if (filtersBeforeReset) {
-        setFilters({ ...filtersBeforeReset });
-        setFiltersBeforeReset(null);
-      } else {
-        setFilters({ ...appliedFilters });
-      }
+      setFilters({ ...appliedFilters });
     }
-  }, [isOpen, appliedFilters, filtersBeforeReset]);
+  }, [isOpen, appliedFilters]);
 
   useBodyScrollLock(isOpen);
 
@@ -50,10 +44,10 @@ export const FilterSidebar = ({
 
   const handleApply = () => {
     onApply(filters);
+    onClose();
   };
 
   const handleReset = () => {
-    setFiltersBeforeReset({ ...filters });
     setFilters(INITIAL_FILTERS);
   };
 
