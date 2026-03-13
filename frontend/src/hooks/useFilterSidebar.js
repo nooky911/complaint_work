@@ -92,6 +92,8 @@ export const useFilterSidebar = (filters, options) => {
     })) || [];
 
   const mergedOptions = useMemo(() => {
+    if (!options) return {};
+    
     const currentDynamic = dynamicOptions || {};
     const merged = { ...options };
 
