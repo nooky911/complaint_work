@@ -120,7 +120,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
             className="group relative min-h-[280px] flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:border-purple-400 hover:shadow-lg active:scale-[0.99]"
           >
             {/* БЛОК 1: ШАПКА */}
-            <div className="bg-[#6766cc] p-3 text-white">
+            <div className="bg-[#0064fe] p-3 text-white">
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
