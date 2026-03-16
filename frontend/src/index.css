@@ -5,3 +5,11 @@
   font-weight: 400;
 
 }
+
+html, body {
+  overflow-x: hidden;
+}
+
+body {
+  overflow: hidden;
+}
