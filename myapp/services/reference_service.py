@@ -23,6 +23,8 @@ from myapp.models.warranty_work import (
     NotificationSummary,
     ResponseSummary,
     DecisionSummary,
+    ResearchStatus,
+    InvestigationReason,
 )
 
 
@@ -48,9 +50,7 @@ class ReferenceService:
             ),
             (
                 "locomotive_models",
-                select(
-                    LocomotiveModel.id, LocomotiveModel.locomotive_model_name
-                ),
+                select(LocomotiveModel.id, LocomotiveModel.locomotive_model_name),
             ),
             (
                 "fault_discovery_places",
@@ -69,21 +69,15 @@ class ReferenceService:
             ),
             (
                 "equipment_owners",
-                select(
-                    EquipmentOwner.id, EquipmentOwner.equipment_owners_name
-                ),
+                select(EquipmentOwner.id, EquipmentOwner.equipment_owners_name),
             ),
             (
                 "repair_performers",
-                select(
-                    RepairPerformer.id, RepairPerformer.repair_performers_name
-                ),
+                select(RepairPerformer.id, RepairPerformer.repair_performers_name),
             ),
             (
                 "destination_types",
-                select(
-                    DestinationType.id, DestinationType.destination_types_name
-                ),
+                select(DestinationType.id, DestinationType.destination_types_name),
             ),
             (
                 "malfunctions",
@@ -102,15 +96,19 @@ class ReferenceService:
             ),
             (
                 "response_summaries",
-                select(
-                    ResponseSummary.id, ResponseSummary.response_summary_name
-                ),
+                select(ResponseSummary.id, ResponseSummary.response_summary_name),
             ),
             (
                 "decision_summaries",
-                select(
-                    DecisionSummary.id, DecisionSummary.decision_summary_name
-                ),
+                select(DecisionSummary.id, DecisionSummary.decision_summary_name),
+            ),
+            (
+                "research_statuses",
+                select(ResearchStatus.id, ResearchStatus.status_name),
+            ),
+            (
+                "investigation_reasons",
+                select(InvestigationReason.id, InvestigationReason.reason_name),
             ),
             (
                 "equipment_malfunctions",
@@ -167,5 +165,11 @@ class ReferenceService:
             ),
             "decision_summaries": ReferenceService._map_to_id_name(
                 res_dict["decision_summaries"]
+            ),
+            "research_statuses": ReferenceService._map_to_id_name(
+                res_dict["research_statuses"]
+            ),
+            "investigation_reasons": ReferenceService._map_to_id_name(
+                res_dict["investigation_reasons"]
             ),
         }

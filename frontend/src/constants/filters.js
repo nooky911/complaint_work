@@ -50,6 +50,9 @@ export const INITIAL_FILTERS = {
   notification_summary_id: [],
   response_summary_id: [],
   decision_summary_id: [],
+  research_status_id: [],
+  investigation_reason_id: [],
+  research_document: [],
   user_id: [],
 };
 
@@ -86,5 +89,8 @@ export const SECTIONS_KEYS = {
     "response_letter_number",
     "claim_act_number",
     "work_completion_act_number",
+    "research_status_id",
+    "investigation_reason_id",
+    "research_document",
   ],
 };

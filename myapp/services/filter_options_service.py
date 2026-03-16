@@ -9,6 +9,8 @@ from myapp.models.warranty_work import (
     NotificationSummary,
     ResponseSummary,
     DecisionSummary,
+    ResearchStatus,
+    InvestigationReason,
 )
 from myapp.models.user import User
 from myapp.models.auxiliaries import (
@@ -234,6 +236,29 @@ class FilterOptionsService:
                 "name": "work_completion_act_dates",
                 "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
                 "args": [WarrantyWork.work_completion_act_date, None],
+            },
+            {
+                "name": "research_statuses",
+                "func": FilterOptionsService._get_used_items_from_warranty,
+                "args": [
+                    ResearchStatus,
+                    WarrantyWork.research_status_id,
+                    ResearchStatus.status_name,
+                ],
+            },
+            {
+                "name": "investigation_reasons",
+                "func": FilterOptionsService._get_used_items_from_warranty,
+                "args": [
+                    InvestigationReason,
+                    WarrantyWork.investigation_reason_id,
+                    InvestigationReason.reason_name,
+                ],
+            },
+            {
+                "name": "research_documents",
+                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "args": [WarrantyWork.research_document, None],
             },
             {
                 "name": "component_serial_numbers",

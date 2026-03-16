@@ -33,6 +33,12 @@ def load_list_relations():
         joinedload(RepairCaseEquipment.warranty_work).joinedload(
             WarrantyWork.decision_summary
         ),
+        joinedload(RepairCaseEquipment.warranty_work).joinedload(
+            WarrantyWork.research_status
+        ),
+        joinedload(RepairCaseEquipment.warranty_work).joinedload(
+            WarrantyWork.investigation_reason
+        ),
     ]
 
 

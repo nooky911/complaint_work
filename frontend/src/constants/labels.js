@@ -36,4 +36,5 @@ export const BLOCK_TITLES = {
   warranty_re_notification: "Повторное уведомление",
   warranty_supplier_response: "Ответ поставщика",
   warranty_claim_act_avr: "Рекламационный акт / АВР",
+  warranty_research_act: "Акт исследования",
 };

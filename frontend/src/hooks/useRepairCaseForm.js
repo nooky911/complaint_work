@@ -167,10 +167,18 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         "supplier_id",
       ];
 
+      const warrantyIdFields = [
+        "notification_summary_id",
+        "response_summary_id",
+        "decision_summary_id",
+        "research_status_id",
+        "investigation_reason_id",
+      ];
+
       const processObj = (obj) => {
         Object.keys(obj).forEach((key) => {
           const val = obj[key];
-          if (idFields.includes(key) || key.includes("date")) {
+          if (idFields.includes(key) || warrantyIdFields.includes(key) || key.includes("date")) {
             if (
               val === "" ||
               val === undefined ||

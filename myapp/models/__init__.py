@@ -3,6 +3,8 @@ from .warranty_work import (
     NotificationSummary,
     ResponseSummary,
     DecisionSummary,
+    ResearchStatus,
+    InvestigationReason,
 )
 from .equipment_malfunctions import Equipment, EquipmentMalfunction, Malfunction
 from .repair_case_equipment import RepairCaseEquipment

@@ -1,5 +1,5 @@
 import React from "react";
-import { Archive, Bell, MessageSquare, FileText } from "lucide-react";
+import { Archive, Bell, MessageSquare, FileText, Search } from "lucide-react";
 import { formatDate, getText } from "../../utils/formatters";
 import {
   SelectField,
@@ -46,7 +46,7 @@ function FileRow({
 
   const LeftPart = (
     <div className="flex min-w-0 flex-col">
-      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
+      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
         {label}
       </label>
       {isEditing ? (
@@ -85,7 +85,7 @@ function FileRow({
 
   const RightPart = (
     <div className="flex w-full min-w-0 flex-col">
-      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
+      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
         {summaryLabel || "Содержание"}
       </label>
       <Tooltip
@@ -123,12 +123,14 @@ function FileRow({
 
       {/* Файлы */}
       {caseId && relatedField && (
-        <CompactWarrantyFiles
-          caseId={caseId}
-          isEditing={isEditing}
-          relatedField={relatedField}
-          onFilesUploaded={onFilesUploaded}
-        />
+        <div className="mt-2">
+          <CompactWarrantyFiles
+            caseId={caseId}
+            isEditing={isEditing}
+            relatedField={relatedField}
+            onFilesUploaded={onFilesUploaded}
+          />
+        </div>
       )}
     </div>
   );
@@ -141,7 +143,7 @@ function FileRow({
       <div className="grid min-w-0 grid-cols-1 items-end gap-4 md:grid-cols-[minmax(215px,_max-content)_1fr]">
         {LeftPart}
         <div className="flex w-full min-w-0 flex-col">
-          <label className="mb-1 ml-1 block text-xs font-bold tracking-wider antialiased text-gray-500 uppercase">
+          <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
             {summaryLabel || "Содержание"}
           </label>
           <Tooltip
@@ -181,12 +183,14 @@ function FileRow({
 
       {/* Бар файлов под строкой */}
       {caseId && relatedField && (
-        <CompactWarrantyFiles
-          caseId={caseId}
-          isEditing={isEditing}
-          relatedField={relatedField}
-          onFilesUploaded={onFilesUploaded}
-        />
+        <div className="mt-2">
+          <CompactWarrantyFiles
+            caseId={caseId}
+            isEditing={isEditing}
+            relatedField={relatedField}
+            onFilesUploaded={onFilesUploaded}
+          />
+        </div>
       )}
     </div>
   );
@@ -231,6 +235,22 @@ function WarrantyBlock({
       accent: "bg-[#a855f7]",
       icon: "text-[#9333ea]",
       title: "text-[#7c3aed]",
+    },
+    cyan: {
+      border: "border-cyan-100",
+      bgFrom: "from-cyan-50",
+      bgTo: "to-white",
+      accent: "bg-[#0891b2]",
+      icon: "text-[#0891b2]",
+      title: "text-[#0e7490]",
+    },
+    yellow: {
+      border: "border-yellow-100",
+      bgFrom: "from-yellow-50",
+      bgTo: "to-white",
+      accent: "bg-[#eab308]",
+      icon: "text-[#ca8a04]",
+      title: "text-[#a16207]",
     },
   };
 
@@ -285,6 +305,58 @@ export const WarrantyWork = ({
         (opt) => opt.id === data?.decision_summary_id,
       )?.name
     : getText(data?.decision_summary);
+
+  const isReasonDisabled =
+    isEditing &&
+    (!data?.research_status_id || [3, 5, 6].includes(data?.research_status_id));
+
+  const getFilteredReasonOptions = () => {
+    if (!references?.investigation_reasons) return [];
+
+    const statusId = data?.research_status_id;
+
+    if (statusId === 1) {
+      return references.investigation_reasons.filter(
+        (reason) => reason.id >= 1 && reason.id <= 5,
+      );
+    } else if (statusId === 2 || statusId === 4) {
+      return references.investigation_reasons.filter(
+        (reason) => reason.id >= 6 && reason.id <= 9,
+      );
+    }
+
+    return references.investigation_reasons;
+  };
+
+  const handleStatusChange = (value) => {
+    updateWarrantyField("research_status_id", value);
+
+    if (!value || [3, 5, 6].includes(value)) {
+      updateWarrantyField("investigation_reason_id", null);
+    } else {
+      const currentReasonId = data?.investigation_reason_id;
+      let filteredOptions = [];
+
+      if (value === 1) {
+        filteredOptions =
+          references?.investigation_reasons?.filter(
+            (reason) => reason.id >= 1 && reason.id <= 5,
+          ) || [];
+      } else if (value === 2 || value === 4) {
+        filteredOptions =
+          references?.investigation_reasons?.filter(
+            (reason) => reason.id >= 6 && reason.id <= 9,
+          ) || [];
+      }
+
+      if (
+        currentReasonId &&
+        !filteredOptions.find((opt) => opt.id === currentReasonId)
+      ) {
+        updateWarrantyField("investigation_reason_id", null);
+      }
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -423,13 +495,135 @@ export const WarrantyWork = ({
 
           {/* Файлы РА */}
           {caseId && (
-            <CompactWarrantyFiles
-              caseId={caseId}
-              isEditing={isEditing}
-              relatedField={WarrantyDocumentField.claim_act}
-              onFilesUploaded={onFilesUploaded}
-            />
+            <div className="mt-2">
+              <CompactWarrantyFiles
+                caseId={caseId}
+                isEditing={isEditing}
+                relatedField={WarrantyDocumentField.claim_act}
+                onFilesUploaded={onFilesUploaded}
+              />
+            </div>
           )}
+        </div>
+      </WarrantyBlock>
+
+      {/* Блок: Акт исследования */}
+      <WarrantyBlock
+        blockTitle={BLOCK_TITLES.warranty_research_act}
+        blockIcon={<Search className="h-4 w-4 text-[#ca8a04]" />}
+        blockColor="yellow"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="flex min-w-0 flex-col">
+              <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
+                Статус по результатам исследования
+              </label>
+              {isEditing ? (
+                <SelectField
+                  label={null}
+                  value={data?.research_status_id}
+                  options={references?.research_statuses}
+                  isEditing={true}
+                  onChange={handleStatusChange}
+                  placeholder="—"
+                />
+              ) : (
+                <div
+                  className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
+                    data?.research_status_id
+                      ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                      : "border-gray-200 bg-gray-50 text-gray-400"
+                  }`}
+                >
+                  <span className="truncate">
+                    {getText(data?.research_status) || "—"}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex min-w-0 flex-col">
+              <label
+                className={`mb-1 ml-1 block text-xs font-bold tracking-wider uppercase antialiased ${
+                  isReasonDisabled ? "text-gray-400" : "text-gray-500"
+                }`}
+              >
+                Причина
+              </label>
+              {isEditing ? (
+                <div
+                  className={`w-full ${
+                    isReasonDisabled ? "cursor-not-allowed opacity-50" : ""
+                  }`}
+                >
+                  <SelectField
+                    label={null}
+                    value={data?.investigation_reason_id}
+                    options={getFilteredReasonOptions()}
+                    isEditing={true}
+                    onChange={(value) =>
+                      updateWarrantyField("investigation_reason_id", value)
+                    }
+                    placeholder="—"
+                    disabled={isReasonDisabled}
+                  />
+                </div>
+              ) : (
+                <div
+                  className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
+                    data?.investigation_reason_id
+                      ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                      : "border-gray-200 bg-gray-50 text-gray-400"
+                  }`}
+                >
+                  <span className="truncate">
+                    {getText(data?.investigation_reason) || "—"}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex min-w-0 flex-col">
+            <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
+              № и дата документа об исследовании
+            </label>
+            {isEditing ? (
+              <EditableField
+                value={data?.research_document}
+                isEditing={true}
+                onChange={(value) =>
+                  updateWarrantyField("research_document", value)
+                }
+                placeholder="№ и дата документа"
+              />
+            ) : (
+              <div
+                className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
+                  data?.research_document
+                    ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                    : "border-gray-200 bg-gray-50 text-gray-400"
+                }`}
+              >
+                <span className="truncate">
+                  {data?.research_document || "—"}
+                </span>
+              </div>
+            )}
+
+            {/* Файлы акта исследования */}
+            {caseId && (
+              <div className="mt-2">
+                <CompactWarrantyFiles
+                  caseId={caseId}
+                  isEditing={isEditing}
+                  relatedField={WarrantyDocumentField.research_document}
+                  onFilesUploaded={onFilesUploaded}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </WarrantyBlock>
 
@@ -441,7 +635,6 @@ export const WarrantyWork = ({
           <div className="mt-3 flex justify-end">
             <button
               onClick={() => {
-                // Используем fileApi для скачивания архива всех warranty файлов
                 import("../../api/files").then(({ fileApi }) => {
                   fileApi.downloadArchive(caseId, "warranty");
                 });

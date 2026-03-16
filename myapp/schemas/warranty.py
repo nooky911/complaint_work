@@ -28,6 +28,11 @@ class WarrantyWorkBase(BaseModel):
     response_summary_id: int | None = None
     decision_summary_id: int | None = None
 
+    # Акт исследования
+    research_document: str | None = None
+    research_status_id: int | None = None
+    investigation_reason_id: int | None = None
+
 
 class WarrantyWorkUpdate(WarrantyWorkBase):
     """Схема для редактирования рекламационной работы"""
@@ -44,5 +49,8 @@ class WarrantyWorkResponse(WarrantyWorkBase):
     notification_summary: AuxiliaryItem | None = None
     response_summary: AuxiliaryItem | None = None
     decision_summary: AuxiliaryItem | None = None
+
+    research_status: AuxiliaryItem | None = None
+    investigation_reason: AuxiliaryItem | None = None
 
     model_config = ConfigDict(from_attributes=True)

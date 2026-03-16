@@ -137,6 +137,33 @@ export const WarrantyBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все решения"
         />
       </div>
+
+      <div className="h-px w-full bg-slate-300/30" />
+
+      {/* 6. Акт исследования */}
+      <div className="space-y-3">
+        <MultiSelectField
+          label="Статус по результатам исследования"
+          selectedValues={filters.research_status_id}
+          options={options?.research_statuses}
+          onChange={(v) => updateFilter("research_status_id", v)}
+          placeholder="Все статусы"
+        />
+        <MultiSelectField
+          label="Причина"
+          selectedValues={filters.investigation_reason_id}
+          options={options?.investigation_reasons}
+          onChange={(v) => updateFilter("investigation_reason_id", v)}
+          placeholder="Все причины"
+        />
+        <MultiSelectField
+          label="№ и дата документа об исследовании"
+          selectedValues={filters.research_document}
+          options={options?.research_documents}
+          onChange={(v) => updateFilter("research_document", v)}
+          placeholder="Все документы"
+        />
+      </div>
     </>
   );
 };

@@ -21,6 +21,8 @@ class WarrantyService:
                 joinedload(WarrantyWork.notification_summary),
                 joinedload(WarrantyWork.response_summary),
                 joinedload(WarrantyWork.decision_summary),
+                joinedload(WarrantyWork.research_status),
+                joinedload(WarrantyWork.investigation_reason),
             )
             .join(RepairCaseEquipment)
             .where(RepairCaseEquipment.id == case_id)

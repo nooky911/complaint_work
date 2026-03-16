@@ -40,4 +40,6 @@ class CaseFormReferencesResponse(BaseModel):
     notification_summaries: list[AuxiliaryItem]
     response_summaries: list[AuxiliaryItem]
     decision_summaries: list[AuxiliaryItem]
+    research_statuses: list[AuxiliaryItem]
+    investigation_reasons: list[AuxiliaryItem]
     equipment_malfunctions: list[EquipmentMalfunctionLink]

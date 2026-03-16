@@ -107,6 +107,9 @@ def build_warranty_work_conditions(
         (params.notification_summary_id, WarrantyWork.notification_summary_id),
         (params.response_summary_id, WarrantyWork.response_summary_id),
         (params.decision_summary_id, WarrantyWork.decision_summary_id),
+        (params.research_document, WarrantyWork.research_document),
+        (params.research_status_id, WarrantyWork.research_status_id),
+        (params.investigation_reason_id, WarrantyWork.investigation_reason_id),
     ]
 
     apply_filter_conditions(conditions, warranty_fields)

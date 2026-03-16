@@ -39,6 +39,9 @@ class FilterOptionsResponse(BaseModel):
     claim_act_dates: list[date] = Field(default_factory=list)
     work_completion_act_numbers: list[str] = Field(default_factory=list)
     work_completion_act_dates: list[date] = Field(default_factory=list)
+    research_document: list[str] = Field(default_factory=list)
+    research_statuses: list[AuxiliaryItem] = Field(default_factory=list)
+    investigation_reasons: list[AuxiliaryItem] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     users: list[AuxiliaryItem] = Field(default_factory=list)
 
@@ -98,3 +101,7 @@ class CaseFilterParams(BaseModel):
     response_summary_id: list[int] | None = None
     decision_summary_id: list[int] | None = None
     user_id: list[int] | None = None
+
+    research_document: list[str] | None = None
+    research_status_id: list[int] | None = None
+    investigation_reason_id: list[int] | None = None

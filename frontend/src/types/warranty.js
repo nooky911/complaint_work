@@ -3,4 +3,5 @@ export const WarrantyDocumentField = {
   re_notification: "re_notification", 
   claim_act: "claim_act",
   response: "response",
+  research_document: "research_document",
 };

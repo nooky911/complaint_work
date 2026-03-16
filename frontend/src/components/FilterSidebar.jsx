@@ -21,6 +21,7 @@ export const FilterSidebar = ({
   const {
     openSections,
     toggleSection,
+    collapseAllSections,
     mergedOptions,
     hasErrors,
     userOptions,
@@ -43,6 +44,7 @@ export const FilterSidebar = ({
   };
 
   const handleApply = () => {
+    collapseAllSections();
     onApply(filters);
     onClose();
   };
@@ -52,6 +54,7 @@ export const FilterSidebar = ({
   };
 
   const handleClose = () => {
+    collapseAllSections();
     onClose();
   };
 

@@ -16,6 +16,8 @@ from myapp.models import (
     NotificationSummary,
     ResponseSummary,
     DecisionSummary,
+    ResearchStatus,
+    InvestigationReason,
 )
 
 # Константы для опций фильтров
@@ -56,7 +58,6 @@ FILTER_TASK_CONFIGS = [
         "func": "FilterOptionsService._get_distinct_values_repair_with_warranty",
         "args": [RepairCaseEquipment.element_serial_number_new],
     },
-    
     # Справочники с JOIN через warranty
     {
         "name": "regional_centers",
@@ -130,7 +131,6 @@ FILTER_TASK_CONFIGS = [
             RepairType.repair_types_name,
         ],
     },
-    
     # Оборудование и неисправности
     {
         "name": "components",
@@ -159,7 +159,6 @@ FILTER_TASK_CONFIGS = [
             Malfunction.defect_name,
         ],
     },
-    
     # Даты и номера уведомлений (из WarrantyWork)
     {
         "name": "notification_numbers",
@@ -196,7 +195,6 @@ FILTER_TASK_CONFIGS = [
         "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
         "args": [WarrantyWork.work_completion_act_date],
     },
-    
     # Summaries для рекламационной работы
     {
         "name": "notification_summaries",
@@ -224,5 +222,29 @@ FILTER_TASK_CONFIGS = [
             WarrantyWork.decision_summary_id,
             DecisionSummary.decision_summary_name,
         ],
+    },
+    # Акт исследования
+    {
+        "name": "research_statuses",
+        "func": "FilterOptionsService._get_used_items_from_warranty",
+        "args": [
+            ResearchStatus,
+            WarrantyWork.research_status_id,
+            ResearchStatus.status_name,
+        ],
+    },
+    {
+        "name": "investigation_reasons",
+        "func": "FilterOptionsService._get_used_items_from_warranty",
+        "args": [
+            InvestigationReason,
+            WarrantyWork.investigation_reason_id,
+            InvestigationReason.reason_name,
+        ],
+    },
+    {
+        "name": "research_documents",
+        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "args": [WarrantyWork.research_document],
     },
 ]

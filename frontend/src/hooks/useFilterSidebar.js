@@ -79,6 +79,17 @@ export const useFilterSidebar = (filters, options) => {
     setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
+  const collapseAllSections = () => {
+    setOpenSections({
+      locomotive: false,
+      equipment: false,
+      repair: false,
+      status: false,
+      documents: false,
+      suppliers: false,
+    });
+  };
+
   const updateFilter = (key, value) => {
     return { key, value };
   };
@@ -203,6 +214,7 @@ export const useFilterSidebar = (filters, options) => {
   return {
     openSections,
     toggleSection,
+    collapseAllSections,
     updateFilter,
     hasErrors,
     userOptions,

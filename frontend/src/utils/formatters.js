@@ -165,6 +165,9 @@ export const convertCaseToFormData = (caseData) => {
           work_completion_act_date:
             caseData.warranty_work.work_completion_act_date,
           decision_summary_id: caseData.warranty_work.decision_summary?.id,
+          research_status_id: caseData.warranty_work.research_status?.id,
+          investigation_reason_id: caseData.warranty_work.investigation_reason?.id,
+          research_document: caseData.warranty_work.research_document,
         }
       : null,
   };
