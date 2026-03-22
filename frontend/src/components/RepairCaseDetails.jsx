@@ -199,7 +199,7 @@ export function RepairCaseDetails({
           />
         </div>
 
-        <div className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6">
+        <div className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6" style={{ willChange: 'transform' }}>
           {activeTab === "details" ? (
             <div className="space-y-3">
               <GeneralInfo
