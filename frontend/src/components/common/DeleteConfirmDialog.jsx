@@ -22,7 +22,7 @@ export const DeleteConfirmDialog = ({
             Вы точно хотите удалить файл?
           </h3>
         </div>
-        <p className="mb-2 text-sm text-gray-600">
+        <p className="mb-2 text-sm text-gray-600 truncate">
           {fileName || "Файл"}
         </p>
         <p className="mb-6 text-sm text-gray-600">Действие необратимо.</p>
