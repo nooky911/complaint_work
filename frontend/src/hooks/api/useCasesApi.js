@@ -50,6 +50,8 @@ export const useAllCasesForNumbering = () => {
     },
     staleTime: 10 * 60 * 1000, // 10 минут
     enabled: true,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
   });
 };
 
@@ -64,6 +66,8 @@ export const useCasesList = (filters, sortOrder) => {
     },
     staleTime: 2 * 60 * 1000, // 2 минуты
     enabled: true,
+    refetchInterval: 30000, // 30 секунд
+    refetchOnWindowFocus: true,
   });
 };
 
