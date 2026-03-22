@@ -60,3 +60,14 @@ export const validateFilterDates = (filters, dateFields) => {
     return !isValidDate(val, false);
   });
 };
+
+export const isDateNotEarlierThan = (dateValue, baseDate) => {
+  if (!dateValue || !baseDate) return true;
+  
+  const date = new Date(dateValue);
+  const base = new Date(baseDate);
+  
+  if (isNaN(date.getTime()) || isNaN(base.getTime())) return true;
+  
+  return date >= base;
+};

@@ -7,7 +7,7 @@ import {
 } from "../utils/formatters";
 import { isValidDate } from "../utils/validators";
 
-export const useDatePicker = (value, onChange) => {
+export const useDatePicker = (value, onChange, allowFuture = false) => {
   const inputRef = useRef(null);
   const [cursorPos, setCursorPos] = useState(null);
 
@@ -90,7 +90,7 @@ export const useDatePicker = (value, onChange) => {
   const displayValue = normalizeDateForInput(value);
   const hasAnyDigits = /\d/.test(displayValue);
   const hasError =
-    hasAnyDigits && (displayValue.includes("_") || !isValidDate(displayValue));
+    hasAnyDigits && (displayValue.includes("_") || !isValidDate(displayValue, !allowFuture));
 
   return {
     inputRef,
