@@ -5,6 +5,7 @@ import {
   FileText,
   Building2,
   ShieldCheck,
+  Truck,
 } from "lucide-react";
 import { BLOCK_TITLES } from "../../constants/labels";
 import { SECTIONS_KEYS } from "../../constants/filters";
@@ -37,6 +38,13 @@ export const filterSectionsConfig = [
     icon: FileText,
     component: "WarrantyBlock",
     keys: SECTIONS_KEYS.documents,
+  },
+  {
+    key: "ttn",
+    title: "Передвижение",
+    icon: Truck,
+    component: "TtnBlock",
+    keys: SECTIONS_KEYS.ttn || [],
   },
   {
     key: "suppliers",

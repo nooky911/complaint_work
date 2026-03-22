@@ -23,6 +23,17 @@ export const REPAIR_FIELDS_LABELS = {
   summary: "Краткое содержание",
   status: "Статус",
   supplier: "Поставщик",
+  // Поля для ТТН
+  ttn_replacement_number: "№ Документа",
+  ttn_replacement_date: "Дата получения",
+  ttn_from_rc_number: "№ Документа",
+  ttn_from_rc_date: "Дата получения",
+  ttn_to_supplier_number: "№ Документа",
+  ttn_to_supplier_date: "Дата получения",
+  ttn_to_supplier_provider: "Перевозчик/Действие",
+  ttn_from_supplier_number: "№ Документа",
+  ttn_from_supplier_date: "Дата получения",
+  ttn_from_supplier_provider: "Перевозчик/Действие",
 };
 
 export const BLOCK_TITLES = {
@@ -37,4 +48,8 @@ export const BLOCK_TITLES = {
   warranty_supplier_response: "Ответ поставщика",
   warranty_claim_act_avr: "Рекламационный акт / АВР",
   warranty_research_act: "Акт исследования",
+  ttn_replacement: "Документ о замене",
+  ttn_from_rc: "Документ об отгрузке с РЦ",
+  ttn_to_supplier: "Документ об отгрузке Поставщику",
+  ttn_from_supplier: "Документ о возврате от Поставщика",
 };

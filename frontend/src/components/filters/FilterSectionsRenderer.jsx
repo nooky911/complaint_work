@@ -5,6 +5,7 @@ import {
   EquipmentBlock,
   RepairBlock,
   WarrantyBlock,
+  TtnBlock,
   SupplierBlock,
   StatusBlock,
 } from "../SidebarBlocks";
@@ -25,6 +26,7 @@ export const FilterSectionsRenderer = ({
     EquipmentBlock,
     RepairBlock,
     WarrantyBlock,
+    TtnBlock,
     SupplierBlock,
     StatusBlock,
   };

@@ -23,3 +23,4 @@ from .auxiliaries import (
     DestinationType,
     Supplier,
 )
+from .waybill_docs import WaybillDoc, ShippingProvider

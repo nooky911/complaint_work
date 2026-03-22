@@ -5,6 +5,13 @@ from myapp.schemas.files import FileCategory
 MAX_FILE_SIZE = 15 * 1024 * 1024  # 15 Мб
 MAX_CASE_SIZE = 50 * 1024 * 1024  # 50 Мб
 
+DOCUMENT_MIME_TYPES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "application/vnd.ms-outlook",
+}
+
 ALLOWED_MIME_TYPES = {
     # Общие разрешенные типы для ВСЕЙ первичной документации
     FileCategory.primary: {
@@ -35,12 +42,9 @@ ALLOWED_MIME_TYPES = {
         "application/vnd.ms-outlook",
     },
     # Типы для рекламационной работы
-    FileCategory.warranty: {
-        "application/pdf",
-        "image/jpeg",
-        "image/png",
-        "application/vnd.ms-outlook",
-    },
+    FileCategory.warranty: DOCUMENT_MIME_TYPES,
+    # Типы для ТТН
+    FileCategory.waybill: DOCUMENT_MIME_TYPES,
 }
 
 

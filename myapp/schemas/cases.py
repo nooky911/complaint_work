@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 
+from .waybill import WaybillDocUpdate, WaybillDocResponse
 from .references import AuxiliaryItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
 from .equipment import EquipmentItem
@@ -61,8 +62,8 @@ class CaseCreate(CaseBase):
 
     user_id: int | None = None
 
-    # Вложенная схема для данных о гарантийном ремонте
     warranty_work: WarrantyWorkUpdate | None = None
+    waybill_doc: WaybillDocUpdate | None = None
 
 
 class CaseUpdate(CaseBase):
@@ -70,6 +71,7 @@ class CaseUpdate(CaseBase):
 
     user_id: int | None = None
     warranty_work: WarrantyWorkUpdate | None = None
+    waybill_doc: WaybillDocUpdate | None = None
 
 
 class CaseOutputData(CaseBase):
@@ -79,8 +81,6 @@ class CaseOutputData(CaseBase):
     date_recorded: datetime
     supplier_id: int | None = None
     user_id: int
-
-    model_config = ConfigDict(from_attributes=True)
 
 
 class CaseCommonRelations(CaseOutputData):
@@ -101,6 +101,7 @@ class CaseCommonRelations(CaseOutputData):
     status: str | None = None
 
     warranty_work: WarrantyWorkResponse | None = None
+    waybill_doc: WaybillDocResponse | None = None
 
 
 class CaseList(CaseCommonRelations):
@@ -117,3 +118,11 @@ class CaseDetail(CaseCommonRelations):
     performed_by: AuxiliaryItem | None = None
     equipment_owner: AuxiliaryItem | None = None
     destination: AuxiliaryItem | None = None
+
+
+class SupplierPreviewRequest(BaseModel):
+    """Схема для динамического обновления поставщика"""
+
+    equipment_id: int | None
+    locomotive_number: str | None
+    locomotive_model_id: int | None

@@ -5,7 +5,7 @@ from .references import AuxiliaryItem
 
 
 class WarrantyWorkBase(BaseModel):
-    """Основная схема рекламационной работы"""
+    """Базовая схема рекламационной работы"""
 
     # Уведомления
     notification_number: str | None = None

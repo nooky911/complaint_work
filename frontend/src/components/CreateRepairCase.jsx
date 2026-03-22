@@ -9,6 +9,7 @@ import { GeneralInfo } from "./RepairCase/GeneralInfo";
 import { FaultyEquipmentBlock } from "./RepairCase/FaultyEquipmentBlock";
 import { RepairExecutionBlock } from "./RepairCase/RepairExecutionBlock";
 import { WarrantyWork } from "./RepairCase/WarrantyWork";
+import { TtnBlocks } from "./RepairCase/TtnBlocks";
 import { CaseValidationToast } from "./Toast/CaseValidationToast";
 import { ErrorToast } from "./Toast/ErrorToast";
 import { CaseDocuments } from "./RepairCase/CaseDocuments";
@@ -26,6 +27,7 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
     allEquipment,
     faultyHierarchy,
     updateField,
+    updateTtnField,
     updateWarrantyField,
     handleEquipmentSelect,
     validation,
@@ -105,6 +107,11 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
             onClick={() => setActiveTab("reclamation")}
             label="РЕКЛАМАЦИЯ"
           />
+          <TabButton
+            active={activeTab === "movement"}
+            onClick={() => setActiveTab("movement")}
+            label="ПЕРЕДВИЖЕНИЕ"
+          />
         </div>
 
         {loading ? (
@@ -157,12 +164,21 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
                   onRemoveFile={removePendingFile}
                 />
               </div>
-            ) : (
+            ) : activeTab === "reclamation" ? (
               <WarrantyWork
                 isEditing={true}
                 currentData={formData}
                 repairCase={{}}
                 updateWarrantyField={updateWarrantyField}
+                references={references}
+              />
+            ) : (
+              <TtnBlocks
+                isEditing={true}
+                ttnData={formData}
+                updateField={updateTtnField}
+                showError={showError}
+                validation={validation}
                 references={references}
               />
             )}

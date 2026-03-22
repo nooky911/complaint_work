@@ -8,6 +8,7 @@ from myapp.database.query_builders.query_case_builders import load_list_relation
 from myapp.database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
+    build_waybill_doc_conditions,
 )
 from myapp.services.case_status_service import CaseStatusService
 from myapp.services.filter_options_service import FilterOptionsService
@@ -24,14 +25,14 @@ class CaseFilterService:
         status_subquery = CaseStatusService.build_status_subquery()
 
         stmt = select(RepairCaseEquipment, status_subquery)
-
         stmt = stmt.options(*load_list_relations())
-
         stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
+        stmt = stmt.outerjoin(RepairCaseEquipment.waybill_doc)
 
         all_conditions = []
         all_conditions.extend(build_repair_case_conditions(params))
         all_conditions.extend(build_warranty_work_conditions(params))
+        all_conditions.extend(build_waybill_doc_conditions(params))
 
         if all_conditions:
             stmt = stmt.where(and_(*all_conditions))

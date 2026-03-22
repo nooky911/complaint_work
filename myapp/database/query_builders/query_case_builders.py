@@ -2,6 +2,7 @@ from sqlalchemy.orm import joinedload
 
 from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.waybill_docs import WaybillDoc
 from myapp.models.warranty_work import WarrantyWork
 
 
@@ -39,6 +40,12 @@ def load_list_relations():
         joinedload(RepairCaseEquipment.warranty_work).joinedload(
             WarrantyWork.investigation_reason
         ),
+        joinedload(RepairCaseEquipment.waybill_doc).joinedload(
+            WaybillDoc.to_supplier_provider
+        ),
+        joinedload(RepairCaseEquipment.waybill_doc).joinedload(
+            WaybillDoc.from_supplier_provider
+        ),
     ]
 
 
@@ -55,3 +62,22 @@ def load_detail_relations():
         ]
     )
     return relations
+
+
+def load_warranty_relations():
+    """Связи для загрузки данных рекламационной работы"""
+    return [
+        joinedload(WarrantyWork.notification_summary),
+        joinedload(WarrantyWork.response_summary),
+        joinedload(WarrantyWork.decision_summary),
+        joinedload(WarrantyWork.research_status),
+        joinedload(WarrantyWork.investigation_reason),
+    ]
+
+
+def load_waybill_relations():
+    """Связи для загрузки данных ТТН"""
+    return [
+        joinedload(WaybillDoc.to_supplier_provider),
+        joinedload(WaybillDoc.from_supplier_provider),
+    ]

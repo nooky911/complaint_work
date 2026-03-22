@@ -153,6 +153,12 @@ class RepairCaseEquipment(Base):
         uselist=False,
         cascade="all, delete-orphan",
     )
+    waybill_doc: Mapped["WaybillDoc"] = relationship(
+        "WaybillDoc",
+        back_populates="case",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
     files: Mapped[list["CaseFile"]] = relationship(
         "CaseFile", back_populates="case", cascade="all, delete-orphan"
     )

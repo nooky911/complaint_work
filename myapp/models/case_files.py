@@ -9,6 +9,7 @@ from myapp.database.base import Base
 class FileCategory(str, PyEnum):
     primary = "primary"
     warranty = "warranty"
+    waybill = "waybill"
 
 
 # Тип документа для рекл. работы
@@ -18,6 +19,14 @@ class WarrantyDocumentField(str, PyEnum):
     claim_act = "claim_act"
     response = "response"
     research_document = "research_document"
+
+
+# Тип документа для ТТН
+class WaybillDocumentField(str, PyEnum):
+    ttn_replacement = "ttn_replacement"
+    ttn_from_rc = "ttn_from_rc"
+    ttn_to_supplier = "ttn_to_supplier"
+    ttn_from_supplier = "ttn_from_supplier"
 
 
 # Таблица с файлами для первичной и рекламационной документации
@@ -30,16 +39,9 @@ class CaseFile(Base):
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
     size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    related_field: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
-    # Enum поля
-    related_field: Mapped[WarrantyDocumentField | None] = mapped_column(
-        Enum(
-            WarrantyDocumentField,
-            name="warranty_document_field",
-            native_enum=True,
-        ),
-        nullable=True,
-    )
+    # Enum
     category: Mapped[FileCategory] = mapped_column(
         Enum(
             FileCategory,

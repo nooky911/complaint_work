@@ -1,5 +1,6 @@
 from sqlalchemy.sql import expression
 
+from myapp.models.waybill_docs import WaybillDoc
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.filters import CaseFilterParams
@@ -24,6 +25,7 @@ def apply_filter_conditions(conditions: list, fields_mapping: list):
 def build_repair_case_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
+    """Условия фильтрации для случая неисправности"""
     conditions = []
 
     # 1. Даты
@@ -91,6 +93,7 @@ def build_repair_case_conditions(
 def build_warranty_work_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
+    """Условия фильтрации для документов Рекламационной работы"""
     conditions = []
 
     warranty_fields = [
@@ -113,5 +116,32 @@ def build_warranty_work_conditions(
     ]
 
     apply_filter_conditions(conditions, warranty_fields)
+
+    return conditions
+
+
+def build_waybill_doc_conditions(
+    params: CaseFilterParams,
+) -> list[expression.ColumnElement]:
+    """Условия фильтрации для документов ТТН"""
+    conditions = []
+
+    waybill_fields = [
+        # Номера ТТН
+        (params.ttn_replacement, WaybillDoc.ttn_replacement),
+        (params.ttn_from_rc, WaybillDoc.ttn_from_rc),
+        (params.ttn_to_supplier, WaybillDoc.ttn_to_supplier),
+        (params.ttn_from_supplier, WaybillDoc.ttn_from_supplier),
+        # Даты ТТН
+        (params.ttn_replacement_date, WaybillDoc.ttn_replacement_date),
+        (params.ttn_from_rc_date, WaybillDoc.ttn_from_rc_date),
+        (params.ttn_to_supplier_date, WaybillDoc.ttn_to_supplier_date),
+        (params.ttn_from_supplier_date, WaybillDoc.ttn_from_supplier_date),
+        # Перевозчики (ID справочников)
+        (params.to_supplier_provider_id, WaybillDoc.to_supplier_provider_id),
+        (params.from_supplier_provider_id, WaybillDoc.from_supplier_provider_id),
+    ]
+
+    apply_filter_conditions(conditions, waybill_fields)
 
     return conditions

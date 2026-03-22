@@ -42,8 +42,20 @@ class FilterOptionsResponse(BaseModel):
     research_document: list[str] = Field(default_factory=list)
     research_statuses: list[AuxiliaryItem] = Field(default_factory=list)
     investigation_reasons: list[AuxiliaryItem] = Field(default_factory=list)
+    shipping_providers: list[AuxiliaryItem] = Field(default_factory=list)
+    from_shipping_providers: list[AuxiliaryItem] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     users: list[AuxiliaryItem] = Field(default_factory=list)
+
+    # ТТН
+    ttn_replacement: list[str] = Field(default_factory=list)
+    ttn_from_rc: list[str] = Field(default_factory=list)
+    ttn_to_supplier: list[str] = Field(default_factory=list)
+    ttn_from_supplier: list[str] = Field(default_factory=list)
+    ttn_replacement_dates: list[date] = Field(default_factory=list)
+    ttn_from_rc_dates: list[date] = Field(default_factory=list)
+    ttn_to_supplier_dates: list[date] = Field(default_factory=list)
+    ttn_from_supplier_dates: list[date] = Field(default_factory=list)
 
 
 class CaseFilterParams(BaseModel):
@@ -105,3 +117,17 @@ class CaseFilterParams(BaseModel):
     research_document: list[str] | None = None
     research_status_id: list[int] | None = None
     investigation_reason_id: list[int] | None = None
+
+    # --- WAYBILL (ТТН) ---
+    ttn_replacement: list[str] | None = None
+    ttn_from_rc: list[str] | None = None
+    ttn_to_supplier: list[str] | None = None
+    ttn_from_supplier: list[str] | None = None
+
+    ttn_replacement_date: list[date] | None = None
+    ttn_from_rc_date: list[date] | None = None
+    ttn_to_supplier_date: list[date] | None = None
+    ttn_from_supplier_date: list[date] | None = None
+
+    to_supplier_provider_id: list[int] | None = None
+    from_supplier_provider_id: list[int] | None = None

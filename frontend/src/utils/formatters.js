@@ -166,8 +166,29 @@ export const convertCaseToFormData = (caseData) => {
             caseData.warranty_work.work_completion_act_date,
           decision_summary_id: caseData.warranty_work.decision_summary?.id,
           research_status_id: caseData.warranty_work.research_status?.id,
-          investigation_reason_id: caseData.warranty_work.investigation_reason?.id,
+          investigation_reason_id:
+            caseData.warranty_work.investigation_reason?.id,
           research_document: caseData.warranty_work.research_document,
+        }
+      : null,
+
+    // Waybill document
+    waybill_doc: caseData.waybill_doc
+      ? {
+          ttn_replacement: caseData.waybill_doc.ttn_replacement,
+          ttn_replacement_date: caseData.waybill_doc.ttn_replacement_date,
+          ttn_from_rc: caseData.waybill_doc.ttn_from_rc,
+          ttn_from_rc_date: caseData.waybill_doc.ttn_from_rc_date,
+          ttn_to_supplier: caseData.waybill_doc.ttn_to_supplier,
+          ttn_to_supplier_date: caseData.waybill_doc.ttn_to_supplier_date,
+          to_supplier_provider_id:
+            caseData.waybill_doc.to_supplier_provider?.id ||
+            caseData.waybill_doc.to_supplier_provider_id,
+          ttn_from_supplier: caseData.waybill_doc.ttn_from_supplier,
+          ttn_from_supplier_date: caseData.waybill_doc.ttn_from_supplier_date,
+          from_supplier_provider_id:
+            caseData.waybill_doc.from_supplier_provider?.id ||
+            caseData.waybill_doc.from_supplier_provider_id,
         }
       : null,
   };
@@ -232,6 +253,20 @@ export const getInitialCaseData = () => ({
     work_completion_act_number: "",
     work_completion_act_date: null,
     decision_summary_id: null,
+  },
+
+  // 8. ТТН
+  waybill_doc: {
+    ttn_replacement: null,
+    ttn_replacement_date: null,
+    ttn_from_rc: null,
+    ttn_from_rc_date: null,
+    ttn_to_supplier: null,
+    ttn_to_supplier_date: null,
+    to_supplier_provider_id: null,
+    ttn_from_supplier: null,
+    ttn_from_supplier_date: null,
+    from_supplier_provider_id: null,
   },
 });
 

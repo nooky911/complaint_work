@@ -26,6 +26,7 @@ from myapp.models.warranty_work import (
     ResearchStatus,
     InvestigationReason,
 )
+from myapp.models.waybill_docs import ShippingProvider
 
 
 class ReferenceService:
@@ -117,6 +118,10 @@ class ReferenceService:
                     EquipmentMalfunction.malfunction_id,
                 ),
             ),
+            (
+                "shipping_providers",
+                select(ShippingProvider.id, ShippingProvider.name_provider),
+            ),
         ]
 
         async def run_query(name, stmt):
@@ -171,5 +176,8 @@ class ReferenceService:
             ),
             "investigation_reasons": ReferenceService._map_to_id_name(
                 res_dict["investigation_reasons"]
+            ),
+            "shipping_providers": ReferenceService._map_to_id_name(
+                res_dict["shipping_providers"]
             ),
         }

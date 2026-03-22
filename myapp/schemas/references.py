@@ -42,4 +42,5 @@ class CaseFormReferencesResponse(BaseModel):
     decision_summaries: list[AuxiliaryItem]
     research_statuses: list[AuxiliaryItem]
     investigation_reasons: list[AuxiliaryItem]
+    shipping_providers: list[AuxiliaryItem]
     equipment_malfunctions: list[EquipmentMalfunctionLink]

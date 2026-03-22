@@ -11,6 +11,7 @@ from myapp.models.case_files import (
     CaseFile,
     FileCategory,
     WarrantyDocumentField,
+    WaybillDocumentField,
 )
 
 BASE_STORAGE_PATH: Path = Path(settings.FILE_STORAGE_PATH)
@@ -31,8 +32,12 @@ class StorageService:
 
         if category == FileCategory.primary:
             archive_name = f"Первичные_документы_случая_{case_id}_{timestamp}.zip"
-        else:
+        elif category == FileCategory.warranty:
             archive_name = f"Рекламационные_документы_случая_{case_id}_{timestamp}.zip"
+        elif category == FileCategory.waybill:
+            archive_name = f"ТТН_документы_случая_{case_id}_{timestamp}.zip"
+        else:
+            archive_name = f"Документы_случая_{case_id}_{timestamp}.zip"
 
         archive_path = Path(tempfile.gettempdir()) / archive_name
 
@@ -88,7 +93,7 @@ class StorageService:
         case_id: int,
         category: FileCategory,
         stored_name: str,
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> str:
         """Относительный путь для хранения файла"""
         case_id_str = str(case_id)
@@ -100,6 +105,9 @@ class StorageService:
         elif category == FileCategory.warranty and related_field:
             field_value = str(related_field.value)
             relative_path = relative_path_base / "warranty" / field_value / stored_name
+        elif category == FileCategory.waybill and related_field:
+            field_value = str(related_field.value)
+            relative_path = relative_path_base / "waybill" / field_value / stored_name
         else:
             raise ValueError(
                 f"Некорректные параметры: category={category}, related_field={related_field}"

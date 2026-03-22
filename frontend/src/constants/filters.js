@@ -54,6 +54,17 @@ export const INITIAL_FILTERS = {
   investigation_reason_id: [],
   research_document: [],
   user_id: [],
+
+  ttn_replacement: [],
+  ttn_replacement_date: [],
+  ttn_from_rc: [],
+  ttn_from_rc_date: [],
+  ttn_to_supplier: [],
+  ttn_to_supplier_date: [],
+  to_supplier_provider_id: [],
+  ttn_from_supplier: [],
+  ttn_from_supplier_date: [],
+  from_supplier_provider_id: [],
 };
 
 // Наборы ключей для каждого блока FilterSidebar
@@ -71,7 +82,7 @@ export const SECTIONS_KEYS = {
   ],
   repair: [
     "repair_type_id",
-    "performed_by_id", 
+    "performed_by_id",
     "destination_id",
     "equipment_owner_id",
     "new_component_equipment_id",
@@ -92,5 +103,17 @@ export const SECTIONS_KEYS = {
     "research_status_id",
     "investigation_reason_id",
     "research_document",
+  ],
+  ttn: [
+    "ttn_replacement",
+    "ttn_replacement_date",
+    "ttn_from_rc",
+    "ttn_from_rc_date",
+    "ttn_to_supplier",
+    "ttn_to_supplier_date",
+    "to_supplier_provider_id",
+    "ttn_from_supplier",
+    "ttn_from_supplier_date",
+    "from_supplier_provider_id",
   ],
 };

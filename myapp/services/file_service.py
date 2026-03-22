@@ -6,6 +6,7 @@ from myapp.models.case_files import (
     CaseFile,
     FileCategory,
     WarrantyDocumentField,
+    WaybillDocumentField,
 )
 from myapp.services.files.upload_service import FileUploadService
 from myapp.services.files.file_management_service import FileManagementService
@@ -26,7 +27,7 @@ class FileService:
         case_id: int,
         category: FileCategory,
         file: UploadFile,
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> CaseFile:
         """Загрузка одного файла"""
         return await FileUploadService.upload_file(
@@ -39,7 +40,7 @@ class FileService:
         case_id: int,
         category: FileCategory,
         files: list[UploadFile],
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> list[CaseFile]:
         """Загрузка нескольких файлов"""
         return await FileUploadService.upload_files(

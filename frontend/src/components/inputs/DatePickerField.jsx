@@ -10,6 +10,7 @@ export const DatePickerField = ({
   isDisabled = false,
   className = "",
   error,
+  allowFuture = false,
 }) => {
   const {
     inputRef,
@@ -18,7 +19,7 @@ export const DatePickerField = ({
     handleTextChange,
     displayValue,
     hasError: dateError,
-  } = useDatePicker(value, onChange);
+  } = useDatePicker(value, onChange, allowFuture);
 
   if (!isEditing) return null;
 
@@ -66,7 +67,7 @@ export const DatePickerField = ({
             />
             <input
               type="date"
-              max={today}
+              max={allowFuture ? undefined : today}
               onChange={(e) => {
                 setCursorPos(null);
                 onChange(e.target.value);

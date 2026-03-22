@@ -198,7 +198,14 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
           })
         : [serverErrorRaw];
 
-      setFileErrors(serverError);
+      const processedErrors = serverError.map(error => {
+        if (typeof error === 'string' && error.includes('Неподдерживаемый формат файла для категории')) {
+          return 'Неподдерживаемый формат файла';
+        }
+        return error;
+      });
+
+      setFileErrors(processedErrors);
     },
   });
 
@@ -222,9 +229,28 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
       setFileErrors([]);
       return response.data;
     } catch (error) {
-      const serverError =
+      const serverErrorRaw =
         error.response?.data?.detail || "Ошибка сервера при загрузке";
-      setFileErrors(Array.isArray(serverError) ? serverError : [serverError]);
+      
+      let serverError = Array.isArray(serverErrorRaw)
+        ? serverErrorRaw.map((e) => {
+            const msg = typeof e === "string" ? e : e?.msg;
+            if (msg?.includes("Неподдерживаемый формат файла для категории")) {
+              return "Неподдерживаемый формат файла";
+            }
+            return msg || JSON.stringify(e);
+          })
+        : [serverErrorRaw];
+
+      // Дополнительная обработка для ТТН и других категорий
+      const processedErrors = serverError.map(error => {
+        if (typeof error === 'string' && error.includes('Неподдерживаемый формат файла для категории')) {
+          return 'Неподдерживаемый формат файла';
+        }
+        return error;
+      });
+
+      setFileErrors(processedErrors);
       return false;
     } finally {
       setUploading(false);

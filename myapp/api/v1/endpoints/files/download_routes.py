@@ -53,7 +53,9 @@ async def get_download_file(
 @router.post("/cases/{case_id}/archive", summary="Создать архив файлов случая")
 async def create_case_archive(
     case_id: int,
-    category: Annotated[FileCategory, Form(description="Категория файлов для архива")],
+    category: Annotated[
+        FileCategory, Form(description="Категория (primary/warranty/waybill)")
+    ],
     session: AsyncSession = Depends(get_db),
     _: User = Depends(require_viewer_or_higher),
 ):

@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 from myapp.models.case_files import (
     FileCategory,
     WarrantyDocumentField,
+    WaybillDocumentField,
 )
 
 
@@ -15,7 +16,7 @@ class FileInfo(BaseModel):
     stored_name: str
     file_path: str
     category: FileCategory
-    related_field: WarrantyDocumentField | None = None
+    related_field: WarrantyDocumentField | WaybillDocumentField | None = None
     case_id: int
 
     model_config = ConfigDict(from_attributes=True)

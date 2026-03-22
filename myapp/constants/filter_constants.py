@@ -18,6 +18,8 @@ from myapp.models import (
     DecisionSummary,
     ResearchStatus,
     InvestigationReason,
+    WaybillDoc,
+    ShippingProvider,
 )
 
 # Константы для опций фильтров
@@ -162,37 +164,37 @@ FILTER_TASK_CONFIGS = [
     # Даты и номера уведомлений (из WarrantyWork)
     {
         "name": "notification_numbers",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.notification_number],
     },
     {
         "name": "notification_dates",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.notification_date],
     },
     {
         "name": "re_notification_dates",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.re_notification_date],
     },
     {
         "name": "re_notification_numbers",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.re_notification_number],
     },
     {
         "name": "response_letter_dates",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.response_letter_date],
     },
     {
         "name": "claim_act_dates",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.claim_act_date],
     },
     {
         "name": "work_completion_act_dates",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.work_completion_act_date],
     },
     # Summaries для рекламационной работы
@@ -244,7 +246,56 @@ FILTER_TASK_CONFIGS = [
     },
     {
         "name": "research_documents",
-        "func": "FilterOptionsService._get_distinct_values_separate_session_warranty",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.research_document],
+    },
+    {
+        "name": "shipping_providers",
+        "func": "FilterOptionsService._get_used_items_from_waybill",
+        "args": [
+            ShippingProvider,
+            WaybillDoc.to_supplier_provider_id,
+            ShippingProvider.name_provider,
+        ],
+    },
+    {
+        "name": "ttn_replacement",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_replacement],
+    },
+    {
+        "name": "ttn_from_rc",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_from_rc],
+    },
+    {
+        "name": "ttn_to_supplier",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_to_supplier],
+    },
+    {
+        "name": "ttn_from_supplier",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_from_supplier],
+    },
+    {
+        "name": "ttn_replacement_dates",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_replacement_date],
+    },
+    {
+        "name": "ttn_from_rc_dates",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_from_rc_date],
+    },
+    {
+        "name": "ttn_to_supplier_dates",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_to_supplier_date],
+    },
+    {
+        "name": "ttn_from_supplier_dates",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WaybillDoc.ttn_from_supplier_date],
     },
 ]

@@ -24,16 +24,25 @@ from myapp.models.auxiliaries import (
     RepairType,
 )
 from myapp.models.equipment_malfunctions import Equipment, Malfunction
+from myapp.models.waybill_docs import WaybillDoc, ShippingProvider
 from myapp.schemas.filters import FilterOptionsResponse, CaseFilterParams
 from myapp.database.query_builders.query_case_filters import (
     build_repair_case_conditions,
     build_warranty_work_conditions,
+    build_waybill_doc_conditions,
 )
 from myapp.services.cache_service import cached
 from myapp.services.case_status_service import CaseStatusService
 from myapp.constants.filter_constants import (
     DB_SEMAPHORE_LIMIT,
     FILTER_TASK_CONFIGS,
+)
+from myapp.utils.filters_utils import (
+    process_query_results,
+    get_distinct_values_with_join,
+    get_distinct_values,
+    get_used_items_with_base_join,
+    get_used_items_with_intermediate_join,
 )
 
 
@@ -204,37 +213,37 @@ class FilterOptionsService:
             },
             {
                 "name": "notification_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.notification_number, None],
             },
             {
                 "name": "notification_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.notification_date, None],
             },
             {
                 "name": "re_notification_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.re_notification_date, None],
             },
             {
                 "name": "re_notification_numbers",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.re_notification_number, None],
             },
             {
                 "name": "response_letter_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.response_letter_date, None],
             },
             {
                 "name": "claim_act_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.claim_act_date, None],
             },
             {
                 "name": "work_completion_act_dates",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.work_completion_act_date, None],
             },
             {
@@ -257,7 +266,7 @@ class FilterOptionsService:
             },
             {
                 "name": "research_documents",
-                "func": FilterOptionsService._get_distinct_values_separate_session_warranty,
+                "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.research_document, None],
             },
             {
@@ -289,6 +298,64 @@ class FilterOptionsService:
                 "name": "statuses",
                 "func": FilterOptionsService._get_distinct_statuses,
                 "args": [None],
+            },
+            {
+                "name": "shipping_providers",
+                "func": FilterOptionsService._get_used_items_from_waybill,
+                "args": [
+                    ShippingProvider,
+                    WaybillDoc.to_supplier_provider_id,
+                    ShippingProvider.name_provider,
+                ],
+            },
+            {
+                "name": "from_shipping_providers",
+                "func": FilterOptionsService._get_used_items_from_waybill,
+                "args": [
+                    ShippingProvider,
+                    WaybillDoc.from_supplier_provider_id,
+                    ShippingProvider.name_provider,
+                ],
+            },
+            {
+                "name": "ttn_replacement",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_replacement, None],
+            },
+            {
+                "name": "ttn_from_rc",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_from_rc, None],
+            },
+            {
+                "name": "ttn_to_supplier",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_to_supplier, None],
+            },
+            {
+                "name": "ttn_from_supplier",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_from_supplier, None],
+            },
+            {
+                "name": "ttn_replacement_dates",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_replacement_date, None],
+            },
+            {
+                "name": "ttn_from_rc_dates",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_from_rc_date, None],
+            },
+            {
+                "name": "ttn_to_supplier_dates",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_to_supplier_date, None],
+            },
+            {
+                "name": "ttn_from_supplier_dates",
+                "func": FilterOptionsService._get_distinct_waybill_values,
+                "args": [WaybillDoc.ttn_from_supplier_date, None],
             },
         ]
 
@@ -339,7 +406,10 @@ class FilterOptionsService:
         # Условия фильтрации
         repair_conditions = build_repair_case_conditions(params)
         warranty_conditions = build_warranty_work_conditions(params)
-        combined_conditions = repair_conditions + warranty_conditions
+        waybill_conditions = build_waybill_doc_conditions(params)
+        combined_conditions = (
+            repair_conditions + warranty_conditions + waybill_conditions
+        )
 
         tasks = FilterOptionsService._build_tasks_from_configs(
             FILTER_TASK_CONFIGS, combined_conditions
@@ -384,33 +454,6 @@ class FilterOptionsService:
             return operation_name, result
 
     @staticmethod
-    async def _get_used_items_with_base_join(
-        session,
-        model,
-        fk_column,
-        name_column,
-        filtered_conditions=None,
-        additional_joins=None,
-    ):
-        """Базовый метод для получения используемых элементов справочника с JOIN"""
-        stmt = select(model.id, name_column).join(
-            RepairCaseEquipment, fk_column == model.id
-        )
-
-        if additional_joins:
-            for join_clause in additional_joins:
-                stmt = stmt.join(*join_clause)
-
-        stmt = stmt.distinct()
-
-        if filtered_conditions:
-            stmt = stmt.where(and_(*filtered_conditions))
-
-        return await FilterOptionsService._execute_query_and_format_results(
-            session, stmt
-        )
-
-    @staticmethod
     async def _get_used_items_with_case_join(
         session,
         model,
@@ -419,8 +462,13 @@ class FilterOptionsService:
         filtered_conditions=None,
     ):
         """Получить используемые элементы справочника с JOIN к RepairCaseEquipment"""
-        return await FilterOptionsService._get_used_items_with_base_join(
-            session, model, fk_column, name_column, filtered_conditions
+        return await get_used_items_with_base_join(
+            session,
+            model,
+            fk_column,
+            name_column,
+            RepairCaseEquipment,
+            filtered_conditions,
         )
 
     @staticmethod
@@ -435,8 +483,14 @@ class FilterOptionsService:
         warranty_joins = [
             (WarrantyWork, WarrantyWork.case_id == RepairCaseEquipment.id)
         ]
-        return await FilterOptionsService._get_used_items_with_base_join(
-            session, model, fk_column, name_column, filtered_conditions, warranty_joins
+        return await get_used_items_with_base_join(
+            session,
+            model,
+            fk_column,
+            name_column,
+            RepairCaseEquipment,
+            filtered_conditions,
+            warranty_joins,
         )
 
     @staticmethod
@@ -448,64 +502,16 @@ class FilterOptionsService:
         filtered_conditions=None,
     ):
         """Получить используемые элементы справочника из WarrantyWork с JOIN к RepairCaseEquipment"""
-        stmt = (
-            select(model.id, name_column)
-            .join(WarrantyWork, fk_column == model.id)
-            .join(RepairCaseEquipment, WarrantyWork.case_id == RepairCaseEquipment.id)
-            .distinct()
-        )
-
-        if filtered_conditions:
-            stmt = stmt.where(and_(*filtered_conditions))
-
-        return await FilterOptionsService._execute_query_and_format_results(
-            session, stmt
-        )
-
-    @staticmethod
-    async def _get_distinct_values_with_join(
-        session,
-        column,
-        join_model,
-        join_condition,
-        filtered_conditions=None,
-    ):
-        """Получить уникальные значения колонки с JOIN к другой модели"""
-        stmt = (
-            select(distinct(column))
-            .join(join_model, join_condition)
-            .where(column.isnot(None))
-        )
-
-        if filtered_conditions:
-            stmt = stmt.where(and_(*filtered_conditions))
-
-        res = await session.execute(stmt)
-        return FilterOptionsService._process_query_results(res)
-
-    @staticmethod
-    async def _get_distinct_values_separate_session_warranty(
-        session,
-        column,
-        filtered_conditions=None,
-    ):
-        """Получить уникальные значения колонки из WarrantyWork с JOIN к RepairCaseEquipment"""
-        return await FilterOptionsService._get_distinct_values_with_join(
+        return await get_used_items_with_intermediate_join(
             session,
-            column,
+            model,
+            fk_column,
+            name_column,
+            WarrantyWork,
+            WarrantyWork.case_id,
             RepairCaseEquipment,
-            WarrantyWork.case_id == RepairCaseEquipment.id,
             filtered_conditions,
         )
-
-    @staticmethod
-    def _process_query_results(res) -> list[Any]:
-        """Обработать результаты запроса, отфильтровав пустые значения"""
-        return [
-            row[0]
-            for row in res.all()
-            if row[0] is not None and str(row[0]).strip() != ""
-        ]
 
     @staticmethod
     async def _get_distinct_values_repair_with_warranty(
@@ -514,11 +520,31 @@ class FilterOptionsService:
         filtered_conditions=None,
     ):
         """Получить уникальные значения колонки из RepairCaseEquipment с JOIN к WarrantyWork"""
-        return await FilterOptionsService._get_distinct_values_with_join(
+        return await get_distinct_values_with_join(
             session,
             column,
             WarrantyWork,
             RepairCaseEquipment.id == WarrantyWork.case_id,
+            filtered_conditions,
+        )
+
+    @staticmethod
+    async def _get_used_items_from_waybill(
+        session,
+        model,
+        fk_column,
+        name_column,
+        filtered_conditions=None,
+    ):
+        """Получить используемые способы доставки из справочника через WaybillDoc"""
+        return await get_used_items_with_intermediate_join(
+            session,
+            model,
+            fk_column,
+            name_column,
+            WaybillDoc,
+            WaybillDoc.case_id,
+            RepairCaseEquipment,
             filtered_conditions,
         )
 
@@ -529,24 +555,18 @@ class FilterOptionsService:
         filtered_conditions=None,
     ):
         """Получить уникальные значения колонки"""
-        return await FilterOptionsService._get_distinct_values_core(
-            session, column, filtered_conditions
-        )
+        table_name = str(column.table).lower()
 
-    @staticmethod
-    async def _get_distinct_values_core(
-        session,
-        column,
-        filtered_conditions=None,
-    ):
-        """Получить уникальные значения колонки"""
-        stmt = select(distinct(column)).where(column.isnot(None))
+        if "warranty_work" in table_name or "waybill_doc" in table_name:
+            return await get_distinct_values_with_join(
+                session,
+                column,
+                RepairCaseEquipment,
+                column.table.c.case_id == RepairCaseEquipment.id,
+                filtered_conditions,
+            )
 
-        if filtered_conditions:
-            stmt = stmt.where(and_(*filtered_conditions))
-
-        res = await session.execute(stmt)
-        return FilterOptionsService._process_query_results(res)
+        return await get_distinct_values(session, column, filtered_conditions)
 
     @staticmethod
     async def _get_distinct_statuses(
@@ -563,13 +583,32 @@ class FilterOptionsService:
             stmt = stmt.outerjoin(
                 WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
             )
+            stmt = stmt.outerjoin(
+                WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id
+            )
             stmt = stmt.where(and_(*filtered_conditions))
 
         res = await session.execute(stmt)
-        return FilterOptionsService._process_query_results(res)
+        return process_query_results(res)
 
     @staticmethod
-    async def _execute_query_and_format_results(session, stmt) -> list[dict]:
-        """Выполнить запрос и вернуть отформатированные результаты с id и name"""
+    async def _get_distinct_waybill_values(
+        session,
+        column,
+        filtered_conditions=None,
+    ):
+        """Получить уникальные значения из WaybillDoc только для связанных случаев"""
+        stmt = (
+            select(distinct(column))
+            .select_from(WaybillDoc)
+            .join(RepairCaseEquipment, WaybillDoc.case_id == RepairCaseEquipment.id)
+        )
+
+        if filtered_conditions:
+            stmt = stmt.outerjoin(
+                WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+            )
+            stmt = stmt.where(and_(*filtered_conditions))
+
         res = await session.execute(stmt)
-        return [{"id": row[0], "name": row[1]} for row in res.all()]
+        return process_query_results(res)

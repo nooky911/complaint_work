@@ -9,7 +9,11 @@ from fastapi import (
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
-from myapp.models.case_files import FileCategory, WarrantyDocumentField
+from myapp.models.case_files import (
+    FileCategory,
+    WarrantyDocumentField,
+    WaybillDocumentField,
+)
 from myapp.models.user import User
 from myapp.services.file_service import FileService
 from myapp.database.base import get_db
@@ -31,11 +35,11 @@ router = APIRouter(tags=["Загрузка файлов"])
 async def upload_single_file(
     case_id: int,
     category: Annotated[
-        FileCategory, Form(description="Категория файла (primary/warranty)")
+        FileCategory, Form(description="Категория файла (primary/warranty/waybill)")
     ],
     related_field: Annotated[
-        WarrantyDocumentField | None,
-        Form(description="Поле для warranty файлов"),
+        WarrantyDocumentField | WaybillDocumentField | None,
+        Form(description="Поле для warranty или waybill файлов"),
     ] = None,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_db),

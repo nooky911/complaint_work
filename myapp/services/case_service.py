@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 
+from myapp.models import WaybillDoc
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.cases import CaseCreate, CaseUpdate
@@ -14,6 +15,7 @@ from myapp.services.equipment_service import EquipmentService
 from myapp.services.warranty_service import WarrantyService
 from myapp.services.case_status_service import CaseStatusService
 from myapp.services.storage_service import StorageService
+from myapp.services.waybill_service import WaybillService
 
 
 class CaseService:
@@ -60,34 +62,47 @@ class CaseService:
         if existing_case.scalar_one_or_none():
             raise ValueError("Случай уже существует")
 
-        # 1. Разделяем данные
-        case_creation_data = case_data.model_dump(exclude={"warranty_work", "user_id"})
+        # Разделение данных
+        case_creation_data = case_data.model_dump(
+            exclude={"warranty_work", "user_id", "waybill_doc"}
+        )
         warranty_work_data = (
             case_data.warranty_work.model_dump(exclude_unset=True)
             if case_data.warranty_work
             else {}
         )
+        waybill_doc_data = (
+            case_data.waybill_doc.model_dump(exclude_unset=True)
+            if case_data.waybill_doc
+            else {}
+        )
 
-        # 2. Создаем RepairCaseEquipment только с его собственными полями
+        # Создание RepairCaseEquipment только с его собственными полями
         case = RepairCaseEquipment(**case_creation_data)
         case.date_recorded = datetime.now()
         case.user_id = user_id
 
-        # 3. Создаем WarrantyWork и привязываем его как ORM-объект
+        # Создание WarrantyWork и привязывание как ORM-объект
         new_warranty_work = WarrantyWork(**warranty_work_data)
         case.warranty_work = new_warranty_work
 
-        # 4. Пересчет supplier_id
-        if case.component_equipment_id:
-            supplier_id = await EquipmentService.find_supplier_in_parents(
-                session, case.component_equipment_id
-            )
-            case.supplier_id = supplier_id
+        # Создание WaybillsDoc и привязывание как ORM-объект
+        new_waybill_doc = WaybillDoc(**waybill_doc_data)
+        case.waybill_doc = new_waybill_doc
+
+        # Пересчет supplier_id
+        start_eq_id = case.element_equipment_id or case.component_equipment_id
+        case.supplier_id = await EquipmentService.resolve_supplier(
+            session,
+            equipment_id=start_eq_id,
+            locomotive_number=case.locomotive_number,
+            locomotive_model_id=case.locomotive_model_id,
+        )
 
         session.add(case)
         await session.flush()
 
-        # 5. Получаем объект со всеми связями и вычисленным статусом
+        # Получаем объект со всеми связями и вычисленным статусом
         created_case = await CaseService._get_case_with_relations(session, case.id)
         return created_case
 
@@ -96,7 +111,7 @@ class CaseService:
     async def update_case(
         session: AsyncSession, case_id: int, case_data: CaseUpdate
     ) -> RepairCaseEquipment | None:
-        """Обновление случая, включая WarrantyWork, и автоматическое переопределение supplier_id"""
+        """Обновление случая и автоматическое переопределение supplier_id"""
         case: RepairCaseEquipment | None = await session.get(
             RepairCaseEquipment, case_id
         )
@@ -104,36 +119,42 @@ class CaseService:
             return None
 
         update_data = case_data.model_dump(
-            exclude_unset=True, exclude={"warranty_work"}
+            exclude_unset=True, exclude={"warranty_work", "waybill_doc"}
         )
 
-        component_changed = "component_equipment_id" in update_data
-        element_changed = "element_equipment_id" in update_data
+        eq_changed = "component_equipment_id" in update_data
+        el_changed = "element_equipment_id" in update_data
+        loco_num_changed = "locomotive_number" in update_data
+        loco_model_changed = "locomotive_model_id" in update_data
 
         # ЛОГИКА ОПРЕДЕЛЕНИЯ ПОСТАВЩИКА:
-        # 1. Если изменилось оборудование
-        if component_changed or element_changed:
-            equipment_id_for_search = None
+        if eq_changed or el_changed or loco_num_changed or loco_model_changed:
 
-            # Приоритет: component_equipment_id > element_equipment_id
-            if component_changed:
-                equipment_id_for_search = update_data.get("component_equipment_id")
-            elif element_changed:
-                equipment_id_for_search = update_data.get("element_equipment_id")
+            # Определяем актуальные ID оборудования (новое из update_data или старое из базы)
+            current_el_id = update_data.get(
+                "element_equipment_id", case.element_equipment_id
+            )
+            current_comp_id = update_data.get(
+                "component_equipment_id", case.component_equipment_id
+            )
 
-            # Если equipment_id передан как null (сброс выбора), то поставщик = null
-            if equipment_id_for_search is None:
+            # Выбираем точку старта для поиска (Элемент важнее компонента)
+            target_id = current_el_id or current_comp_id
+
+            if target_id is None:
                 update_data["supplier_id"] = None
-            # Если equipment_id передан, ищем поставщика
             else:
-                found_supplier_id = await EquipmentService.find_supplier_in_parents(
-                    session, equipment_id_for_search
+                # Вызываем наш "умный" метод с проверкой исключений
+                update_data["supplier_id"] = await EquipmentService.resolve_supplier(
+                    session,
+                    equipment_id=target_id,
+                    locomotive_number=update_data.get(
+                        "locomotive_number", case.locomotive_number
+                    ),
+                    locomotive_model_id=update_data.get(
+                        "locomotive_model_id", case.locomotive_model_id
+                    ),
                 )
-                update_data["supplier_id"] = found_supplier_id
-        # 2. Если оборудование не менялось, НЕ трогаем supplier_id
-        else:
-            # Не добавляем supplier_id в update_data, чтобы не менять его
-            pass
 
         # Обновляем поля
         for field, value in update_data.items():
@@ -145,6 +166,12 @@ class CaseService:
         if case_data.warranty_work:
             await WarrantyService.update_warranty_work(
                 session, case_id, case_data.warranty_work
+            )
+
+        # Обновление WaybillDoc
+        if case_data.waybill_doc:
+            await WaybillService.update_waybill_doc(
+                session, case_id, case_data.waybill_doc
             )
 
         return await CaseService._get_case_with_relations(session, case.id)

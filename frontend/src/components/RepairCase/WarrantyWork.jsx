@@ -11,6 +11,7 @@ import { Tooltip } from "../../utils/Tooltip";
 import { CompactWarrantyFiles } from "./CompactWarrantyFiles";
 import { WarrantyDocumentField } from "../../types/warranty";
 import { useUnifiedFileManagement } from "../../hooks/useUnifiedFileManagement";
+import { ColorBlock } from "../shared/ColorBlock";
 
 function FileRow({
   label,
@@ -46,7 +47,7 @@ function FileRow({
 
   const LeftPart = (
     <div className="flex min-w-0 flex-col">
-      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
+      <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-slate-500 uppercase antialiased">
         {label}
       </label>
       {isEditing ? (
@@ -71,12 +72,12 @@ function FileRow({
         <div
           className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
             isMissing
-              ? "border-gray-200 bg-gray-50 text-gray-400"
+              ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
               : "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
           }`}
         >
           <span className="whitespace-nowrap">
-            {isMissing ? "—" : `№ ${num} от ${formatDate(date)}`}
+            {isMissing ? "—" : `${num} от ${formatDate(date)}`}
           </span>
         </div>
       )}
@@ -112,7 +113,7 @@ function FileRow({
               isEditing && isAutoSummary
                 ? "border-gray-200 bg-white font-bold text-slate-900 shadow-sm"
                 : displaySummary === "—"
-                  ? "border-gray-200 bg-gray-50 font-medium text-gray-400"
+                  ? "border border-gray-300 bg-gray-50 font-medium text-gray-900 shadow-sm"
                   : "border-gray-300 bg-gray-50 font-medium text-gray-900 shadow-sm"
             }`}
           >
@@ -170,7 +171,7 @@ function FileRow({
                   isEditing && isAutoSummary
                     ? "border-gray-200 bg-white font-bold text-slate-900 shadow-sm"
                     : displaySummary === "—"
-                      ? "border-gray-200 bg-gray-50 font-medium text-gray-400"
+                      ? "border border-gray-300 bg-gray-50 font-medium text-gray-900 shadow-sm"
                       : "border-gray-300 bg-gray-50 font-medium text-gray-900 shadow-sm"
                 }`}
               >
@@ -192,91 +193,6 @@ function FileRow({
           />
         </div>
       )}
-    </div>
-  );
-}
-
-// Компонент для обертки блока с заголовком
-function WarrantyBlock({
-  blockTitle,
-  blockIcon,
-  blockColor = "blue",
-  children,
-}) {
-  const colorClasses = {
-    blue: {
-      border: "border-blue-100",
-      bgFrom: "from-blue-50",
-      bgTo: "to-white",
-      accent: "bg-[#6766cc]",
-      icon: "text-[#6766ca]",
-      title: "text-[#6169ac]",
-    },
-    green: {
-      border: "border-green-100",
-      bgFrom: "from-green-50",
-      bgTo: "to-white",
-      accent: "bg-[#22c55e]",
-      icon: "text-[#16a34a]",
-      title: "text-[#15803d]",
-    },
-    orange: {
-      border: "border-orange-100",
-      bgFrom: "from-orange-50",
-      bgTo: "to-white",
-      accent: "bg-[#f97316]",
-      icon: "text-[#ea580c]",
-      title: "text-[#c2410c]",
-    },
-    purple: {
-      border: "border-purple-100",
-      bgFrom: "from-purple-50",
-      bgTo: "to-white",
-      accent: "bg-[#a855f7]",
-      icon: "text-[#9333ea]",
-      title: "text-[#7c3aed]",
-    },
-    cyan: {
-      border: "border-cyan-100",
-      bgFrom: "from-cyan-50",
-      bgTo: "to-white",
-      accent: "bg-[#0891b2]",
-      icon: "text-[#0891b2]",
-      title: "text-[#0e7490]",
-    },
-    yellow: {
-      border: "border-yellow-100",
-      bgFrom: "from-yellow-50",
-      bgTo: "to-white",
-      accent: "bg-[#eab308]",
-      icon: "text-[#ca8a04]",
-      title: "text-[#a16207]",
-    },
-  };
-
-  const colors = colorClasses[blockColor] || colorClasses.blue;
-
-  return (
-    <div className="space-y-3">
-      {/* Заголовок блока */}
-      <div
-        className={`relative mb-3 flex items-center gap-2 rounded-lg border ${colors.border} bg-gradient-to-r ${colors.bgFrom} ${colors.bgTo} px-3 py-2 shadow-md`}
-      >
-        <div
-          className={`absolute top-0 bottom-0 left-0 w-1 rounded-l-lg ${colors.accent}`}
-        ></div>
-        {blockIcon}
-        <h3
-          className={`text-xs font-bold tracking-wider ${colors.title} uppercase`}
-        >
-          {blockTitle}
-        </h3>
-      </div>
-
-      {/* Контент блока */}
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-200/50 p-3 shadow-sm">
-        {children}
-      </div>
     </div>
   );
 }
@@ -313,13 +229,13 @@ export const WarrantyWork = ({
   const getFilteredReasonOptions = () => {
     if (!references?.investigation_reasons) return [];
 
-    const statusId = data?.research_status_id;
+    const researchStatusId = data?.research_status_id;
 
-    if (statusId === 1) {
+    if (researchStatusId === 1) {
       return references.investigation_reasons.filter(
         (reason) => reason.id >= 1 && reason.id <= 5,
       );
-    } else if (statusId === 2 || statusId === 4) {
+    } else if (researchStatusId === 2 || researchStatusId === 4) {
       return references.investigation_reasons.filter(
         (reason) => reason.id >= 6 && reason.id <= 9,
       );
@@ -361,7 +277,7 @@ export const WarrantyWork = ({
   return (
     <div className="space-y-3">
       {/* Блок: Уведомление */}
-      <WarrantyBlock
+      <ColorBlock
         blockTitle={BLOCK_TITLES.warranty_notification}
         blockIcon={<Bell className="h-4 w-4 text-[#6766ca]" />}
         blockColor="blue"
@@ -387,10 +303,10 @@ export const WarrantyWork = ({
           relatedField={WarrantyDocumentField.notification}
           onFilesUploaded={onFilesUploaded}
         />
-      </WarrantyBlock>
+      </ColorBlock>
 
       {/* Блок: Повторное уведомление */}
-      <WarrantyBlock
+      <ColorBlock
         blockTitle={BLOCK_TITLES.warranty_re_notification}
         blockIcon={<Bell className="h-4 w-4 text-[#16a34a]" />}
         blockColor="green"
@@ -411,10 +327,10 @@ export const WarrantyWork = ({
           relatedField={WarrantyDocumentField.re_notification}
           onFilesUploaded={onFilesUploaded}
         />
-      </WarrantyBlock>
+      </ColorBlock>
 
       {/* Блок: Ответ поставщика */}
-      <WarrantyBlock
+      <ColorBlock
         blockTitle={BLOCK_TITLES.warranty_supplier_response}
         blockIcon={<MessageSquare className="h-4 w-4 text-[#ea580c]" />}
         blockColor="orange"
@@ -440,10 +356,10 @@ export const WarrantyWork = ({
           relatedField={WarrantyDocumentField.response}
           onFilesUploaded={onFilesUploaded}
         />
-      </WarrantyBlock>
+      </ColorBlock>
 
       {/* Блок: Рекламационный акт / АВР */}
-      <WarrantyBlock
+      <ColorBlock
         blockTitle={BLOCK_TITLES.warranty_claim_act_avr}
         blockIcon={<FileText className="h-4 w-4 text-[#9333ea]" />}
         blockColor="purple"
@@ -505,15 +421,15 @@ export const WarrantyWork = ({
             </div>
           )}
         </div>
-      </WarrantyBlock>
+      </ColorBlock>
 
       {/* Блок: Акт исследования */}
-      <WarrantyBlock
+      <ColorBlock
         blockTitle={BLOCK_TITLES.warranty_research_act}
         blockIcon={<Search className="h-4 w-4 text-[#ca8a04]" />}
         blockColor="yellow"
       >
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="flex min-w-0 flex-col">
               <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
@@ -532,8 +448,8 @@ export const WarrantyWork = ({
                 <div
                   className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
                     data?.research_status_id
-                      ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                      : "border-gray-200 bg-gray-50 text-gray-400"
+                      ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                      : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
                   }`}
                 >
                   <span className="truncate">
@@ -573,8 +489,8 @@ export const WarrantyWork = ({
                 <div
                   className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
                     data?.investigation_reason_id
-                      ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                      : "border-gray-200 bg-gray-50 text-gray-400"
+                      ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                      : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
                   }`}
                 >
                   <span className="truncate">
@@ -602,8 +518,8 @@ export const WarrantyWork = ({
               <div
                 className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
                   data?.research_document
-                    ? "border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                    : "border-gray-200 bg-gray-50 text-gray-400"
+                    ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                    : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
                 }`}
               >
                 <span className="truncate">
@@ -625,7 +541,7 @@ export const WarrantyWork = ({
             )}
           </div>
         </div>
-      </WarrantyBlock>
+      </ColorBlock>
 
       {/* Общая кнопка скачивания всех файлов Warranty */}
       {!isEditing &&

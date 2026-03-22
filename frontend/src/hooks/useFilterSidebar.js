@@ -209,6 +209,13 @@ export const useFilterSidebar = (filters, options) => {
       iconText: "text-rose-600",
       titleText: "text-rose-800",
     },
+    ttn: {
+      border: "border-amber-100",
+      bgGradient: "from-amber-50",
+      iconBg: "bg-amber-600",
+      iconText: "text-amber-700",
+      titleText: "text-amber-800",
+    },
   };
 
   return {

@@ -66,29 +66,10 @@ export const fileApi = {
     const filesArray = Array.isArray(fileList) ? fileList : [fileList];
     if (filesArray.length === 0) throw new Error("No files provided");
 
-    console.log("uploadFile called with:", {
-      caseId,
-      category,
-      filesArray: filesArray.map((f) => ({
-        name: f.name,
-        size: f.size,
-        type: f.type,
-      })),
-      relatedField,
-    });
-
-    // Определяем эндпоинт в зависимости от количества файлов
     const isMultipleFiles = filesArray.length > 1;
     const endpoint = isMultipleFiles
       ? `/files/cases/${caseId}/upload-files`
       : `/files/cases/${caseId}/upload`;
-
-    console.log(
-      "Using endpoint:",
-      endpoint,
-      "isMultipleFiles:",
-      isMultipleFiles,
-    );
 
     const formData = new FormData();
     formData.append("category", category);

@@ -78,20 +78,26 @@ class FileManagementService:
         session: AsyncSession,
         case_id: int,
     ) -> dict[str, list]:
-        """Получить все файлы случая, сгруппированные по related_field для быстрого доступа"""
+        """Получить все файлы случая, сгруппированные по категориям"""
         all_files = await FileManagementService.get_files_by_case(session, case_id)
 
         all_files_dict = [FileInfo.model_validate(file) for file in all_files]
 
         grouped_files = {}
         warranty_files = []
+        waybill_files = []
 
         for file in all_files_dict:
-            if file.category == "warranty":
+            if file.category in ("warranty", "waybill") and file.related_field:
                 if file.related_field not in grouped_files:
                     grouped_files[file.related_field] = []
                 grouped_files[file.related_field].append(file)
-                warranty_files.append(file)
+
+                if file.category == "warranty":
+                    warranty_files.append(file)
+                elif file.category == "waybill":
+                    waybill_files.append(file)
+
             else:
                 if "primary" not in grouped_files:
                     grouped_files["primary"] = []
@@ -99,5 +105,8 @@ class FileManagementService:
 
         if warranty_files:
             grouped_files["all_warranty"] = warranty_files
+
+        if waybill_files:
+            grouped_files["all_waybill"] = waybill_files
 
         return grouped_files

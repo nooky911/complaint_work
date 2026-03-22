@@ -4,6 +4,7 @@ import { formatDate, formatEquipmentName } from "../../utils/formatters";
 import { DataField } from "../inputs/DataField.jsx";
 import { RepairExecutionEditor } from "../EditableFields";
 import { BLOCK_TITLES, REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import { Tooltip } from "../../utils/Tooltip";
 
 export const RepairExecutionBlock = ({
   isEditing,
@@ -96,9 +97,8 @@ export const RepairExecutionBlock = ({
           {showComponent && (
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
-                <DataField
-                  label={REPAIR_FIELDS_LABELS.new_component}
-                  value={formatEquipmentName(
+                <Tooltip
+                  text={formatEquipmentName(
                     getCorrectName(
                       currentData.new_component_equipment_id,
                       currentData.new_component_equipment,
@@ -106,7 +106,19 @@ export const RepairExecutionBlock = ({
                     currentData.new_component_quantity ||
                       currentData.component_quantity,
                   )}
-                />
+                >
+                  <DataField
+                    label={REPAIR_FIELDS_LABELS.new_component}
+                    value={formatEquipmentName(
+                      getCorrectName(
+                        currentData.new_component_equipment_id,
+                        currentData.new_component_equipment,
+                      ),
+                      currentData.new_component_quantity ||
+                        currentData.component_quantity,
+                    )}
+                  />
+                </Tooltip>
               </div>
               <DataField
                 label={REPAIR_FIELDS_LABELS.serial_number}
@@ -122,9 +134,8 @@ export const RepairExecutionBlock = ({
           {showElement && (
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
-                <DataField
-                  label={REPAIR_FIELDS_LABELS.new_element}
-                  value={formatEquipmentName(
+                <Tooltip
+                  text={formatEquipmentName(
                     getCorrectName(
                       currentData.new_element_equipment_id,
                       currentData.new_element_equipment,
@@ -132,7 +143,19 @@ export const RepairExecutionBlock = ({
                     currentData.new_element_quantity ||
                       currentData.element_quantity,
                   )}
-                />
+                >
+                  <DataField
+                    label={REPAIR_FIELDS_LABELS.new_element}
+                    value={formatEquipmentName(
+                      getCorrectName(
+                        currentData.new_element_equipment_id,
+                        currentData.new_element_equipment,
+                      ),
+                      currentData.new_element_quantity ||
+                        currentData.element_quantity,
+                    )}
+                  />
+                </Tooltip>
               </div>
               <DataField
                 label={REPAIR_FIELDS_LABELS.serial_number}

@@ -13,6 +13,7 @@ import { GeneralInfo } from "./RepairCase/GeneralInfo";
 import { FaultyEquipmentBlock } from "./RepairCase/FaultyEquipmentBlock";
 import { RepairExecutionBlock } from "./RepairCase/RepairExecutionBlock";
 import { WarrantyWork } from "./RepairCase/WarrantyWork";
+import { TtnBlocks } from "./RepairCase/TtnBlocks";
 import { CaseValidationToast } from "./Toast/CaseValidationToast";
 import { ErrorToast } from "./Toast/ErrorToast";
 
@@ -102,26 +103,18 @@ export function RepairCaseDetails({
   };
 
   const onCancelEdit = async () => {
-    console.log(
-      "Отмена редактирования, удаление файлов:",
-      uploadedDuringEditIds,
-    );
-
     if (uploadedDuringEditIds.length > 0) {
       try {
-        const results = await Promise.allSettled(
+        await Promise.allSettled(
           uploadedDuringEditIds.map((fileId) => {
-            console.log("Удаляем файл:", fileId);
             return api.delete(`/files/${fileId}`);
           }),
         );
-        console.log("Результаты удаления:", results);
       } catch (err) {
         console.error("Ошибка отката загруженных файлов при отмене:", err);
       }
     }
 
-    console.log("Обновляем кеш...");
     queryClient.invalidateQueries({ queryKey: ["files", repairCase.id] });
     queryClient.invalidateQueries({
       queryKey: ["filesGrouped", repairCase.id],
@@ -199,6 +192,11 @@ export function RepairCaseDetails({
             onClick={() => setActiveTab("reclamation")}
             label="РЕКЛАМАЦИЯ"
           />
+          <TabButton
+            active={activeTab === "movement"}
+            onClick={() => setActiveTab("movement")}
+            label="ПЕРЕДВИЖЕНИЕ"
+          />
         </div>
 
         <div className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6">
@@ -244,12 +242,23 @@ export function RepairCaseDetails({
                 onFilesUploaded={onFilesUploadedDuringEdit}
               />
             </div>
-          ) : (
+          ) : activeTab === "reclamation" ? (
             <WarrantyWork
               isEditing={isEditing}
               currentData={currentData}
               repairCase={repairCase}
               updateWarrantyField={updateWarrantyField}
+              references={references}
+              caseId={repairCase.id}
+              onFilesUploaded={onFilesUploadedDuringEdit}
+            />
+          ) : (
+            <TtnBlocks
+              isEditing={isEditing}
+              ttnData={currentData}
+              updateField={updateField}
+              showError={showError}
+              validation={validation}
               references={references}
               caseId={repairCase.id}
               onFilesUploaded={onFilesUploadedDuringEdit}

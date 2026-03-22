@@ -10,6 +10,7 @@ from myapp.models.case_files import (
     CaseFile,
     FileCategory,
     WarrantyDocumentField,
+    WaybillDocumentField,
 )
 
 
@@ -29,7 +30,7 @@ class FileUploadService:
         case_id: int,
         category: FileCategory,
         file: UploadFile,
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> CaseFile:
         """Внутренний метод для обработки одного файла: сохранение на диск и запись в БД"""
         # Генерация имен и путей
@@ -64,7 +65,7 @@ class FileUploadService:
         case_id: int,
         category: FileCategory,
         file: UploadFile,
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> CaseFile:
         """Загрузка одного файла"""
         results = await FileUploadService.upload_files(
@@ -79,7 +80,7 @@ class FileUploadService:
         case_id: int,
         category: FileCategory,
         files: list[UploadFile],
-        related_field: WarrantyDocumentField | None = None,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
     ) -> list[CaseFile]:
         """Загрузка нескольких файлов"""
         if related_field == "" or related_field == "string":
@@ -89,8 +90,11 @@ class FileUploadService:
         if not case:
             raise ValueError(f"Случай с ID {case_id} не найден")
 
-        if category == FileCategory.warranty and not related_field:
-            raise ValueError("Для warranty файлов обязателен related_field")
+        if (
+            category in (FileCategory.warranty, FileCategory.waybill)
+            and not related_field
+        ):
+            raise ValueError(f"Для категории {category.value} обязателен related_field")
         if category == FileCategory.primary and related_field is not None:
             raise ValueError("Для primary файлов related_field должен быть None")
 
