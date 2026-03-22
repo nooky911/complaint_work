@@ -4,8 +4,15 @@ from typing import Annotated
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.user import User
-from myapp.schemas.cases import CaseList, CaseDetail, CaseCreate, CaseUpdate
+from myapp.schemas.cases import (
+    CaseList,
+    CaseDetail,
+    CaseCreate,
+    CaseUpdate,
+    SupplierPreviewRequest,
+)
 from myapp.schemas.filters import CaseFilterParams
+from myapp.services.equipment_service import EquipmentService
 from myapp.services.case_service import CaseService
 from myapp.services.case_filter_service import CaseFilterService
 from myapp.database.base import get_db
@@ -144,3 +151,23 @@ async def delete_case(
 
     await CaseService.delete_case(session, case_id)
     return None
+
+
+@router.post(
+    "/resolve-supplier-preview",
+    summary="Динамический расчет поставщика для формы",
+    status_code=status.HTTP_200_OK,
+)
+async def resolve_supplier_preview(
+    data: SupplierPreviewRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Возвращает ID поставщика на основе оборудования и данных локомотива"""
+    supplier_id = await EquipmentService.resolve_supplier(
+        session,
+        equipment_id=data.equipment_id,
+        locomotive_number=data.locomotive_number,
+        locomotive_model_id=data.locomotive_model_id,
+    )
+    return {"supplier_id": supplier_id}

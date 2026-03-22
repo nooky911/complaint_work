@@ -35,6 +35,28 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const validation = useCaseValidation(editData, faultyHierarchy, allEquipment);
 
   useEffect(() => {
+    if (!isEditing || !editData) return;
+
+    const timer = setTimeout(() => {
+      const targetId =
+        editData.element_equipment_id || editData.component_equipment_id;
+
+      updateSupplierPreview(
+        targetId,
+        editData.locomotive_number,
+        editData.locomotive_model_id,
+      );
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    editData?.component_equipment_id,
+    editData?.element_equipment_id,
+    editData?.locomotive_number,
+    editData?.locomotive_model_id,
+  ]);
+
+  useEffect(() => {
     if (!isEditing && repairCase) {
       const targetId =
         repairCase.element_equipment?.id || repairCase.component_equipment?.id;
@@ -110,7 +132,32 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   };
 
   const updateField = (field, value) => {
-    setEditData((prev) => ({ ...prev, [field]: value }));
+    setEditData((prev) => {
+      const ttnFields = [
+        "ttn_replacement",
+        "ttn_replacement_date",
+        "ttn_from_rc",
+        "ttn_from_rc_date",
+        "ttn_to_supplier",
+        "ttn_to_supplier_date",
+        "to_supplier_provider_id",
+        "ttn_from_supplier",
+        "ttn_from_supplier_date",
+        "from_supplier_provider_id",
+      ];
+
+      if (ttnFields.includes(field)) {
+        return {
+          ...prev,
+          waybill_doc: {
+            ...prev.waybill_doc,
+            [field]: value,
+          },
+        };
+      }
+
+      return { ...prev, [field]: value };
+    });
   };
 
   const updateWarrantyField = (field, value) => {
@@ -122,21 +169,40 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
 
   const handleEquipmentSelect = (data) => {
     setFaultyHierarchy(data);
-    setEditData((prev) => {
-      if (!prev) return prev;
-      const { component, element, supplierId } = data;
-      const isComponentChanged = prev.component_equipment_id !== component;
-      const isElementChanged = prev.element_equipment_id !== element;
+    setEditData((prev) => ({
+      ...prev,
+      component_equipment_id: data.component,
+      element_equipment_id: data.element,
+      malfunction_id: null,
+    }));
+  };
 
-      return {
-        ...prev,
-        component_equipment_id: component,
-        element_equipment_id: element,
-        malfunction_id:
-          isComponentChanged || isElementChanged ? null : prev.malfunction_id,
-        supplier_id: supplierId,
-      };
-    });
+  const updateSupplierPreview = async (eqId, locoNum, modelId) => {
+    if (!eqId) {
+      setEditData((prev) =>
+        prev?.supplier_id !== null ? { ...prev, supplier_id: null } : prev,
+      );
+      return;
+    }
+
+    try {
+      const response = await api.post("/cases/resolve-supplier-preview", {
+        equipment_id: eqId,
+        locomotive_number: locoNum,
+        locomotive_model_id: modelId,
+      });
+
+      const newSupplierId = response.data.supplier_id;
+
+      setEditData((prev) => {
+        if (prev && prev.supplier_id !== newSupplierId) {
+          return { ...prev, supplier_id: newSupplierId };
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Ошибка при предиктивном расчете поставщика:", error);
+    }
   };
 
   const handleSave = async () => {
@@ -148,7 +214,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     setSaving(true);
     try {
       const cleanedData = { ...editData };
-      
+
       // Удаляем user_id если пользователь не superadmin
       if (currentUser?.role !== "superadmin") {
         delete cleanedData.user_id;
@@ -165,6 +231,8 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         "fault_discovered_at_id",
         "malfunction_id",
         "supplier_id",
+        "to_supplier_provider_id",
+        "from_supplier_provider_id",
       ];
 
       const warrantyIdFields = [
@@ -178,7 +246,11 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       const processObj = (obj) => {
         Object.keys(obj).forEach((key) => {
           const val = obj[key];
-          if (idFields.includes(key) || warrantyIdFields.includes(key) || key.includes("date")) {
+          if (
+            idFields.includes(key) ||
+            warrantyIdFields.includes(key) ||
+            key.includes("date")
+          ) {
             if (
               val === "" ||
               val === undefined ||
@@ -192,6 +264,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
 
       processObj(cleanedData);
       if (cleanedData.warranty_work) processObj(cleanedData.warranty_work);
+      if (cleanedData.waybill_doc) processObj(cleanedData.waybill_doc);
 
       const initialData = convertCaseToFormData(repairCase);
       const payload = getDirtyValues(initialData, cleanedData);
@@ -241,16 +314,21 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const getDirtyValues = (initial, current) => {
     let dirty = {};
     if (!initial || !current) return current;
+
     Object.keys(current).forEach((key) => {
       const curVal = current[key];
       const initVal = initial[key];
+
       if (curVal && typeof curVal === "object" && !Array.isArray(curVal)) {
         const diff = getDirtyValues(initVal || {}, curVal);
-        if (Object.keys(diff).length > 0) dirty[key] = diff;
+        if (Object.keys(diff).length > 0) {
+          dirty[key] = diff;
+        }
       } else if (curVal !== initVal) {
         dirty[key] = curVal;
       }
     });
+
     return dirty;
   };
 

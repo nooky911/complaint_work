@@ -63,12 +63,69 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const updateTtnField = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      waybill_doc: { ...prev.waybill_doc, [field]: value },
+    }));
+  };
+
   const updateWarrantyField = (field, value) => {
     setFormData((prev) => ({
       ...prev,
       warranty_work: { ...prev.warranty_work, [field]: value },
     }));
   };
+
+  const updateSupplierPreview = async (eqId, locoNum, modelId) => {
+    // Если оборудование сброшено (eqId == null)
+    if (!eqId) {
+      setFormData(
+        (prev) =>
+          prev.supplier_id !== null ? { ...prev, supplier_id: null } : prev
+      );
+      return;
+    }
+
+    try {
+      const response = await api.post("/cases/resolve-supplier-preview", {
+        equipment_id: eqId,
+        locomotive_number: locoNum,
+        locomotive_model_id: modelId,
+      });
+
+      const newSupplierId = response.data.supplier_id;
+
+      setFormData((prev) => {
+        if (prev.supplier_id !== newSupplierId) {
+          return { ...prev, supplier_id: newSupplierId };
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Ошибка предиктивного расчета поставщика:", error);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const targetId =
+        formData.element_equipment_id || formData.component_equipment_id;
+
+      updateSupplierPreview(
+        targetId,
+        formData.locomotive_number,
+        formData.locomotive_model_id
+      );
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    formData.component_equipment_id,
+    formData.element_equipment_id,
+    formData.locomotive_number,
+    formData.locomotive_model_id,
+  ]);
 
   const handleEquipmentSelect = (data) => {
     setFaultyHierarchy(data);
@@ -77,7 +134,6 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
       component_equipment_id: data.component,
       element_equipment_id: data.element,
       malfunction_id: null,
-      supplier_id: data.supplierId || prev.supplier_id,
     }));
   };
 
@@ -158,8 +214,10 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     handleCreate,
     setShowError,
     updateField,
+    updateTtnField,
     updateWarrantyField,
     handleEquipmentSelect,
+    updateSupplierPreview,
     closeServerError: () => setServerError({ show: false, message: "" }),
   };
 };

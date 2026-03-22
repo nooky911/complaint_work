@@ -150,11 +150,52 @@ class EquipmentService:
         last_item = chain[-1]
 
         # Получаем полный объект Equipment
-        equipment = await session.get(Equipment, equipment_id)
+        equipment: Equipment | None = await session.get(Equipment, equipment_id)
         if not equipment:
             return None
 
         return equipment, last_item.level
+
+    @staticmethod
+    async def resolve_supplier(
+        session: AsyncSession,
+        equipment_id: int | None,
+        locomotive_number: str | None = None,
+        locomotive_model_id: int | None = None,
+    ) -> int | None:
+        """Правила определения определённых поставщиков"""
+
+        if not equipment_id:
+            return None
+
+        base_supplier_id = await EquipmentService.find_supplier_in_parents(
+            session, equipment_id
+        )
+
+        if base_supplier_id is None:
+            return None
+
+        # Номера локомотивов для поставщика НПК СО
+        loco_numbers = ("730", "731", "732", "733", "734")
+
+        # Поставщики (13: МТЗ Трансмаш, 26: Горизонт, 40: НПО САУТ, 55: Тяговые компоненты)
+        replace_supp_npk = (13, 26, 40, 55)
+        replace_supp_3es8 = (26, 40)
+
+        # Переназначение на НПК СО (ID 38)
+        if base_supplier_id in replace_supp_npk:
+            if (
+                locomotive_number in loco_numbers
+                or locomotive_model_id == 2
+                or (locomotive_model_id in (3, 7) and locomotive_number == "1")
+            ):
+                return 38
+
+        # Переназначение на ООО «Тяговые компоненты» (ID 55)
+        if locomotive_model_id in (3, 7) and base_supplier_id in replace_supp_3es8:
+            return 55
+
+        return base_supplier_id
 
     @staticmethod
     async def find_supplier_in_parents(
