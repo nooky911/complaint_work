@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { isValidDate } from "../utils/validators";
+import { isValidDate, isDateNotEarlierThan } from "../utils/validators";
 
 const getDepth = (id, allEquipment) => {
   if (!id || !allEquipment || allEquipment.length === 0) return -1;
@@ -40,7 +40,7 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     const levels = hierarchy?.fullHierarchy || hierarchy || {};
     const rId = Number(d?.repair_type_id || d?.repair_type?.id);
 
-    // 1. ДАТЫ
+    // Даты
     const isFaultDateMissing = !d?.fault_date;
     const isFaultDateInvalid = d?.fault_date && !isValidDate(d?.fault_date);
     const otherDates = [
@@ -51,10 +51,32 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
       w?.work_completion_act_date,
     ].filter(Boolean);
     const areOtherDatesInvalid = otherDates.some((date) => !isValidDate(date));
-    const dateError =
-      isFaultDateMissing || isFaultDateInvalid || areOtherDatesInvalid;
 
-    // 2. ОБЯЗАТЕЛЬНЫЕ ПОЛЯ (ОБЩЕЕ)
+    // Проверка, что даты рекламационной работы не раньше fault_date
+    const areOtherDatesEarlierThanFault = otherDates.some(
+      (date) => !isDateNotEarlierThan(date, d?.fault_date),
+    );
+
+    // TTN даты (можно будущие даты)
+    const ttn = d?.waybill_doc || {};
+    const ttnDates = [
+      ttn?.ttn_replacement_date,
+      ttn?.ttn_from_rc_date,
+      ttn?.ttn_to_supplier_date,
+      ttn?.ttn_from_supplier_date,
+    ].filter(Boolean);
+    const areTTNDatesInvalid = ttnDates.some(
+      (date) => !isValidDate(date, false),
+    ); // false = разрешаем будущие даты
+
+    const dateError =
+      isFaultDateMissing ||
+      isFaultDateInvalid ||
+      areOtherDatesInvalid ||
+      areOtherDatesEarlierThanFault ||
+      areTTNDatesInvalid;
+
+    // Общие обязательные поля
     const isSectionMissing = !d?.section_mask;
     const isRegionMissing = !d?.regional_center_id;
     const isLocoModelMissing = !d?.locomotive_model_id;
@@ -62,7 +84,7 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     const isQuantityInvalid =
       !d?.component_quantity || Number(d?.component_quantity) < 1;
 
-    // 3. НЕИСПРАВНОЕ
+    // Неисправное
     const hasLvl1 = !!levels.lvl1;
     const hasLvl2 = !!levels.lvl2;
     const hasLvl3 = !!levels.lvl3;
@@ -77,7 +99,7 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     const isDesignationMissing = rId === 2 || rId === 3 ? !hasLvl3 : !hasLvl1;
     const isMalfunctionMissing = !d?.malfunction_id;
 
-    // 4. ИСПОЛНЕНИЕ
+    // Новое оборудование
     const newCompId = d?.new_component_equipment_id;
     const newElemId = d?.new_element_equipment_id;
 
@@ -96,6 +118,10 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
 
     const errors = {
       dateError,
+      isFaultDateInvalid,
+      areOtherDatesInvalid,
+      areOtherDatesEarlierThanFault,
+      areTTNDatesInvalid,
       isFaultDateMissing,
       isSectionMissing,
       isRegionMissing,

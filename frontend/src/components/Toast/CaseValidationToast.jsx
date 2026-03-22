@@ -25,10 +25,11 @@ export const CaseValidationToast = ({ show, onClose, validation }) => {
           Не все поля заполнены:
         </p>
         <ul className="mt-1 list-disc pl-4 text-[11px] leading-tight font-medium text-slate-500">
-          {validation.dateError && (
-            <li>Некорректный формат дат или нет даты отказа</li>
-          )}
           {validation.isFaultDateMissing && <li>Укажите дату неисправности</li>}
+          {validation.isFaultDateInvalid && <li>Некорректная дата неисправности</li>}
+          {validation.areOtherDatesInvalid && <li>Некорректная дата в рекламационной работе</li>}
+          {validation.areOtherDatesEarlierThanFault && <li>Даты рекламационной работы не могут быть раньше даты неисправности</li>}
+          {validation.areTTNDatesInvalid && <li>Некорректная дата в ТТН</li>}
           {validation.isSectionMissing && <li>Укажите секцию</li>}
           {validation.isRegionMissing && <li>Выберите региональный центр</li>}
           {validation.isLocoModelMissing && <li>Выберите модель локомотива</li>}
