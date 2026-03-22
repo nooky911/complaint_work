@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.models.warranty_work import WarrantyWork
 from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.waybill_docs import WaybillDoc
 from myapp.database.query_builders.expressions import status_expr
 
 
@@ -15,6 +16,7 @@ class CaseStatusService:
         return (
             select(status_expr)
             .select_from(WarrantyWork)
+            .outerjoin(WaybillDoc, WaybillDoc.case_id == WarrantyWork.case_id)
             .where(WarrantyWork.case_id == RepairCaseEquipment.id)
             .correlate(RepairCaseEquipment)
             .scalar_subquery()
@@ -27,6 +29,8 @@ class CaseStatusService:
         status_stmt = (
             select(status_expr)
             .select_from(WarrantyWork)
+            .outerjoin(WaybillDoc, WaybillDoc.case_id == WarrantyWork.case_id)
+            .join(RepairCaseEquipment, RepairCaseEquipment.id == WarrantyWork.case_id)
             .where(WarrantyWork.case_id == case_id)
         )
         result = await session.execute(status_stmt)
@@ -34,7 +38,9 @@ class CaseStatusService:
         return status_value or "Ожидает уведомление поставщика"
 
     @staticmethod
-    def enrich_case_with_status_and_creator(case_obj, status_value) -> RepairCaseEquipment:
+    def enrich_case_with_status_and_creator(
+        case_obj, status_value
+    ) -> RepairCaseEquipment:
         """Добавляет статус и ФИО создателя"""
         case_obj.status = status_value or "Ожидает уведомление поставщика"
 
