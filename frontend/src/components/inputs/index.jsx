@@ -5,3 +5,4 @@ export { SectionSelect } from "./SectionSelect";
 export { SearchableSelect } from "./SearchableSelect";
 export { MultiSelectField } from "./MultiSelectField";
 export { DataField } from "./DataField";
+export { EditableInlineControl } from "./EditableInlineControl";

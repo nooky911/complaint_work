@@ -1,6 +1,6 @@
 import asyncio
 from typing import Any
-from sqlalchemy import select
+from sqlalchemy import select, asc
 
 from myapp.database.base import async_session_maker
 from myapp.services.cache_service import cached
@@ -38,6 +38,19 @@ class ReferenceService:
     def _map_to_id_name(rows) -> list[dict]:
         """Вспомогательная функция для формирования стандартного списка id/name"""
         return [{"id": r[0], "name": r[1]} for r in rows]
+
+    @classmethod
+    async def _execute_tasks(cls, tasks: list[tuple[str, Any]]) -> dict[str, Any]:
+        """Метод для параллельного выполнения запросов"""
+
+        async def run_query(name, stmt):
+            async with cls._db_semaphore:
+                async with async_session_maker() as session:
+                    result = await session.execute(stmt)
+                    return name, result.all()
+
+        results = await asyncio.gather(*(run_query(name, stmt) for name, stmt in tasks))
+        return {name: rows for name, rows in results}
 
     @staticmethod
     @cached(ttl_seconds=600)
@@ -124,14 +137,7 @@ class ReferenceService:
             ),
         ]
 
-        async def run_query(name, stmt):
-            async with ReferenceService._db_semaphore:
-                async with async_session_maker() as session:
-                    result = await session.execute(stmt)
-                    return name, result.all()
-
-        results = await asyncio.gather(*(run_query(name, stmt) for name, stmt in tasks))
-        res_dict = {name: rows for name, rows in results}
+        res_dict = await ReferenceService._execute_tasks(tasks)
 
         return {
             "regional_centers": ReferenceService._map_to_id_name(
@@ -180,4 +186,41 @@ class ReferenceService:
             "shipping_providers": ReferenceService._map_to_id_name(
                 res_dict["shipping_providers"]
             ),
+        }
+
+    @staticmethod
+    async def get_equipment_management_references() -> dict[str, Any]:
+        """Получить справочники, необходимые для редактирования оборудования"""
+
+        tasks = [
+            (
+                "malfunctions",
+                select(Malfunction.id, Malfunction.defect_name).order_by(
+                    asc(Malfunction.defect_name)
+                ),
+            ),
+            (
+                "suppliers",
+                select(Supplier.id, Supplier.supplier_name).order_by(
+                    asc(Supplier.supplier_name),
+                ),
+            ),
+            (
+                "equipment_malfunctions",
+                select(
+                    EquipmentMalfunction.equipment_id,
+                    EquipmentMalfunction.malfunction_id,
+                ),
+            ),
+        ]
+
+        res_dict = await ReferenceService._execute_tasks(tasks)
+
+        return {
+            "malfunctions": ReferenceService._map_to_id_name(res_dict["malfunctions"]),
+            "suppliers": ReferenceService._map_to_id_name(res_dict["suppliers"]),
+            "equipment_malfunctions": [
+                {"equipment_id": r[0], "malfunction_id": r[1]}
+                for r in res_dict["equipment_malfunctions"]
+            ],
         }

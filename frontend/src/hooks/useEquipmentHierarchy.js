@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 
 export const useEquipmentHierarchy = ({
   currentId,
@@ -8,6 +8,7 @@ export const useEquipmentHierarchy = ({
   currentData,
   updateField,
   isEditing,
+  disableAutoFill = false,
 }) => {
   const [levels, setLevels] = useState({
     lvl0: null,
@@ -17,6 +18,11 @@ export const useEquipmentHierarchy = ({
     lvl4: null,
   });
 
+  const currentDataRef = useRef(currentData);
+  useEffect(() => {
+    currentDataRef.current = currentData;
+  }, [currentData]);
+
   const labels = [
     "Тип оборудования",
     "Оборудование",
@@ -25,34 +31,16 @@ export const useEquipmentHierarchy = ({
     "Элемент",
   ];
 
-  // АВТОМАТИЧЕСКОЕ КОЛ-ВО ЭЛЕМЕНТА (Lvl 4)
-  useEffect(() => {
-    if (isEditing && levels.lvl4) {
-      const fieldName =
-        mode === "old" ? "element_quantity" : "new_element_quantity";
-      if (currentData?.[fieldName] == null) {
-        updateField(fieldName, 1);
-      }
-    }
-  }, [levels.lvl4, mode, isEditing, currentData, updateField]);
+  // ВЫЧИСЛЕНИЕ УРОВНЕЙ ОБОРУДОВАНИЯ (оптимизировано)
+  const equipmentMap = useMemo(
+    () => new Map(allEquipment.map((item) => [item.id, item])),
+    [allEquipment],
+  );
 
-  // АВТОМАТИЧЕСКОЕ КОЛ-ВО КОМПОНЕНТА (Lvl 3)
-  useEffect(() => {
-    if (isEditing && levels.lvl3) {
-      const fieldName =
-        mode === "old" ? "component_quantity" : "new_component_quantity";
-      if (currentData?.[fieldName] == null) {
-        updateField(fieldName, 1);
-      }
-    }
-  }, [levels.lvl3, mode, isEditing, currentData, updateField]);
-
-  // ВЫЧИСЛЕНИЕ УРОВНЕЙ ОБОРУДОВАНИЯ
   const equipmentWithLevels = useMemo(() => {
     if (!allEquipment || allEquipment.length === 0) return [];
     if (allEquipment[0].calculatedLevel !== undefined) return allEquipment;
 
-    const map = new Map(allEquipment.map((item) => [item.id, item]));
     return allEquipment.map((item) => {
       let depth = 0;
       let current = item;
@@ -61,7 +49,7 @@ export const useEquipmentHierarchy = ({
       while (current && current.parent_id && depth < 10) {
         if (visited.has(current.id)) break;
         visited.add(current.id);
-        const parent = map.get(current.parent_id);
+        const parent = equipmentMap.get(current.parent_id);
         if (parent) {
           depth++;
           current = parent;
@@ -70,11 +58,35 @@ export const useEquipmentHierarchy = ({
 
       return { ...item, calculatedLevel: depth };
     });
-  }, [allEquipment]);
+  }, [allEquipment, equipmentMap]);
 
-  // --- УСТАНОВКА УРОВНЕЙ ПРИ ИЗМЕНЕНИИ currentId ---
+  // АВТОМАТИЧЕСКОЕ КОЛ-ВО ЭЛЕМЕНТА (Lvl 4)
+  useEffect(() => {
+    if (isEditing && levels.lvl4 && !disableAutoFill) {
+      const fieldName =
+        mode === "old" ? "element_quantity" : "new_element_quantity";
+      if (currentDataRef.current?.[fieldName] == null) {
+        updateField(fieldName, 1);
+      }
+    }
+  }, [levels.lvl4, mode, isEditing, updateField, disableAutoFill]);
+
+  // АВТОМАТИЧЕСКОЕ КОЛ-ВО КОМПОНЕНТА (Lvl 3)
+  useEffect(() => {
+    if (isEditing && levels.lvl3 && !disableAutoFill) {
+      const fieldName =
+        mode === "old" ? "component_quantity" : "new_component_quantity";
+      if (currentDataRef.current?.[fieldName] == null) {
+        updateField(fieldName, 1);
+      }
+    }
+  }, [levels.lvl3, mode, isEditing, updateField, disableAutoFill]);
+
   useEffect(() => {
     if (currentId && equipmentWithLevels.length > 0) {
+      const isAlreadySet = Object.values(levels).includes(Number(currentId));
+      if (isAlreadySet) return;
+
       const newLevels = {
         lvl0: null,
         lvl1: null,
@@ -95,137 +107,136 @@ export const useEquipmentHierarchy = ({
     } else if (initialLevels && currentId === undefined) {
       setLevels((prev) => ({ ...prev, ...initialLevels }));
     } else {
-      setLevels({ lvl0: null, lvl1: null, lvl2: null, lvl3: null, lvl4: null });
+      setLevels((prev) => {
+        const isAlreadyEmpty = Object.values(prev).every((v) => v === null);
+        if (isAlreadyEmpty) return prev;
+        return {
+          lvl0: null,
+          lvl1: null,
+          lvl2: null,
+          lvl3: null,
+          lvl4: null,
+        };
+      });
     }
   }, [currentId, equipmentWithLevels, initialLevels]);
 
   // ОБРАБОТКА ВЫБОРА УРОВНЯ
-  const handleLevelSelect = (levelIndex, selectedId, onSelect) => {
-    const id = selectedId ? Number(selectedId) : null;
-    const oldId = levels[`lvl${levelIndex}`];
-    const newLevels = { ...levels };
-    const sfx = mode === "old" ? "_old" : "_new";
+  const handleLevelSelect = useCallback(
+    (levelIndex, selectedId, onSelect) => {
+      const id = selectedId ? Number(selectedId) : null;
+      const sfx = mode === "old" ? "_old" : "_new";
 
-    // СБРОС ПОЛЕЙ ПРИ ИЗМЕНЕНИИ
-    if (oldId !== id) {
-      if (levelIndex <= 2) {
-        updateField(`component_serial_number${sfx}`, "");
-        updateField(`component_manufacture_date${sfx}`, "");
-        updateField(`element_serial_number${sfx}`, "");
-        updateField(`element_manufacture_date${sfx}`, "");
-        if (mode === "old") {
-          updateField("component_quantity", 1);
-          updateField("element_quantity", null);
+      setLevels((prevLevels) => {
+        const oldId = prevLevels[`lvl${levelIndex}`];
+        if (oldId === id) return prevLevels;
+
+        const nextLevels = { ...prevLevels };
+
+        // Очистка текущего и дочерних уровней
+        for (let i = levelIndex; i <= 4; i++) {
+          nextLevels[`lvl${i}`] = i === levelIndex ? id : null;
         }
-      }
-      if (levelIndex === 3 && id === null) {
-        updateField(`component_serial_number${sfx}`, "");
-        updateField(`component_manufacture_date${sfx}`, "");
-      }
-      if (levelIndex === 4 && id === null) {
-        updateField(`element_serial_number${sfx}`, "");
-        updateField(`element_manufacture_date${sfx}`, "");
-        if (mode === "old") updateField("element_quantity", null);
-      }
-    }
 
-    // ОБНОВЛЕНИЕ ИЕРАРХИИ
-    if (!id) {
-      // Сброс всех дочерних уровней
-      for (let i = levelIndex; i <= 4; i++) {
-        newLevels[`lvl${i}`] = null;
-        if (i === 3) {
-          updateField(`component_serial_number${sfx}`, "");
-          updateField(`component_manufacture_date${sfx}`, "");
+        // Восстановление родителей (если выбран новый ID)
+        if (id) {
+          let curr = equipmentMap.get(id);
+          while (curr && curr.parent_id) {
+            const parent = equipmentMap.get(curr.parent_id);
+            if (parent) {
+              const pLevel = equipmentWithLevels.find(
+                (e) => e.id === parent.id,
+              )?.calculatedLevel;
+              if (pLevel !== undefined) nextLevels[`lvl${pLevel}`] = parent.id;
+              curr = parent;
+            } else break;
+          }
         }
-        if (i === 4) {
-          updateField(`element_serial_number${sfx}`, "");
-          updateField(`element_manufacture_date${sfx}`, "");
-          if (mode === "old") updateField("element_quantity", null);
+
+        // Расчет поставщика и вызов onSelect
+        let detectedSupplierId = null;
+        let highestLevel = -1;
+        for (let i = 4; i >= 0; i--) {
+          const idAtLvl = nextLevels[`lvl${i}`];
+          if (idAtLvl) {
+            if (highestLevel === -1) highestLevel = i;
+            const item = equipmentMap.get(idAtLvl);
+            if (item?.supplier_id && !detectedSupplierId) {
+              detectedSupplierId = item.supplier_id;
+            }
+          }
         }
-      }
-    } else {
-      // Установка нового уровня и родительских
-      newLevels[`lvl${levelIndex}`] = id;
-      let current = equipmentWithLevels.find((i) => i.id === id);
 
-      while (current && current.parent_id) {
-        const parent = equipmentWithLevels.find(
-          (i) => i.id === current.parent_id,
-        );
-        if (parent) {
-          newLevels[`lvl${parent.calculatedLevel}`] = parent.id;
-          current = parent;
-        } else break;
-      }
+        setTimeout(() => {
+          onSelect({
+            component:
+              nextLevels.lvl3 ||
+              nextLevels.lvl2 ||
+              nextLevels.lvl1 ||
+              nextLevels.lvl0,
+            element: nextLevels.lvl4,
+            supplierId: detectedSupplierId,
+            fullHierarchy: nextLevels,
+            level: highestLevel,
+          });
+        }, 0);
 
-      // Сброс дочерних уровней
-      for (let i = levelIndex + 1; i <= 4; i++) {
-        newLevels[`lvl${i}`] = null;
-        if (i === 4) {
-          updateField(`element_serial_number${sfx}`, "");
-          updateField(`element_manufacture_date${sfx}`, "");
-          if (mode === "old") updateField("element_quantity", null);
-        }
-      }
-    }
+        setTimeout(() => {
+          for (let i = levelIndex; i <= 4; i++) {
+            if (i === 3) {
+              updateField(`component_serial_number${sfx}`, "");
+              updateField(`component_manufacture_date${sfx}`, "");
+            }
+            if (i === 4) {
+              updateField(`element_serial_number${sfx}`, "");
+              updateField(`element_manufacture_date${sfx}`, "");
+              if (mode === "old") updateField("element_quantity", null);
+            }
+          }
 
-    setLevels(newLevels);
+          if (levelIndex <= 3) {
+            updateField("malfunction_id", null);
+          }
+        }, 0);
 
-    // ОПРЕДЕЛЕНИЕ ПОСТАВЩИКА
-    let detectedSupplierId = null;
-    for (let i = 4; i >= 0; i--) {
-      const idAtLevel = newLevels[`lvl${i}`];
-      if (idAtLevel) {
-        const item = equipmentWithLevels.find((obj) => obj.id === idAtLevel);
-        if (item && item.supplier_id) {
-          detectedSupplierId = item.supplier_id;
+        return nextLevels;
+      });
+    },
+    [mode, equipmentMap, equipmentWithLevels, updateField],
+  );
+
+  // ФИЛЬТРАЦИЯ ОПЦИЙ ДЛЯ УРОВНЯ
+  const getFilteredOptions = useCallback(
+    (levelIndex) => {
+      let activeParentId = null;
+      for (let i = levelIndex - 1; i >= 0; i--) {
+        if (levels[`lvl${i}`]) {
+          activeParentId = levels[`lvl${i}`];
           break;
         }
       }
-    }
 
-    // ВЫЗОВ CALLBACK
-    onSelect({
-      component:
-        newLevels.lvl3 || newLevels.lvl2 || newLevels.lvl1 || newLevels.lvl0,
-      element: newLevels.lvl4,
-      supplierId: detectedSupplierId,
-      fullHierarchy: newLevels,
-    });
-  };
+      let filteredOptions = equipmentWithLevels.filter(
+        (i) => i.calculatedLevel === levelIndex,
+      );
 
-  // ФИЛЬТРАЦИЯ ОПЦИЙ ДЛЯ УРОВНЯ
-  const getFilteredOptions = (levelIndex) => {
-    let activeParentId = null;
-    for (let i = levelIndex - 1; i >= 0; i--) {
-      if (levels[`lvl${i}`]) {
-        activeParentId = levels[`lvl${i}`];
-        break;
+      if (activeParentId) {
+        filteredOptions = filteredOptions.filter((item) => {
+          let current = item;
+          let safety = 0;
+          while (current && current.parent_id && safety < 10) {
+            if (current.parent_id === activeParentId) return true;
+            current = equipmentMap.get(current.parent_id);
+            safety++;
+          }
+          return false;
+        });
       }
-    }
 
-    let filteredOptions = equipmentWithLevels.filter(
-      (i) => i.calculatedLevel === levelIndex,
-    );
-
-    if (activeParentId) {
-      filteredOptions = filteredOptions.filter((item) => {
-        let current = item;
-        let safety = 0;
-        while (current && current.parent_id && safety < 10) {
-          if (current.parent_id === activeParentId) return true;
-          current = equipmentWithLevels.find(
-            (obj) => obj.id === current.parent_id,
-          );
-          safety++;
-        }
-        return false;
-      });
-    }
-
-    return filteredOptions;
-  };
+      return filteredOptions;
+    },
+    [equipmentWithLevels, equipmentMap, levels],
+  );
 
   // ОПРЕДЕЛЕНИЕ ВИДИМЫХ УРОВНЕЙ
   const getVisibleIndices = (filterStrategy) => {

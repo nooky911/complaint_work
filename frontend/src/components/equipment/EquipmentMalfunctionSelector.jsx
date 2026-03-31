@@ -11,6 +11,8 @@ export const EquipmentMalfunctionSelector = ({
   updateField,
   references,
   errorMalfunction,
+  hideNotes = false,
+  label,
 }) => {
   const { equipment_malfunctions = [], malfunctions = [] } = references || {};
 
@@ -32,7 +34,7 @@ export const EquipmentMalfunctionSelector = ({
         }
       >
         <SearchableSelect
-          label={REPAIR_FIELDS_LABELS.malfunction}
+          label={label !== undefined ? label : REPAIR_FIELDS_LABELS.malfunction}
           options={finalMalfunctionOptions}
           value={currentData?.malfunction_id}
           onChange={(id) => updateField("malfunction_id", id)}
@@ -45,16 +47,18 @@ export const EquipmentMalfunctionSelector = ({
           error={errorMalfunction}
         />
       </Tooltip>
-      <div className="flex flex-col">
-        <AutoResizingTextarea
-          label={REPAIR_FIELDS_LABELS.note}
-          value={currentData?.notes}
-          onChange={(val) => updateField("notes", val)}
-          isDisabled={false}
-          placeholder="-"
-          className="bg-white"
-        />
-      </div>
+      {!hideNotes && (
+        <div className="flex flex-col">
+          <AutoResizingTextarea
+            label={REPAIR_FIELDS_LABELS.note}
+            value={currentData?.notes}
+            onChange={(val) => updateField("notes", val)}
+            isDisabled={false}
+            placeholder="-"
+            className="bg-white"
+          />
+        </div>
+      )}
     </div>
   );
 };

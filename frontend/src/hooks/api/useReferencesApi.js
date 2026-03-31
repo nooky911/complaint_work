@@ -9,7 +9,7 @@ export const useFormReferences = (userRole) => {
     queryFn: async () => {
       const requests = [
         api.get("/references/case-form"),
-        api.get("/references/equipment-all-flat"),
+        api.get("/equipment/equipment-all-flat"),
       ];
 
       if (userRole === "superadmin") {

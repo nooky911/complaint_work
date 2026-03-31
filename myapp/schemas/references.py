@@ -1,18 +1,19 @@
 from pydantic import BaseModel, ConfigDict
 
 
-class EquipmentMalfunctionLink(BaseModel):
-    """Схема для связи оборудования и неисправности"""
-
-    equipment_id: int
-    malfunction_id: int
-
-
 class AuxiliaryItem(BaseModel):
     """Базовая схема для справочных таблиц"""
 
     id: int
     name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EquipmentItem(AuxiliaryItem):
+    """Схема для оборудования с родительскими отношениями"""
+
+    parent: "AuxiliaryItem | None" = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -43,4 +44,12 @@ class CaseFormReferencesResponse(BaseModel):
     research_statuses: list[AuxiliaryItem]
     investigation_reasons: list[AuxiliaryItem]
     shipping_providers: list[AuxiliaryItem]
-    equipment_malfunctions: list[EquipmentMalfunctionLink]
+    equipment_malfunctions: list[dict]
+
+
+class EquipmentManagementReferencesResponse(BaseModel):
+    """Схема для получения справочников по дял методов редактирования оборудования"""
+
+    malfunctions: list[dict]
+    suppliers: list[dict]
+    equipment_malfunctions: list[dict]

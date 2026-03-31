@@ -66,7 +66,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         targetId !== equipmentChain[equipmentChain.length - 1]?.id
       ) {
         api
-          .get(`/references/equipment-chain/${targetId}`)
+          .get(`/equipment/equipment-chain/${targetId}`)
           .then((res) => setEquipmentChain(res.data))
           .catch((err) => console.error("Ошибка загрузки цепочки:", err));
       }
@@ -79,7 +79,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     try {
       const [refsRes, equipRes] = await Promise.all([
         api.get("/references/case-form"),
-        api.get("/references/equipment-all-flat"),
+        api.get("/equipment/equipment-all-flat"),
       ]);
 
       const allEquip = equipRes.data;

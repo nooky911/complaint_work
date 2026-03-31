@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, KeyRound, LogOut } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 import ulLogo from "../../assets/logo/ul-logo.svg";
 
 export default function Header({ onChangePassword }) {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -22,7 +24,12 @@ export default function Header({ onChangePassword }) {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white py-1">
       <div className="grid w-full grid-cols-3 items-center px-8">
-        <div className="text-[24px] font-bold">Справка ППР</div>
+        <div 
+          onClick={() => navigate("/")}
+          className="text-[24px] font-bold cursor-pointer"
+        >
+          Справка ППР
+        </div>
 
         <div className="flex justify-center">
           <img src={String(ulLogo)} alt="Logo" className="h-10" />
