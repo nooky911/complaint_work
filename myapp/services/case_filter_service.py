@@ -1,15 +1,8 @@
-from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.schemas.cases import CaseList
 from myapp.schemas.filters import CaseFilterParams, FilterOptionsResponse
-from myapp.database.query_builders.query_case_builders import load_list_relations
-from myapp.database.query_builders.query_case_filters import (
-    build_repair_case_conditions,
-    build_warranty_work_conditions,
-    build_waybill_doc_conditions,
-)
+from myapp.database.query_builders.query_case_filters import build_filtered_case_stmt
 from myapp.services.case_status_service import CaseStatusService
 from myapp.services.filter_options_service import FilterOptionsService
 
@@ -22,26 +15,10 @@ class CaseFilterService:
         session: AsyncSession, params: CaseFilterParams
     ) -> list[CaseList]:
         """Основной метод фильтрации случаев"""
-        status_subquery = CaseStatusService.build_status_subquery()
 
-        stmt = select(RepairCaseEquipment, status_subquery)
-        stmt = stmt.options(*load_list_relations())
-        stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
-        stmt = stmt.outerjoin(RepairCaseEquipment.waybill_doc)
+        stmt = build_filtered_case_stmt(params)
 
-        all_conditions = []
-        all_conditions.extend(build_repair_case_conditions(params))
-        all_conditions.extend(build_warranty_work_conditions(params))
-        all_conditions.extend(build_waybill_doc_conditions(params))
-
-        if all_conditions:
-            stmt = stmt.where(and_(*all_conditions))
-
-        stmt = (
-            stmt.offset(params.skip)
-            .limit(params.limit)
-            .order_by(RepairCaseEquipment.date_recorded.desc())
-        )
+        stmt = stmt.offset(params.skip).limit(params.limit)
 
         result = await session.execute(stmt)
         rows = result.unique().all()

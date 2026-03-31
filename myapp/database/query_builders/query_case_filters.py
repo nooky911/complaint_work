@@ -1,5 +1,7 @@
+from sqlalchemy import select, and_
 from sqlalchemy.sql import expression
 
+from myapp.database.query_builders.query_case_builders import load_detail_relations
 from myapp.models.waybill_docs import WaybillDoc
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
@@ -145,3 +147,30 @@ def build_waybill_doc_conditions(
     apply_filter_conditions(conditions, waybill_fields)
 
     return conditions
+
+
+def build_filtered_case_stmt(params: CaseFilterParams, include_status: bool = True):
+    """Сборка запроса для списка случаев и для экспорта"""
+
+    if include_status:
+        status_subquery = CaseStatusService.build_status_subquery()
+        stmt = select(RepairCaseEquipment, status_subquery)
+    else:
+        stmt = select(RepairCaseEquipment)
+
+    stmt = stmt.options(*load_detail_relations())
+
+    stmt = stmt.outerjoin(RepairCaseEquipment.warranty_work)
+    stmt = stmt.outerjoin(RepairCaseEquipment.waybill_doc)
+
+    all_conditions = []
+    all_conditions.extend(build_repair_case_conditions(params))
+    all_conditions.extend(build_warranty_work_conditions(params))
+    all_conditions.extend(build_waybill_doc_conditions(params))
+
+    if all_conditions:
+        stmt = stmt.where(and_(*all_conditions))
+
+    stmt = stmt.order_by(RepairCaseEquipment.date_recorded.asc())
+
+    return stmt
