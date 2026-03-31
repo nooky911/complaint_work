@@ -26,7 +26,7 @@ async def get_download_file(
     file_id: int,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(require_viewer_or_higher),
+    _user: User = Depends(require_viewer_or_higher),
 ):
     """Скачать файл по его ID"""
     try:
@@ -57,7 +57,7 @@ async def create_case_archive(
         FileCategory, Form(description="Категория (primary/warranty/waybill)")
     ],
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_viewer_or_higher),
+    _user: User = Depends(require_viewer_or_higher),
 ):
     """Создать архив с файлами указанной категории"""
     try:

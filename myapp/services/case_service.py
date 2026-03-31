@@ -144,7 +144,7 @@ class CaseService:
             if target_id is None:
                 update_data["supplier_id"] = None
             else:
-                # Вызываем наш "умный" метод с проверкой исключений
+                # Вызываем метод с проверкой исключений
                 update_data["supplier_id"] = await EquipmentService.resolve_supplier(
                     session,
                     equipment_id=target_id,

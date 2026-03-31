@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 import uvicorn
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
 
@@ -9,11 +10,8 @@ from myapp.config import settings
 from myapp.database.base import Base
 from myapp.database.base import engine
 from myapp.api import api_router
-from openapi_fix import openapi_encoding_fix
+from scripts.openapi_fix import openapi_encoding_fix
 from myapp.debug_logger import setup_debug_logging
-
-from fastapi import Request
-import logging
 
 
 # -ФУНКЦИЯ СОЗДАНИЯ ТАБЛИЦ -

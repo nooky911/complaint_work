@@ -33,7 +33,7 @@ async def get_case_files(
         None,
     ] = None,
     session: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(require_viewer_or_higher),
+    _user: User = Depends(require_viewer_or_higher),
 ):
     """Получить список файлов случая с опциональной фильтрацией по категории"""
     try:
@@ -50,7 +50,7 @@ async def get_case_files(
 async def get_case_files_grouped(
     case_id: int,
     session: AsyncSession = Depends(get_db),
-    _current_user: User = Depends(require_viewer_or_higher),
+    _user: User = Depends(require_viewer_or_higher),
 ):
     """Возвращает все файлы случая, сгруппированные по категории случая (primary/warranty)"""
     try:

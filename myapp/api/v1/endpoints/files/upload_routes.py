@@ -43,7 +43,7 @@ async def upload_single_file(
     ] = None,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_can_edit_case),
+    _current_user: User = Depends(require_can_edit_case),
 ):
     """Загрузка одного файла с указанием категории и related_field для warranty"""
     try:
@@ -71,7 +71,7 @@ async def upload_multiple_files(
     ] = None,
     files: list[UploadFile] = File(...),
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(require_can_edit_case),
+    _current_user: User = Depends(require_can_edit_case),
 ):
     """Загрузка нескольких файлов одной категории"""
     try:
