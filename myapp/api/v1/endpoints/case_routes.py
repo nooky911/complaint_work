@@ -17,6 +17,7 @@ from myapp.services.case_service import CaseService
 from myapp.services.case_filter_service import CaseFilterService
 from myapp.database.base import get_db
 from .warranty_routes import router as warranty_router
+from .export_routes import router as export_router
 from myapp.auth.dependencies import (
     require_editor_or_superadmin,
     require_viewer_or_higher,
@@ -26,6 +27,7 @@ from myapp.auth.dependencies import (
 router = APIRouter(prefix="/cases", tags=["Случаи неисправности"])
 
 router.include_router(warranty_router, prefix="/{case_id}/warranty")
+router.include_router(export_router)
 
 
 # Полный список и фильтрация

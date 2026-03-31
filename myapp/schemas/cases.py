@@ -2,9 +2,8 @@ from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
 
 from .waybill import WaybillDocUpdate, WaybillDocResponse
-from .references import AuxiliaryItem
+from .references import AuxiliaryItem, EquipmentItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
-from .equipment import EquipmentItem
 
 
 class CaseBase(BaseModel):

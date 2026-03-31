@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Filter, Plus, ArrowUpDown, X } from "lucide-react";
+import { Filter, Plus, ArrowUpDown, X, Settings, Download } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 // Компоненты
 import { RepairCaseList } from "../components/RepairCaseList";
@@ -21,14 +22,18 @@ import {
   useAllCasesForNumbering,
 } from "../hooks/api/index";
 import { useDebouncedValue } from "../hooks/useDebounce";
+import { exportCasesToExcel } from "../api/export";
 
 export default React.memo(function DashboardPage() {
+  const navigate = useNavigate();
+
   // --- СОСТОЯНИЯ СПИСКА ---
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedCase, setSelectedCase] = useState(null);
   const [selectedCaseIndex, setSelectedCaseIndex] = useState(null);
   const [loadingText, setLoadingText] = useState("Загрузка карточки...");
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // --- СОСТОЯНИЯ ФИЛЬТРОВ ---
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -115,6 +120,18 @@ export default React.memo(function DashboardPage() {
 
   const activeCount = countActiveFilters(appliedFilters);
 
+  // Функция экспорта
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      await exportCasesToExcel(appliedFilters);
+    } catch (error) {
+      logger.log("Экспорт завершен с ошибкой:", error.message);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // ЛОГИКА АБСОЛЮТНОЙ НУМЕРАЦИИ
   const idToAbsoluteNumber = useMemo(() => {
     return new Map(
@@ -143,14 +160,14 @@ export default React.memo(function DashboardPage() {
   return (
     <div className="flex h-full flex-col gap-2 overflow-hidden">
       {/* HEADER: Кнопка фильтров, сортировка, счетчик и кнопка создания */}
-      <div className="flex w-full flex-shrink-0 items-end justify-between px-4 py-2 md:px-3">
+      <div className="flex w-full flex-shrink-0 items-start justify-between px-4 pt-2 md:px-3">
         <div className="flex flex-col gap-2">
           {/* БЛОК КНОПОК */}
           <div className="flex items-center gap-3">
             {/* Кнопка фильтров */}
             <button
               onClick={() => setIsFilterOpen(true)}
-              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
+              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
                 activeCount > 0
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
                   : "border-indigo-100 bg-indigo-50 text-indigo-600 hover:border-indigo-200 hover:bg-indigo-100"
@@ -171,7 +188,7 @@ export default React.memo(function DashboardPage() {
             {activeCount > 0 && (
               <button
                 onClick={handleClearAllFilters}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-black tracking-wider text-red-600 uppercase shadow-sm transition-all hover:border-red-300 hover:bg-red-100 active:scale-95"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-[11px] font-black tracking-wider text-red-600 uppercase shadow-sm transition-all hover:border-red-300 hover:bg-red-100 active:scale-95"
                 title="Сбросить все фильтры"
               >
                 <X className="h-3.5 w-3.5" />
@@ -183,9 +200,9 @@ export default React.memo(function DashboardPage() {
               onClick={() =>
                 setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))
               }
-              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-black tracking-wider text-slate-600 uppercase shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-95"
+              className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-black tracking-wider text-slate-600 uppercase shadow-sm transition-all hover:border-slate-300 hover:bg-slate-50 active:scale-95"
             >
-              <ArrowUpDown className="h-3 w-3 text-slate-500" />
+              <ArrowUpDown className="h-4 w-4 text-slate-500" />
               {sortOrder === "desc" ? "Сначала новые" : "Сначала старые"}
             </button>
           </div>
@@ -197,16 +214,48 @@ export default React.memo(function DashboardPage() {
           </p>
         </div>
 
-        {/* Кнопка создания */}
-        {currentUser?.role !== "viewer" && (
+        {/* ПРАВЫЙ БЛОК КНОПОК */}
+        <div className="flex items-center gap-3">
+          {/* Кнопка экспорта в Excel */}
           <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 rounded-xl bg-[#0064fe] px-4 py-2.5 text-xs font-black tracking-wider antialiased text-white uppercase shadow-lg shadow-indigo-100 transition-all hover:bg-[#0052cc] hover:shadow-indigo-200 active:scale-95"
+            onClick={handleExport}
+            disabled={isExporting}
+            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
+              isExporting
+                ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                : "border-green-200 bg-green-50 text-green-600 hover:border-green-300 hover:bg-green-100"
+            }`}
           >
-            <Plus className="h-4 w-4 stroke-[3px]" />
-            Создать
+            {isExporting ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></div>
+            ) : (
+              <Download className="h-4 w-4" />
+            )}
+            {isExporting ? "Экспорт..." : "Экспорт в Excel"}
           </button>
-        )}
+
+          {/* Кнопка управления оборудованием (только для superadmin) */}
+          {currentUser?.role === "superadmin" && (
+            <button
+              onClick={() => navigate("/equipment-management")}
+              className="flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-xs font-black tracking-wider text-purple-600 uppercase shadow-sm transition-all hover:border-purple-300 hover:bg-purple-100 active:scale-95"
+            >
+              <Settings className="h-4 w-4" />
+              Оборудование
+            </button>
+          )}
+
+          {/* Кнопка создания */}
+          {currentUser?.role !== "viewer" && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-[#0064fe] px-4 py-2.5 text-xs font-black tracking-wider text-white uppercase antialiased shadow-lg shadow-indigo-100 transition-all hover:bg-[#0052cc] hover:shadow-indigo-200 active:scale-95"
+            >
+              <Plus className="h-4 w-4 stroke-[3px]" />
+              Создать
+            </button>
+          )}
+        </div>
       </div>
 
       {/* ОСНОВНОЙ СПИСОК */}

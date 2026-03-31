@@ -13,7 +13,7 @@ async def create_user_simple():
     role = sys.argv[3] if len(sys.argv) > 3 else "viewer"
     full_name = sys.argv[4]
 
-    sys.path.insert(0, ".")
+    sys.path.insert(0, "..")
 
     from myapp.database.base import async_session_maker
     from myapp.auth.security import get_password_hash
