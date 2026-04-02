@@ -14,13 +14,11 @@ const LoginPage = () => {
       formData.append("login", values.login);
       formData.append("password", values.password);
 
-      const response = await api.post("/auth/login", formData);
+      await api.post("/auth/login", formData);
+      
+      await login(); 
+      message.success("Успешный вход!");
 
-      const token = response.data.access_token;
-      if (token) {
-        login(token);
-        message.success("Успешный вход!");
-      }
     } catch (error) {
       message.error(
         "Ошибка входа: " + (error.response?.data?.detail || "Ошибка"),
