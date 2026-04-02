@@ -50,7 +50,7 @@ async def login_user(
         value=access_token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        secure=True,
+        secure=False,  # Для HTTP
         samesite="lax",
         path="/",
     )
@@ -68,5 +68,5 @@ async def logout(response: Response):
         path="/",
         httponly=True,
         samesite="lax",
-        secure=True,
+        secure=False,  # Для HTTP
     )
