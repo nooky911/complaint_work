@@ -1,7 +1,9 @@
 import asyncio
 import sys
-
 from sqlalchemy import text
+
+from myapp.database.base import async_session_maker
+from myapp.auth.security import get_password_hash
 
 
 async def create_user_simple():
@@ -14,9 +16,6 @@ async def create_user_simple():
     full_name = sys.argv[4]
 
     sys.path.insert(0, "..")
-
-    from myapp.database.base import async_session_maker
-    from myapp.auth.security import get_password_hash
 
     hashed = get_password_hash(password)
 

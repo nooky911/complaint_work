@@ -10,10 +10,10 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const isLoginRequest = error.config?.url?.includes("/auth/login");
+      const isMeRequest = error.config?.url?.includes("/users/me");
 
-      if (!isLoginRequest) {
-        console.warn("Сессия истекла. Перенаправление на вход...");
-        window.location.reload();
+      if (!isLoginRequest && !isMeRequest) {
+        console.warn("Сессия отсутствует или истекла.");
       }
     }
     return Promise.reject(error);
