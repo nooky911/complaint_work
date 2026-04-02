@@ -1,5 +1,6 @@
 import { Form, Input, Button, Card, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../api/api";
@@ -7,6 +8,7 @@ import backgroundImage from "../assets/images/background.jpg";
 
 const LoginPage = () => {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const onFinish = async (values) => {
     try {
@@ -18,6 +20,7 @@ const LoginPage = () => {
       
       await login(); 
       message.success("Успешный вход!");
+      navigate("/dashboard", { replace: true });
 
     } catch (error) {
       message.error(

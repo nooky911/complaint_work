@@ -19,26 +19,32 @@ export default function App() {
       </div>
     );
 
-  if (!isAuth) return <LoginPage />;
-
   return (
     <Router>
-      <div className="h-screen bg-gray-50">
-        <Header onChangePassword={() => setIsPassModalOpen(true)} />
+      {!isAuth ? (
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      ) : (
+        <div className="h-screen bg-gray-50">
+          <Header onChangePassword={() => setIsPassModalOpen(true)} />
 
-        <main className="flex h-[calc(100vh-50px)] flex-1 flex-col">
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/equipment-management" element={<EquipmentManagementPage />} />
-          </Routes>
-        </main>
+          <main className="flex h-[calc(100vh-50px)] flex-1 flex-col">
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/equipment-management" element={<EquipmentManagementPage />} />
+              <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          </main>
 
-        <ChangePasswordModal
-          isOpen={isPassModalOpen}
-          onClose={() => setIsPassModalOpen(false)}
-        />
-      </div>
+          <ChangePasswordModal
+            isOpen={isPassModalOpen}
+            onClose={() => setIsPassModalOpen(false)}
+          />
+        </div>
+      )}
     </Router>
   );
 }
