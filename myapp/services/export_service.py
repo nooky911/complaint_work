@@ -1,6 +1,7 @@
 import io
 import urllib.parse
 import openpyxl
+import asyncio
 from pathlib import Path
 from typing import Sequence, Callable
 from datetime import date, datetime
@@ -271,7 +272,7 @@ class ExportService:
         if not cases:
             raise ValueError("Нет данных для экспорта")
 
-        file_stream = ExportService.generate_cases_excel(cases)
+        file_stream = await asyncio.to_thread(ExportService.generate_cases_excel, cases)
 
         date_str = datetime.now().strftime("%d_%m_%Y")
         filename = f"Выгрузка_случаев_{date_str}.xlsx"
