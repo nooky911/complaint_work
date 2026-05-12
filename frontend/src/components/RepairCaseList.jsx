@@ -197,7 +197,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
                   label={REPAIR_FIELDS_LABELS.element}
                   value={
                     item.element_equipment
-                      ? `${item.element_equipment?.parent ? getText(item.element_equipment.parent) + " " : ""}${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
+                      ? `${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
                       : "—"
                   }
                   serial={item.element_serial_number_old}
