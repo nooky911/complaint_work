@@ -198,9 +198,12 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
           })
         : [serverErrorRaw];
 
-      const processedErrors = serverError.map(error => {
-        if (typeof error === 'string' && error.includes('Неподдерживаемый формат файла для категории')) {
-          return 'Неподдерживаемый формат файла';
+      const processedErrors = serverError.map((error) => {
+        if (
+          typeof error === "string" &&
+          error.includes("Неподдерживаемый формат файла для категории")
+        ) {
+          return "Неподдерживаемый формат файла";
         }
         return error;
       });
@@ -231,7 +234,7 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     } catch (error) {
       const serverErrorRaw =
         error.response?.data?.detail || "Ошибка сервера при загрузке";
-      
+
       let serverError = Array.isArray(serverErrorRaw)
         ? serverErrorRaw.map((e) => {
             const msg = typeof e === "string" ? e : e?.msg;
@@ -243,9 +246,12 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
         : [serverErrorRaw];
 
       // Дополнительная обработка для ТТН и других категорий
-      const processedErrors = serverError.map(error => {
-        if (typeof error === 'string' && error.includes('Неподдерживаемый формат файла для категории')) {
-          return 'Неподдерживаемый формат файла';
+      const processedErrors = serverError.map((error) => {
+        if (
+          typeof error === "string" &&
+          error.includes("Неподдерживаемый формат файла для категории")
+        ) {
+          return "Неподдерживаемый формат файла";
         }
         return error;
       });
@@ -320,6 +326,7 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     error: effectiveError,
     fileErrors,
     setFileErrors,
+    validateFiles,
     uploadFiles,
     uploadFilesAsync,
     deleteFile,

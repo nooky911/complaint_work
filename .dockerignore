@@ -6,6 +6,9 @@ bin/
 lib/
 include/
 
+# Фронт
+frontend/
+
 # кэш Python
 **/__pycache__/
 *.pyc

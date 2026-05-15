@@ -48,7 +48,7 @@ class CaseFormReferencesResponse(BaseModel):
 
 
 class EquipmentManagementReferencesResponse(BaseModel):
-    """Схема для получения справочников по дял методов редактирования оборудования"""
+    """Схема для получения справочников для методов редактирования оборудования"""
 
     malfunctions: list[dict]
     suppliers: list[dict]

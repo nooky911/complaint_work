@@ -1,4 +1,5 @@
 import React, { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, FileWarning } from "lucide-react";
 
 export const FileValidationToast = ({ show, onClose, errors }) => {
@@ -11,9 +12,9 @@ export const FileValidationToast = ({ show, onClose, errors }) => {
 
   if (!errors || errors.length === 0) return null;
 
-  return (
+  const toastContent = (
     <div
-      className={`fixed top-10 right-10 z-[100] flex transform items-start gap-3 rounded-xl border border-amber-100 bg-white p-4 shadow-2xl transition-all duration-300 ${
+      className={`fixed top-10 right-10 z-[9999] flex transform items-start gap-3 rounded-xl border border-amber-100 bg-white p-4 shadow-2xl transition-all duration-300 ${
         show
           ? "translate-x-0 opacity-100"
           : "pointer-events-none translate-x-10 opacity-0"
@@ -40,4 +41,6 @@ export const FileValidationToast = ({ show, onClose, errors }) => {
       </button>
     </div>
   );
+
+  return createPortal(toastContent, document.body);
 };

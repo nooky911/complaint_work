@@ -19,7 +19,6 @@ import {
   useUpdateCase,
   useDeleteCase,
   useFilterOptions,
-  useAllCasesForNumbering,
 } from "../hooks/api/index";
 import { useDebouncedValue } from "../hooks/useDebounce";
 import { exportCasesToExcel } from "../api/export";
@@ -52,7 +51,6 @@ export default React.memo(function DashboardPage() {
     error: listError,
   } = useCasesList(debouncedAppliedFilters, sortOrder);
 
-  const { data: allCasesForNumbering = [] } = useAllCasesForNumbering();
   const {
     data: selectedCaseDetail,
     isLoading: loadingDetailFromQuery,
@@ -105,7 +103,7 @@ export default React.memo(function DashboardPage() {
   };
 
   const handleCaseClick = async (caseItem) => {
-    setSelectedCaseIndex(caseItem.displayNumber);
+    setSelectedCaseIndex(caseItem.display_number);
     setSelectedCase(caseItem);
     logger.log("Выбран случай:", caseItem.id);
   };
@@ -132,30 +130,16 @@ export default React.memo(function DashboardPage() {
     }
   };
 
-  // ЛОГИКА АБСОЛЮТНОЙ НУМЕРАЦИИ
-  const idToAbsoluteNumber = useMemo(() => {
-    return new Map(
-      [...allCasesForNumbering]
-        .sort((a, b) => a.id - b.id)
-        .map((caseItem, index) => [caseItem.id, index + 1]),
-    );
-  }, [allCasesForNumbering]);
-
   // ЛОГИКА СОРТИРОВКИ
   const sortedCases = useMemo(() => {
-    const casesWithAbsoluteNumbers = cases.map((caseItem) => ({
-      ...caseItem,
-      displayNumber: idToAbsoluteNumber.get(caseItem.id) || caseItem.id,
-    }));
-
-    return [...casesWithAbsoluteNumbers].sort((a, b) => {
+    return [...cases].sort((a, b) => {
       if (sortOrder === "desc") {
         return b.id - a.id;
       } else {
         return a.id - b.id;
       }
     });
-  }, [cases, idToAbsoluteNumber, sortOrder]);
+  }, [cases, sortOrder]);
 
   return (
     <div className="flex h-full flex-col gap-2 overflow-hidden">
@@ -302,7 +286,7 @@ export default React.memo(function DashboardPage() {
           onClose={() => {
             setSelectedCase(null);
           }}
-          caseIndex={selectedCase?.displayNumber || selectedCaseIndex}
+          caseIndex={selectedCase?.display_number || selectedCaseIndex}
           onUpdate={handleCaseUpdate}
           onDelete={handleCaseDelete}
           setLoadingDetail={setLoadingDetail}

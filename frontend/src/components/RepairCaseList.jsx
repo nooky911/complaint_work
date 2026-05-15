@@ -124,7 +124,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
-                    # {item.displayNumber}
+                    # {item.display_number}
                   </span>
                   <div
                     className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}

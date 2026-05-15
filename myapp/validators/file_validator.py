@@ -10,6 +10,8 @@ DOCUMENT_MIME_TYPES = {
     "image/jpeg",
     "image/png",
     "application/vnd.ms-outlook",
+    "application/x-ole-storage",
+    "application/octet-stream",
 }
 
 ALLOWED_MIME_TYPES = {
@@ -40,6 +42,8 @@ ALLOWED_MIME_TYPES = {
         "application/x-7z-compressed",
         # Письма Outlook
         "application/vnd.ms-outlook",
+        "application/x-ole-storage",
+        "application/octet-stream",
     },
     # Типы для рекламационной работы
     FileCategory.warranty: DOCUMENT_MIME_TYPES,

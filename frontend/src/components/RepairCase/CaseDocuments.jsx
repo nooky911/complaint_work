@@ -62,13 +62,26 @@ export const CaseDocuments = ({
     if (fileList.length === 0) return;
 
     if (isCreationMode) {
+      const errors = fileApi.validateFiles
+        ? fileApi.validateFiles(fileList)
+        : [];
+
+      if (errors.length > 0) {
+        fileApi.setFileErrors(errors);
+        return;
+      }
+
       onAddFiles(fileList);
       return;
     }
 
-    const uploaded = await fileApi.uploadFiles(fileList);
-    if (uploaded && onFilesUploaded) {
-      onFilesUploaded(uploaded);
+    try {
+      const uploaded = await fileApi.uploadFiles(fileList);
+      if (uploaded && onFilesUploaded) {
+        onFilesUploaded(uploaded);
+      }
+    } catch (error) {
+      console.warn("Файлы не прошли валидацию");
     }
   };
 
@@ -83,7 +96,8 @@ export const CaseDocuments = ({
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    if (e.dataTransfer.files?.length > 0) processFiles(Array.from(e.dataTransfer.files));
+    if (e.dataTransfer.files?.length > 0)
+      processFiles(Array.from(e.dataTransfer.files));
   };
 
   const showFooter = isEditing || (!isCreationMode && displayFiles.length > 1);
@@ -104,7 +118,7 @@ export const CaseDocuments = ({
         <div className="absolute top-0 bottom-0 left-0 w-1 rounded-l-lg bg-slate-600"></div>
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-slate-600" />
-          <h3 className="text-xs font-bold tracking-wider antialiased text-slate-700 uppercase">
+          <h3 className="text-xs font-bold tracking-wider text-slate-700 uppercase antialiased">
             {BLOCK_TITLES.primary_docs}
           </h3>
           {displayFiles.length > 0 && (
@@ -230,7 +244,7 @@ export const CaseDocuments = ({
                     {isEditing ? (
                       <button
                         onClick={() => fileInputRef.current.click()}
-                        className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider antialiased text-indigo-600 uppercase transition-colors hover:text-indigo-800"
+                        className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-indigo-600 uppercase antialiased transition-colors hover:text-indigo-800"
                       >
                         <Plus className="h-3.5 w-3.5" /> Добавить еще
                       </button>
@@ -258,7 +272,6 @@ export const CaseDocuments = ({
         show={showFileToast}
         onClose={() => {
           setShowFileToast(false);
-          fileApi.setFileErrors([]);
         }}
         errors={fileApi.fileErrors || []}
       />

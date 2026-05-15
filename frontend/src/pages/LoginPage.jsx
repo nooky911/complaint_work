@@ -1,6 +1,7 @@
 import { Form, Input, Button, Card, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 
 import { useAuth } from "../context/AuthContext";
 import api from "../api/api";
@@ -9,16 +10,18 @@ import backgroundImage from "../assets/images/background.jpg";
 const LoginPage = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
 
   const onFinish = async (values) => {
+    setLoading(true);
     try {
       const formData = new FormData();
       formData.append("login", values.login);
       formData.append("password", values.password);
 
       await api.post("/auth/login", formData);
-      
-      await login(); 
+
+      await login();
       message.success("Успешный вход!");
       navigate("/dashboard", { replace: true });
 
@@ -26,6 +29,8 @@ const LoginPage = () => {
       message.error(
         "Ошибка входа: " + (error.response?.data?.detail || "Ошибка"),
       );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,6 +66,7 @@ const LoginPage = () => {
                 type="primary"
                 htmlType="submit"
                 block
+                loading={loading}
                 className="h-12 bg-blue-600 font-bold transition-colors hover:bg-blue-700"
               >
                 Войти

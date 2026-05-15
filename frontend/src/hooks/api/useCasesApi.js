@@ -40,21 +40,6 @@ export const useDynamicFilterOptions = (filters) => {
   });
 };
 
-// Хук для получения всех случаев (для абсолютной нумерации)
-export const useAllCasesForNumbering = () => {
-  return useQuery({
-    queryKey: ["cases", "all", "numbering"],
-    queryFn: async () => {
-      const res = await api.get("/cases/?limit=1000");
-      return Array.isArray(res.data) ? res.data : [];
-    },
-    staleTime: 10 * 60 * 1000, // 10 минут
-    enabled: true,
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
-  });
-};
-
 // Хук для получения списка случаев
 export const useCasesList = (filters, sortOrder) => {
   return useQuery({
@@ -66,7 +51,7 @@ export const useCasesList = (filters, sortOrder) => {
     },
     staleTime: 2 * 60 * 1000, // 2 минуты
     enabled: true,
-    refetchInterval: 30000, // 30 секунд
+    refetchInterval: 5000, // 5 секунд
     refetchOnWindowFocus: true,
   });
 };
@@ -155,7 +140,6 @@ export const useDeleteCase = () => {
       await queryClient.cancelQueries({ queryKey: ["cases"] });
       const previousCases = queryClient.getQueriesData({ queryKey: ["cases"] });
 
-      // Оптимистично удаляем из всех списков
       queryClient.setQueriesData({ queryKey: ["cases"] }, (old) => {
         if (!Array.isArray(old)) return old;
         return old.filter((c) => c.id !== caseId);

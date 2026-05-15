@@ -4,7 +4,6 @@ export {
   useCaseDetail,
   useUpdateCase,
   useDeleteCase,
-  useAllCasesForNumbering,
   useFilterOptions,
   useDynamicFilterOptions,
 } from "./useCasesApi";

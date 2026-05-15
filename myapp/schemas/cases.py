@@ -81,6 +81,8 @@ class CaseOutputData(CaseBase):
     supplier_id: int | None = None
     user_id: int
 
+    display_number: int | None = None
+
 
 class CaseCommonRelations(CaseOutputData):
     """Схема, используется как база для CaseList и CaseDetail"""

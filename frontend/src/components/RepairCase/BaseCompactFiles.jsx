@@ -45,9 +45,13 @@ export const BaseCompactFiles = ({
     if (!fileList || fileList.length === 0) return;
     const filesArray = Array.from(fileList);
 
-    const uploaded = await fileApi.uploadFilesAsync(filesArray);
-    if (uploaded && onFilesUploaded) {
-      onFilesUploaded(uploaded);
+    try {
+      const uploaded = await fileApi.uploadFilesAsync(filesArray);
+      if (uploaded && onFilesUploaded) {
+        onFilesUploaded(uploaded);
+      }
+    } catch (error) {
+      console.warn("Файлы не прошли валидацию");
     }
   };
 
@@ -242,7 +246,6 @@ export const BaseCompactFiles = ({
         show={showFileToast}
         onClose={() => {
           setShowFileToast(false);
-          fileApi.setFileErrors([]);
         }}
         errors={fileApi.fileErrors || []}
       />
