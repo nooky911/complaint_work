@@ -57,7 +57,7 @@ export const EquipmentFields = ({
           </div>
           <div className="flex-1">
             <EditableField
-              label={REPAIR_FIELDS_LABELS.serial_number}
+              label={REPAIR_FIELDS_LABELS.component_serial_number}
               value={
                 mode === "old"
                   ? currentData?.component_serial_number_old
@@ -113,7 +113,7 @@ export const EquipmentFields = ({
           </div>
           <div className="flex-1">
             <EditableField
-              label={REPAIR_FIELDS_LABELS.serial_number}
+              label={REPAIR_FIELDS_LABELS.element_serial_number}
               value={
                 mode === "old"
                   ? currentData?.element_serial_number_old

@@ -39,7 +39,7 @@ export const DatePickerField = ({
       {label && (
         <div className="flex items-center justify-between pr-1">
           <label
-            className={`mb-1 ml-1 block text-xs font-bold uppercase transition-colors ${hasError ? "text-red-500" : "text-slate-500"}`}
+            className={`mb-1 ml-1 block text-xs font-bold tracking-wider uppercase antialiased transition-colors ${hasError ? "text-red-500" : "text-slate-500"}`}
           >
             {label}
           </label>

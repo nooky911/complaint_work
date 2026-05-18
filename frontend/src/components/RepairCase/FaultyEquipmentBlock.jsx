@@ -74,7 +74,7 @@ export const FaultyEquipmentBlock = ({
             </Tooltip>
 
             <DataField
-              label={REPAIR_FIELDS_LABELS.serial_number}
+              label={REPAIR_FIELDS_LABELS.component_serial_number}
               value={repairCase.component_serial_number_old}
             />
             <DataField
@@ -102,7 +102,7 @@ export const FaultyEquipmentBlock = ({
                 </Tooltip>
               </div>
               <DataField
-                label={REPAIR_FIELDS_LABELS.serial_number}
+                label={REPAIR_FIELDS_LABELS.element_serial_number}
                 value={repairCase.element_serial_number_old}
               />
               <DataField

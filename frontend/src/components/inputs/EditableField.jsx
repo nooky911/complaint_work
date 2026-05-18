@@ -27,7 +27,7 @@ export const EditableField = ({
   return (
     <div className={`w-full ${className}`}>
       {label && (
-        <label className="mb-1 ml-1 block text-xs font-bold text-slate-500 uppercase">
+        <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-slate-500 uppercase antialiased">
           {label}
         </label>
       )}

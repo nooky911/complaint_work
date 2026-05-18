@@ -8,6 +8,8 @@ export const REPAIR_FIELDS_LABELS = {
   fault_discovered: "Выявлено при",
   regional_center: "Региональный центр",
   serial_number: "Зав. номер",
+  component_serial_number: "Зав. номер компонента",
+  element_serial_number: "Зав. номер элемента",
   manufacture_date: "Дата изготовления",
   quantity: "Кол-во",
   malfunction: "Неисправность",
