@@ -17,6 +17,7 @@ from myapp.schemas.equipment import (
     SupplierUpdate,
     MalfunctionUpdate,
 )
+from myapp.services.cache_service import cache
 
 
 class EquipmentService:
@@ -41,7 +42,9 @@ class EquipmentService:
 
     @staticmethod
     @transactional
-    async def get_or_create_supplier(session: AsyncSession, name: str) -> tuple[Supplier, bool]:
+    async def get_or_create_supplier(
+        session: AsyncSession, name: str
+    ) -> tuple[Supplier, bool]:
         """Найти поставщика по имени или создать нового, если его нет"""
 
         stmt = select(Supplier).where(Supplier.supplier_name == name)
@@ -53,6 +56,7 @@ class EquipmentService:
             session.add(supplier)
             await session.flush()
             was_created = True
+            await cache.clear()
 
         return supplier, was_created
 
@@ -80,6 +84,8 @@ class EquipmentService:
             supplier.supplier_name = data.supplier_name
 
         await session.flush()
+        await cache.clear()
+
         return supplier
 
     @staticmethod
@@ -94,6 +100,10 @@ class EquipmentService:
             delete(Supplier).where(Supplier.id == supplier_id)
         )
         await session.flush()
+
+        if result.rowcount > 0:
+            await cache.clear()
+
         return result.rowcount > 0
 
     @staticmethod
@@ -169,6 +179,7 @@ class EquipmentService:
             malf = Malfunction(defect_name=name)
             session.add(malf)
             await session.flush()
+            await cache.clear()
         return malf
 
     @staticmethod
@@ -197,6 +208,7 @@ class EquipmentService:
             malfunction.defect_name = data.defect_name
 
         await session.flush()
+        await cache.clear()
 
         return malfunction
 
@@ -226,6 +238,10 @@ class EquipmentService:
         result = await session.execute(malf_stmt)
 
         await session.flush()
+
+        if result.rowcount > 0:
+            await cache.clear()
+
         return result.rowcount > 0
 
     @staticmethod
@@ -424,6 +440,9 @@ class EquipmentService:
             .where(Equipment.id == new_eq.id)
         )
         result = await session.execute(stmt)
+
+        await cache.clear()
+
         return result.scalar_one()
 
     @staticmethod
@@ -452,6 +471,7 @@ class EquipmentService:
 
         await session.flush()
         await session.refresh(equipment, ["malfunctions"])
+        await cache.clear()
 
         return equipment
 
@@ -488,6 +508,9 @@ class EquipmentService:
         )
         result = await session.execute(delete(Equipment).where(Equipment.id == eq_id))
         await session.flush()
+
+        if result.rowcount > 0:
+            await cache.clear()
 
         return result.rowcount > 0
 
@@ -529,6 +552,9 @@ class EquipmentService:
             .where(EquipmentMalfunction.equipment_id == eq_id)
         )
         result = await session.execute(stmt)
+
+        await cache.clear()
+
         return list(result.scalars().all())
 
     @staticmethod
@@ -545,5 +571,8 @@ class EquipmentService:
 
         result = await session.execute(stmt)
         await session.flush()
+
+        if result.rowcount > 0:
+            await cache.clear()
 
         return result.rowcount > 0
