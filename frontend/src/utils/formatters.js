@@ -196,7 +196,7 @@ export const convertCaseToFormData = (caseData) => {
 
 export const getInitialCaseData = () => ({
   // 1. Основные поля
-  fault_date: format(new Date(), "yyyy-MM-dd"),
+  fault_date: null,
   section_mask: null,
   locomotive_number: "",
   mileage: null,

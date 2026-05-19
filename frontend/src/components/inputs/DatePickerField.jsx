@@ -26,6 +26,13 @@ export const DatePickerField = ({
   const today = new Date().toISOString().split("T")[0];
   const hasError = dateError || error;
 
+  const handleClick = (e) => {
+    const input = e.target;
+    if (!value || displayValue === "__.__.____") {
+      input.setSelectionRange(0, 0);
+    }
+  };
+
   const baseStyles = `w-full h-[38px] rounded-lg border px-3 text-sm font-bold transition-all outline-none ${
     isDisabled
       ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
@@ -57,6 +64,7 @@ export const DatePickerField = ({
           value={displayValue}
           onKeyDown={handleKeyDown}
           onChange={handleTextChange}
+          onClick={handleClick}
           disabled={isDisabled}
           className={baseStyles}
         />
