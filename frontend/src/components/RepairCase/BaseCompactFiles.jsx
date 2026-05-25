@@ -1,21 +1,22 @@
 import React, { useRef, useState, useEffect } from "react";
-import { Plus, X, UploadCloud, Download } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Plus, X, UploadCloud, Download, Link as LinkIcon } from "lucide-react";
 import { useUnifiedFileManagement } from "../../hooks/useUnifiedFileManagement";
 import { getFileIcon } from "../../utils/fileUtils.jsx";
 import { DeleteConfirmDialog } from "../common/DeleteConfirmDialog";
 import { FileValidationToast } from "../Toast/FileValidationToast";
+import { LinkFileModal } from "../common/LinkFileModal";
 
 export const BaseCompactFiles = ({
   caseId,
   isEditing,
   relatedField,
   category,
-  onFilesUploaded,
 }) => {
   const fileApi = useUnifiedFileManagement(caseId, {
     category: category,
     relatedField,
-    useReactQuery: true,
+    useReactQuery: !!caseId,
   });
 
   const displayFiles = fileApi.files || [];
@@ -24,6 +25,8 @@ export const BaseCompactFiles = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [showFileToast, setShowFileToast] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showChoiceModal, setShowChoiceModal] = useState(false);
 
   useEffect(() => {
     setShowFileToast(fileApi.fileErrors?.length > 0);
@@ -41,192 +44,149 @@ export const BaseCompactFiles = ({
     setFileToDelete(null);
   };
 
-  const handleFilesSelected = async (fileList) => {
-    if (!fileList || fileList.length === 0) return;
-    const filesArray = Array.from(fileList);
+  const handleFilesChange = (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    fileApi.uploadFiles(e.target.files);
+  };
 
+  const handleLinkFile = async (existingFileId) => {
     try {
-      const uploaded = await fileApi.uploadFilesAsync(filesArray);
-      if (uploaded && onFilesUploaded) {
-        onFilesUploaded(uploaded);
-      }
+      await fileApi.linkFileAsync(existingFileId);
     } catch (error) {
-      console.warn("Файлы не прошли валидацию");
+      console.error("Ошибка привязки файла:", error);
     }
   };
 
-  const handleDrag = (e) => {
+  const handleDragIn = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") setIsDragActive(true);
-    else if (e.type === "dragleave") setIsDragActive(false);
+    if (isEditing) setIsDragActive(true);
+  };
+
+  const handleDragOut = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragActive(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragActive(false);
-    if (e.dataTransfer.files?.length > 0) {
-      handleFilesSelected(e.dataTransfer.files);
+
+    if (!isEditing) return;
+
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      fileApi.uploadFiles(e.dataTransfer.files);
     }
   };
 
-  // Режим просмотра
-  if (!isEditing) {
-    if (displayFiles.length === 0) {
-      return (
-        <div className="flex h-[38px] items-center justify-center overflow-hidden rounded-lg border border-gray-200 bg-gray-50 px-3">
-          <span className="text-sm text-gray-400">Нет файлов</span>
-        </div>
-      );
+  const handleAddClick = (e) => {
+    if (e) e.stopPropagation();
+    if (!isEditing) return;
+
+    if (caseId) {
+      setShowChoiceModal(true);
+    } else {
+      fileInputRef.current.click();
     }
+  };
 
-    return (
-      <div className="overflow-hidden rounded-lg border border-gray-300 bg-gray-50 px-4 shadow-sm">
-        <div className="flex flex-col gap-1 py-1">
-          {displayFiles.map((file) => (
-            <div
-              key={file.id}
-              className="flex items-center justify-between gap-2 overflow-hidden"
-              title={file.original_name}
-            >
-              <div className="flex max-w-fit items-center gap-2">
-                {getFileIcon(file.mime_type, file.original_name)}
-                <div className="flex items-center gap-2 truncate">
-                  <button
-                    onClick={() =>
-                      fileApi.downloadFile(file.id, file.original_name)
-                    }
-                    className="truncate text-left text-[12px] font-bold text-gray-900 hover:text-indigo-600 hover:underline"
-                  >
-                    {file.original_name}
-                  </button>
-                  <span className="shrink-0 text-[11px] text-slate-400">
-                    {((file.size_bytes || 0) / 1024 / 1024 || 0).toFixed(2)} MB
-                  </span>
-                </div>
-              </div>
-
-              {/* Кнопка скачивания файла */}
-              <button
-                onClick={() =>
-                  fileApi.downloadFile(file.id, file.original_name)
-                }
-                className="p-1 text-gray-400 transition-colors hover:text-indigo-600"
-                title="Скачать файл"
-              >
-                <Download className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Режим загрузки
-  if (fileApi.loading || fileApi.uploading) {
-    return (
-      <div className="flex h-[38px] items-center justify-center overflow-hidden rounded-lg border border-gray-300 bg-gray-50 px-3">
-        <span className="text-sm text-gray-400">
-          {fileApi.uploading ? "Загрузка..." : "Загрузка..."}
-        </span>
-      </div>
-    );
-  }
+  if (!isEditing && displayFiles.length === 0) return null;
 
   return (
     <>
-      <div
-        onDragEnter={handleDrag}
-        onDragLeave={handleDrag}
-        onDragOver={handleDrag}
-        onDrop={handleDrop}
-        className={`relative overflow-hidden rounded-lg border transition-all duration-200 ${
-          isDragActive
-            ? "border-dashed border-orange-400 bg-orange-50"
-            : displayFiles.length > 0
-              ? "border-gray-300 bg-gray-50 shadow-sm"
-              : "h-[36px] border-gray-300 bg-white"
-        } ${displayFiles.length > 0 ? "" : "h-[36px]"}`}
-      >
-        <input
-          type="file"
-          multiple
-          className="hidden"
-          id={`file-input-${relatedField}`}
-          ref={fileInputRef}
-          onChange={(e) => {
-            handleFilesSelected(e.target.files);
-            e.target.value = "";
-          }}
-        />
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFilesChange}
+        className="hidden"
+        multiple
+      />
 
-        {isDragActive ? (
-          <div className="flex h-full animate-pulse items-center justify-center text-orange-600">
-            <UploadCloud className="h-4 w-4" />
-          </div>
-        ) : displayFiles.length === 0 ? (
-          <button
-            onClick={() => fileInputRef.current.click()}
-            className="flex h-full w-full min-w-[200px] items-center justify-center gap-2 px-4 text-sm text-gray-400 hover:text-orange-600"
+      <div className="mt-2">
+        {displayFiles.length === 0 ? (
+          <div
+            onClick={handleAddClick}
+            onDragEnter={handleDragIn}
+            onDragLeave={handleDragOut}
+            onDragOver={handleDragIn}
+            onDrop={handleDrop}
+            className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-2 text-gray-500 transition-all ${
+              isDragActive
+                ? "scale-[0.99] border-indigo-500 bg-indigo-50 text-indigo-600"
+                : "border-gray-300 bg-gray-50 hover:border-indigo-400 hover:bg-indigo-50/20"
+            }`}
           >
-            <Plus className="h-4 w-4" />
-            <span>Файлы</span>
-          </button>
+            <UploadCloud className="h-4 w-4 text-gray-400" />
+            <span className="text-xs font-medium">
+              Перетащите файлы сюда или кликните
+            </span>
+          </div>
         ) : (
-          <div className="flex flex-col gap-1 px-1 py-1 pl-3">
+          <div className="flex flex-col gap-1.5">
             {displayFiles.map((file) => (
-              <div key={file.id} className="flex items-center justify-between">
-                <div className="group flex max-w-fit min-w-0 items-center gap-1">
-                  {getFileIcon(file.mime_type, file.original_name)}
-                  <div className="flex min-w-0 flex-1 items-baseline gap-2 truncate">
+              <div
+                key={file.id}
+                className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm transition-all hover:border-indigo-100"
+              >
+                <div className="flex min-w-0 items-center gap-2.5 overflow-hidden">
+                  {getFileIcon(file.mime_type || file.type)}
+                  <div className="flex items-baseline gap-2 truncate">
                     <button
                       onClick={() =>
                         fileApi.downloadFile(file.id, file.original_name)
                       }
-                      className="min-w-0 truncate text-left text-[12px] font-bold text-gray-700 hover:text-orange-600 hover:underline"
-                      title={file.original_name}
+                      className="truncate text-left text-[12px] font-bold text-gray-900 hover:text-indigo-600 hover:underline"
+                      title={file.original_name || file.name}
                     >
-                      {file.original_name}
+                      {file.original_name || file.name}
                     </button>
                     <span className="shrink-0 text-[11px] text-slate-400">
-                      {((file.size_bytes || 0) / 1024 / 1024 || 0).toFixed(2)}{" "}
+                      {(
+                        (file.size_bytes || file.size || 0) /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
                       MB
                     </span>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                {/* Правая часть: Кнопки */}
+                <div className="flex shrink-0 items-center gap-1">
                   <button
                     onClick={() =>
                       fileApi.downloadFile(file.id, file.original_name)
                     }
-                    className="p-1 text-gray-400 transition-colors hover:text-indigo-600"
+                    className="p-1 text-slate-400 transition-colors hover:text-indigo-600"
                     title="Скачать файл"
                   >
                     <Download className="h-4 w-4" />
                   </button>
 
-                  <button
-                    onClick={() => requestDeleteFile(file)}
-                    className="p-1 text-gray-400 transition-opacity hover:text-red-600"
-                    title="Удалить файл"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                  {isEditing && (
+                    <button
+                      onClick={() => requestDeleteFile(file)}
+                      className="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                      title="Удалить"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
-
-            <div className="px-1 pl-3">
-              <button
-                onClick={() => fileInputRef.current.click()}
-                className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-indigo-600 uppercase transition-colors hover:text-indigo-800"
-              >
-                <Plus className="h-3.5 w-3.5" /> Добавить еще
-              </button>
-            </div>
+            {isEditing && (
+              <div className="mt-1 flex items-center justify-between px-1">
+                <button
+                  onClick={handleAddClick}
+                  className="flex items-center gap-1.5 text-[10px] font-bold tracking-wider text-indigo-600 uppercase antialiased transition-colors hover:text-indigo-800"
+                >
+                  <Plus className="h-3.5 w-3.5" /> Добавить еще
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -249,6 +209,83 @@ export const BaseCompactFiles = ({
         }}
         errors={fileApi.fileErrors || []}
       />
+
+      {/* Окно поиска по базе */}
+      <LinkFileModal
+        isOpen={showLinkModal}
+        onClose={() => setShowLinkModal(false)}
+        onSelect={handleLinkFile}
+        category={category}
+        relatedField={relatedField}
+        currentFiles={displayFiles}
+      />
+
+      {showChoiceModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+            onClick={() => setShowChoiceModal(false)}
+          >
+            <div
+              className="animate-in zoom-in-95 w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl duration-200"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-black tracking-wider text-slate-800 uppercase">
+                  Добавление документа
+                </h3>
+                <button
+                  onClick={() => setShowChoiceModal(false)}
+                  className="rounded-full p-1 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowChoiceModal(false);
+                    fileInputRef.current.click();
+                  }}
+                  className="flex items-center gap-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3 text-left font-semibold text-indigo-700 transition-all hover:bg-indigo-100"
+                >
+                  <UploadCloud className="h-5 w-5 text-indigo-600" />
+                  <div className="flex flex-col">
+                    <span className="text-sm">Загрузить с компьютера</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      Выбрать локальный файл
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowChoiceModal(false);
+                    setShowLinkModal(true);
+                  }}
+                  className="flex items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 text-left font-semibold text-emerald-700 transition-all hover:bg-emerald-100"
+                >
+                  <LinkIcon className="h-5 w-5 text-emerald-600" />
+                  <div className="flex flex-col">
+                    <span className="text-sm">Выбрать из загруженных</span>
+                    <span className="text-[11px] font-normal text-slate-500">
+                      Привязать файл из базы данных
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setShowChoiceModal(false)}
+                  className="mt-2 rounded-lg border border-gray-300 bg-white py-2 text-center text-sm font-bold text-gray-700 transition-colors hover:bg-gray-50"
+                >
+                  Отмена
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </>
   );
 };

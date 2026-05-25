@@ -40,6 +40,7 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
     uploading,
     addPendingFiles,
     removePendingFile,
+    addPendingLink,
   } = useCreateRepairCase(onCreated, currentUser);
 
   // Блок скролл body когда модальное окно открыто
@@ -162,6 +163,7 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
                   pendingFiles={pendingFiles}
                   onAddFiles={addPendingFiles}
                   onRemoveFile={removePendingFile}
+                  onAddPendingLink={addPendingLink}
                 />
               </div>
             ) : activeTab === "reclamation" ? (

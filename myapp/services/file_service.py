@@ -84,3 +84,28 @@ class FileService:
     ) -> Path:
         """Создать архив с файлами"""
         return await FileArchiveService.create_archive(session, case_id, category)
+
+    @staticmethod
+    async def search_unique_files(
+        session: AsyncSession,
+        category: FileCategory,
+        related_field: str | None = None,
+        search_query: str | None = None,
+    ) -> list[CaseFile]:
+        """Поиск уникальных файлов для переиспользования"""
+        return await FileManagementService.search_unique_files(
+            session, category, related_field, search_query
+        )
+
+    @staticmethod
+    async def link_existing_file(
+        session: AsyncSession,
+        case_id: int,
+        existing_file_id: int,
+        category: FileCategory,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
+    ) -> CaseFile:
+        """Привязать существующий файл к случаю"""
+        return await FileManagementService.link_existing_file(
+            session, case_id, existing_file_id, category, related_field
+        )

@@ -1,5 +1,3 @@
-import asyncio
-
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -14,8 +12,8 @@ from myapp.database.transactional import transactional
 from myapp.services.equipment_service import EquipmentService
 from myapp.services.warranty_service import WarrantyService
 from myapp.services.case_status_service import CaseStatusService
-from myapp.services.storage_service import StorageService
 from myapp.services.waybill_service import WaybillService
+from myapp.services.files.file_management_service import FileManagementService
 
 
 class CaseService:
@@ -193,11 +191,7 @@ class CaseService:
 
         if case.files:
             for file_rec in case.files:
-                full_path = StorageService.get_full_path(file_rec)
-                try:
-                    await asyncio.to_thread(full_path.unlink, missing_ok=True)
-                except Exception as e:
-                    print(f"Ошибка удаления файла {full_path}: {e}")
+                await FileManagementService.delete_file(session, file_rec.id)
 
         await session.delete(case)
 

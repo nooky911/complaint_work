@@ -42,12 +42,30 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
   }, [referencesError]);
 
   const addPendingFiles = (fileList) => {
-    const newFiles = Array.from(fileList);
+    const newFiles = Array.from(fileList).map((file) => ({
+      id: Math.random().toString(36).slice(2, 11),
+      name: file.filename || file.name,
+      file: file,
+      isPending: true,
+      isLink: false,
+    }));
     setPendingFiles((prev) => [...prev, ...newFiles]);
   };
 
-  const removePendingFile = (index) => {
-    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+  const addPendingLink = (selectedFile) => {
+    const newLink = {
+      id: Math.random().toString(36).slice(2, 11),
+      name: selectedFile.original_name,
+      existingFileId: selectedFile.id,
+      mime_type: selectedFile.mime_type,
+      isPending: true,
+      isLink: true,
+    };
+    setPendingFiles((prev) => [...prev, newLink]);
+  };
+
+  const removePendingFile = (id) => {
+    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
   };
 
   useEffect(() => {
@@ -80,9 +98,8 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
   const updateSupplierPreview = async (eqId, locoNum, modelId) => {
     // Если оборудование сброшено (eqId == null)
     if (!eqId) {
-      setFormData(
-        (prev) =>
-          prev.supplier_id !== null ? { ...prev, supplier_id: null } : prev
+      setFormData((prev) =>
+        prev.supplier_id !== null ? { ...prev, supplier_id: null } : prev,
       );
       return;
     }
@@ -115,7 +132,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
       updateSupplierPreview(
         targetId,
         formData.locomotive_number,
-        formData.locomotive_model_id
+        formData.locomotive_model_id,
       );
     }, 400);
 
@@ -151,23 +168,28 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
 
       if (pendingFiles.length > 0) {
         setUploading(true);
-        try {
-          const fileFormData = new FormData();
-          fileFormData.append("category", "primary");
-          pendingFiles.forEach((file) => {
-            fileFormData.append("files", file);
+
+        const newFiles = pendingFiles.filter((f) => !f.isLink);
+        const linkFiles = pendingFiles.filter((f) => f.isLink);
+
+        if (newFiles.length > 0) {
+          const formDataFiles = new FormData();
+          formDataFiles.append("category", "primary");
+          newFiles.forEach((f) => {
+            formDataFiles.append("files", f.file);
           });
+
           await api.post(
             `/files/cases/${newCaseId}/upload-files`,
-            fileFormData,
+            formDataFiles,
           );
-        } catch (fileError) {
-          console.error("Ошибка загрузки файлов, но случай создан:", fileError);
-          setServerError({
-            show: true,
-            message:
-              "Случай создан, но файлы не загрузились. Попробуйте загрузить их позже.",
-          });
+        }
+
+        for (const link of linkFiles) {
+          const fdLink = new FormData();
+          fdLink.append("existing_file_id", link.existingFileId);
+          fdLink.append("category", "primary");
+          await api.post(`/files/cases/${newCaseId}/link-file`, fdLink);
         }
       }
 
@@ -218,6 +240,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     updateWarrantyField,
     handleEquipmentSelect,
     updateSupplierPreview,
+    addPendingLink,
     closeServerError: () => setServerError({ show: false, message: "" }),
   };
 };

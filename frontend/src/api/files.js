@@ -29,67 +29,48 @@ export const fileApi = {
     return groupedFiles[relatedField] || [];
   },
 
-  // Загрузка файлов warranty
   uploadWarrantyFiles: async (caseId, relatedField, files) => {
-    const filesArray = Array.isArray(files) ? files : [files];
+    const filesArray = Array.from(files || []);
 
-    if (filesArray.length === 0) {
-      return [];
-    }
+    if (filesArray.length === 0) return [];
 
     const formData = new FormData();
     formData.append("category", "warranty");
     formData.append("related_field", relatedField);
 
+    filesArray.forEach((file) => formData.append("files", file));
+
+    const response = await api.post(
+      `/files/cases/${caseId}/upload-files`,
+      formData,
+    );
+    return response.data;
+  },
+
+  uploadFile: async (caseId, category, fileList, relatedField = null) => {
+    const filesArray = Array.from(fileList || []);
+
+    if (filesArray.length === 0) throw new Error("No files provided");
+
+    const formData = new FormData();
+    formData.append("category", category);
+
+    if (
+      relatedField !== null &&
+      relatedField !== undefined &&
+      relatedField !== ""
+    ) {
+      formData.append("related_field", relatedField);
+    }
+
     filesArray.forEach((file) => {
       formData.append("files", file);
     });
 
-    try {
-      const response = await api.post(
-        `/files/cases/${caseId}/upload-files`,
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        },
-      );
-      return response.data;
-    } catch (error) {
-      throw error;
-    }
-  },
-
-  // Загрузка одного файла
-  uploadFile: async (caseId, category, fileList, relatedField = null) => {
-    const filesArray = Array.isArray(fileList) ? fileList : [fileList];
-    if (filesArray.length === 0) throw new Error("No files provided");
-
-    const isMultipleFiles = filesArray.length > 1;
-    const endpoint = isMultipleFiles
-      ? `/files/cases/${caseId}/upload-files`
-      : `/files/cases/${caseId}/upload`;
-
-    const formData = new FormData();
-    formData.append("category", category);
-    if (relatedField) {
-      formData.append("related_field", relatedField);
-    }
-
-    if (isMultipleFiles) {
-      filesArray.forEach((file) => {
-        formData.append("files", file);
-      });
-    } else {
-      formData.append("file", filesArray[0]);
-    }
-
-    const response = await api.post(endpoint, formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    const response = await api.post(
+      `/files/cases/${caseId}/upload-files`,
+      formData,
+    );
     return response.data;
   },
 
@@ -146,7 +127,6 @@ export const fileApi = {
       if (filenameMatch && filenameMatch[1]) {
         fileName = filenameMatch[1].replace(/['"]/g, "");
 
-        // Убрать префикс utf-8
         if (fileName.startsWith("utf-8")) {
           fileName = fileName.substring(5);
           if (fileName.startsWith("_")) {
@@ -163,5 +143,33 @@ export const fileApi = {
     }
 
     triggerDownload(response.data, fileName);
+  },
+
+  // Поиск уникальных файлов для переиспользования
+  searchUniqueFiles: async (category, relatedField = null, query = null) => {
+    const params = new URLSearchParams({ category });
+    if (relatedField) params.append("related_field", relatedField);
+    if (query) params.append("query", query);
+
+    const response = await api.get(`/files/search/unique?${params.toString()}`);
+    return response.data;
+  },
+
+  linkExistingFile: async (
+    caseId,
+    existingFileId,
+    category,
+    relatedField = null,
+  ) => {
+    const formData = new FormData();
+    formData.append("existing_file_id", existingFileId);
+    formData.append("category", category);
+    if (relatedField) formData.append("related_field", relatedField);
+
+    const response = await api.post(
+      `/files/cases/${caseId}/link-file`,
+      formData,
+    );
+    return response.data;
   },
 };

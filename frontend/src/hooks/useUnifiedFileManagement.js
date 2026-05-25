@@ -276,6 +276,22 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     },
   });
 
+  // Привязка существующего файла к случаю
+  const linkMutation = useMutation({
+    mutationFn: ({ existingFileId }) =>
+      fileApi.linkExistingFile(caseId, existingFileId, category, relatedField),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: listFilesQueryKey });
+      queryClient.invalidateQueries({ queryKey: groupedFilesQueryKey });
+      queryClient.invalidateQueries({ queryKey: allFilesQueryKey });
+    },
+    onError: (error) => {
+      console.error("Ошибка при привязке файла:", error);
+      const errorMsg = error.response?.data?.detail || "Ошибка привязки файла";
+      setFileErrors((prev) => [...prev, errorMsg]);
+    },
+  });
+
   // Удаление файлов обычным способом (fallback)
   const deleteFileFallback = async (fileId) => {
     try {
@@ -323,6 +339,10 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     loading: useReactQuery ? effectiveLoading : false,
     uploading: useReactQuery ? uploadMutation.isPending : uploading,
     isDeleting: useReactQuery ? deleteMutation.isPending : deleting,
+    linkFileAsync: useReactQuery
+      ? (id) => linkMutation.mutateAsync({ existingFileId: id })
+      : null,
+    isLinking: useReactQuery ? linkMutation.isPending : false,
     error: effectiveError,
     fileErrors,
     setFileErrors,

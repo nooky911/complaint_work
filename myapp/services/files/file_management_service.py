@@ -1,11 +1,16 @@
 import asyncio
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 
 from myapp.database.transactional import transactional
 from myapp.services.storage_service import StorageService
-from myapp.models.case_files import CaseFile, FileCategory
+from myapp.models.case_files import (
+    CaseFile,
+    FileCategory,
+    WarrantyDocumentField,
+    WaybillDocumentField,
+)
 from myapp.schemas.files import FileInfo
 
 
@@ -23,22 +28,91 @@ class FileManagementService:
     @staticmethod
     @transactional
     async def delete_file(session: AsyncSession, file_id: int) -> int:
-        """Удаление файла"""
+        """Удаление файла (проверяет, есть ли другие ссылки на этот файл на диске)"""
+
         case_file = await FileManagementService.get_file_by_id(session, file_id)
         if not case_file:
             return 0
 
-        stmt = delete(CaseFile).where(CaseFile.id == file_id)
-        result = await session.execute(stmt)
+        stmt = (
+            select(func.count())
+            .select_from(CaseFile)
+            .where(CaseFile.file_path == case_file.file_path)
+        )
+        usage_count = await session.execute(stmt)
+        count = usage_count.scalar() or 0
 
-        if result.rowcount:  # type: ignore
+        delete_stmt = delete(CaseFile).where(CaseFile.id == file_id)
+        result = await session.execute(delete_stmt)
+        await session.flush()
+
+        if result.rowcount and count <= 1:
             full_path = StorageService.get_full_path(case_file)
             try:
-                await asyncio.to_thread(full_path.unlink)
+                await asyncio.to_thread(full_path.unlink, missing_ok=True)
             except FileNotFoundError:
                 pass
 
         return result.rowcount  # type: ignore
+
+    @staticmethod
+    async def search_unique_files(
+        session: AsyncSession,
+        category: FileCategory,
+        related_field: str | None = None,
+        search_query: str | None = None,
+        limit: int = 50,
+    ) -> list[CaseFile]:
+        """Поиск уникальных файлов для выбора"""
+
+        stmt = select(CaseFile).distinct(CaseFile.file_path)
+
+        conditions = [CaseFile.category == category]
+        if related_field:
+            conditions.append(CaseFile.related_field == related_field)
+
+        if search_query:
+            conditions.append(CaseFile.original_name.ilike(f"%{search_query}%"))
+
+        stmt = (
+            stmt.where(*conditions)
+            .order_by(CaseFile.file_path, CaseFile.id.desc())
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+    @staticmethod
+    @transactional
+    async def link_existing_file(
+        session: AsyncSession,
+        case_id: int,
+        existing_file_id: int,
+        category: FileCategory,
+        related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
+    ) -> CaseFile:
+        """Создает ссылку на уже существующий файл для нового случая"""
+
+        existing_file = await FileManagementService.get_file_by_id(
+            session, existing_file_id
+        )
+        if not existing_file:
+            raise ValueError(f"Исходный файл с ID {existing_file_id} не найден")
+
+        new_file = CaseFile(
+            case_id=case_id,
+            category=category,
+            related_field=related_field,
+            original_name=existing_file.original_name,
+            stored_name=existing_file.stored_name,
+            file_path=existing_file.file_path,
+            mime_type=existing_file.mime_type,
+            size_bytes=existing_file.size_bytes,
+        )
+
+        session.add(new_file)
+        await session.flush()
+        return new_file
 
     @staticmethod
     async def get_for_download(

@@ -80,3 +80,24 @@ async def delete_file(
         return None
     except Exception as e:
         handle_file_not_found(e)
+
+
+@router.get(
+    "/search/unique",
+    response_model=list[FileInfo],
+    summary="Поиск уникальных файлов для переиспользования",
+)
+async def search_files(
+    category: FileCategory,
+    related_field: str | None = None,
+    query: str | None = None,
+    session: AsyncSession = Depends(get_db),
+    _user: User = Depends(require_viewer_or_higher),
+):
+    """Поиск файлов для сервиса по прикреплению к случаям"""
+    try:
+        return await FileService.search_unique_files(
+            session, category, related_field, query
+        )
+    except Exception as e:
+        handle_file_not_found(e)

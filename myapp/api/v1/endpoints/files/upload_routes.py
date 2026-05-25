@@ -62,21 +62,53 @@ async def upload_single_file(
 )
 async def upload_multiple_files(
     case_id: int,
-    category: Annotated[
-        FileCategory, Form(description="Категория файлов (primary/warranty)")
-    ],
+    category: Annotated[FileCategory, Form(...)],
     related_field: Annotated[
-        WarrantyDocumentField | None,
-        Form(description="Поле для warranty файлов"),
+        WarrantyDocumentField | WaybillDocumentField | None, Form(...)
     ] = None,
     files: list[UploadFile] = File(...),
     session: AsyncSession = Depends(get_db),
     _current_user: User = Depends(require_can_edit_case),
 ):
-    """Загрузка нескольких файлов одной категории"""
+    if related_field in ["null", "undefined", ""]:
+        related_field = None
+
     try:
+        if not isinstance(files, list):
+            files = [files]
+
         return await FileService.upload_files(
             session, case_id, category, files, related_field
+        )
+    except Exception as e:
+        handle_file_not_found(e)
+
+
+@router.post(
+    "/cases/{case_id}/link-file",
+    response_model=FileInfo,
+    status_code=status.HTTP_201_CREATED,
+    summary="Привязать существующий файл к случаю",
+)
+async def link_existing_file_to_case(
+    case_id: int,
+    existing_file_id: Annotated[
+        int, Form(description="ID файла, который хотим привязать")
+    ],
+    category: Annotated[
+        FileCategory, Form(description="Категория (primary/warranty/waybill)")
+    ],
+    related_field: Annotated[
+        WarrantyDocumentField | WaybillDocumentField | None,
+        Form(description="Поле документа"),
+    ] = None,
+    session: AsyncSession = Depends(get_db),
+    _current_user: User = Depends(require_can_edit_case),
+):
+    """Привязка уже загруженного ранее файла к новому случаю"""
+    try:
+        return await FileService.link_existing_file(
+            session, case_id, existing_file_id, category, related_field
         )
     except Exception as e:
         handle_file_not_found(e)
