@@ -157,14 +157,6 @@ export default React.memo(function DashboardPage() {
     }
   };
 
-  // ЛОГИКА СОРТИРОВКИ
-  const sortedCases = useMemo(() => {
-    return [...cases].sort((a, b) => {
-      if (sortOrder === "desc") return b.id - a.id;
-      return a.id - b.id;
-    });
-  }, [cases, sortOrder]);
-
   return (
     <div className="flex h-full flex-col gap-2 overflow-hidden">
       {/* HEADER: Кнопка фильтров, сортировка, счетчик и кнопка создания */}
@@ -277,7 +269,7 @@ export default React.memo(function DashboardPage() {
           </div>
         ) : (
           <RepairCaseList
-            cases={sortedCases}
+            cases={cases}
             onCaseClick={handleCaseClick}
             pagination={
               <div className="flex w-fit items-center gap-1 p-1 select-none">

@@ -47,6 +47,7 @@ export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
     queryFn: async () => {
       const skip = (page - 1) * limit;
       const params = buildFilterParams(filters, skip, limit);
+      params.append("sort_order", sortOrder);
       const res = await api.get(`/cases/?${params.toString()}`);
       return res.data;
     },

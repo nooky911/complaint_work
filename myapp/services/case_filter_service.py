@@ -37,8 +37,13 @@ class CaseFilterService:
         )
         stmt = stmt.add_columns(numbered_cte.c.display_number)
 
-        # Сортировка от новых к старым и пагинация
-        stmt = stmt.order_by(RepairCaseEquipment.id.desc())
+        stmt = stmt.order_by(None)
+        if params.sort_order == "asc":
+            stmt = stmt.order_by(RepairCaseEquipment.id.asc())
+        else:
+            stmt = stmt.order_by(RepairCaseEquipment.id.desc())
+
+        # Пагинация
         stmt = stmt.offset(params.skip).limit(params.limit)
 
         result = await session.execute(stmt)

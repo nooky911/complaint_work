@@ -67,6 +67,7 @@ class CaseFilterParams(BaseModel):
     # Даты неисправности
     date_from: date | None = None
     date_to: date | None = None
+    sort_order: str = "desc"
 
     # Идентификаторы (RepairCaseEquipment)
     regional_center_id: list[int] | None = None
