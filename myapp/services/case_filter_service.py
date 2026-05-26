@@ -15,13 +15,16 @@ class CaseFilterService:
     @staticmethod
     async def filter_cases(
         session: AsyncSession, params: CaseFilterParams
-    ) -> list[CaseList]:
-        """Основной метод фильтрации случаев"""
+    ) -> dict:  # Меняем возвращаемый тип на dict
+        """Основной метод фильтрации случаев с подсчетом total_count"""
 
         # Получить базовый запрос с фильтрами
-        stmt = build_filtered_case_stmt(params)
+        base_stmt = build_filtered_case_stmt(params)
 
-        # Создать виртуальную таблицу (CTE) для сквозной нумерации всех записей в базе
+        count_stmt = select(func.count()).select_from(base_stmt.subquery())
+        total_result = await session.execute(count_stmt)
+        total_count = total_result.scalar_one()
+
         numbered_cte = select(
             RepairCaseEquipment.id,
             func.row_number()
@@ -29,11 +32,13 @@ class CaseFilterService:
             .label("display_number"),
         ).cte("numbered_cases")
 
-        # JOIN нумерацию к запросу и достаем колонку display_number
-        stmt = stmt.outerjoin(numbered_cte, RepairCaseEquipment.id == numbered_cte.c.id)
+        stmt = base_stmt.outerjoin(
+            numbered_cte, RepairCaseEquipment.id == numbered_cte.c.id
+        )
         stmt = stmt.add_columns(numbered_cte.c.display_number)
 
-        # Пагинация
+        # Сортировка от новых к старым и пагинация
+        stmt = stmt.order_by(RepairCaseEquipment.id.desc())
         stmt = stmt.offset(params.skip).limit(params.limit)
 
         result = await session.execute(stmt)
@@ -48,12 +53,10 @@ class CaseFilterService:
             CaseStatusService.enrich_case_with_status_and_creator(
                 case_obj, status_value
             )
-
             case_obj.display_number = display_number
-
             cases.append(CaseList.model_validate(case_obj))
 
-        return cases
+        return {"items": cases, "total": total_count}
 
     @staticmethod
     async def get_filter_options() -> FilterOptionsResponse:

@@ -101,17 +101,20 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
   );
 };
 
-export function RepairCaseList({ cases, onCaseClick }) {
+export function RepairCaseList({ cases, onCaseClick, pagination }) {
   if (!cases || cases.length === 0) {
     return (
-      <div className="flex h-28 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500">
-        Записи не найдены
+      <div className="flex h-full flex-col gap-4">
+        <div className="flex h-28 items-center justify-center rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 text-slate-500">
+          Записи не найдены
+        </div>
+        {pagination}
       </div>
     );
   }
 
   return (
-    <div className="h-full min-h-0 space-y-3 overflow-y-auto p-2">
+    <div className="h-full min-h-0 space-y-3 overflow-y-auto p-2 pb-5">
       {cases.map((item, index) => {
         const status = getStatusConfig(item);
         const StatusIcon = status.icon;
@@ -272,6 +275,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
           </div>
         );
       })}
+      <div className="mt-2 flex justify-center">{pagination}</div>
     </div>
   );
 }

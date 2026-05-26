@@ -1,5 +1,14 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Filter, Plus, ArrowUpDown, X, Settings, Download } from "lucide-react";
+import {
+  Filter,
+  Plus,
+  ArrowUpDown,
+  X,
+  Settings,
+  Download,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // Компоненты
@@ -26,6 +35,12 @@ import { exportCasesToExcel } from "../api/export";
 export default React.memo(function DashboardPage() {
   const navigate = useNavigate();
 
+  // --- ПАГИНАЦИЯ ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 25;
+  const [isEditingPage, setIsEditingPage] = useState(false);
+  const [pageInput, setPageInput] = useState("");
+
   // --- СОСТОЯНИЯ СПИСКА ---
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedCase, setSelectedCase] = useState(null);
@@ -44,12 +59,24 @@ export default React.memo(function DashboardPage() {
   // Debounced фильтры для оптимизации
   const debouncedAppliedFilters = useDebouncedValue(appliedFilters, 300);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedAppliedFilters, sortOrder]);
+
   // React Query хуки
   const {
-    data: cases = [],
+    data: casesData = { items: [], total: 0 },
     isLoading: loading,
     error: listError,
-  } = useCasesList(debouncedAppliedFilters, sortOrder);
+  } = useCasesList(
+    debouncedAppliedFilters,
+    sortOrder,
+    currentPage,
+    itemsPerPage,
+  );
+  const cases = casesData.items || [];
+  const totalCount = casesData.total || 0;
+  const totalPages = Math.ceil(totalCount / itemsPerPage) || 1;
 
   const {
     data: selectedCaseDetail,
@@ -133,11 +160,8 @@ export default React.memo(function DashboardPage() {
   // ЛОГИКА СОРТИРОВКИ
   const sortedCases = useMemo(() => {
     return [...cases].sort((a, b) => {
-      if (sortOrder === "desc") {
-        return b.id - a.id;
-      } else {
-        return a.id - b.id;
-      }
+      if (sortOrder === "desc") return b.id - a.id;
+      return a.id - b.id;
     });
   }, [cases, sortOrder]);
 
@@ -194,7 +218,7 @@ export default React.memo(function DashboardPage() {
           {/* Счётчик */}
           <p className="px-1 text-[12px] font-bold text-slate-600 uppercase">
             Всего записей:{" "}
-            <span className="font-black text-indigo-600">{cases.length}</span>
+            <span className="font-black text-indigo-600">{totalCount}</span>
           </p>
         </div>
 
@@ -242,8 +266,8 @@ export default React.memo(function DashboardPage() {
         </div>
       </div>
 
-      {/* ОСНОВНОЙ СПИСОК */}
-      <div className="min-h-0 flex-1">
+      {/* ОСНОВНОЙ СПИСОК И ПАГИНАЦИЯ */}
+      <div className="flex min-h-0 flex-1 flex-col">
         {loading && cases.length === 0 ? (
           <div className="flex h-64 animate-pulse flex-col items-center justify-center gap-4">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"></div>
@@ -252,7 +276,139 @@ export default React.memo(function DashboardPage() {
             </span>
           </div>
         ) : (
-          <RepairCaseList cases={sortedCases} onCaseClick={handleCaseClick} />
+          <RepairCaseList
+            cases={sortedCases}
+            onCaseClick={handleCaseClick}
+            pagination={
+              <div className="flex w-fit items-center gap-1 p-1 select-none">
+                {/* Кнопка Назад */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentPage((p) => Math.max(1, p - 1));
+                  }}
+                  disabled={currentPage === 1}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200/60 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                {/* Цифры страниц */}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentPage(1);
+                    }}
+                    className={`h-8 min-w-[2rem] rounded-lg px-2 text-xs font-black transition-colors ${
+                      currentPage === 1
+                        ? "bg-indigo-600 text-white shadow-md"
+                        : "text-slate-600 hover:bg-slate-200/60"
+                    }`}
+                  >
+                    1
+                  </button>
+
+                  {currentPage > 3 && (
+                    <span className="flex h-8 w-6 items-center justify-center text-xs tracking-widest text-slate-400">
+                      ...
+                    </span>
+                  )}
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (p) => {
+                      if (
+                        p > 1 &&
+                        p < totalPages &&
+                        p >= currentPage - 1 &&
+                        p <= currentPage + 1
+                      ) {
+                        return (
+                          <button
+                            key={p}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentPage(p);
+                            }}
+                            className={`h-8 min-w-[2rem] rounded-lg px-2 text-xs font-black transition-colors ${
+                              currentPage === p
+                                ? "bg-indigo-600 text-white shadow-md"
+                                : "text-slate-600 hover:bg-slate-200/60"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        );
+                      }
+                      return null;
+                    },
+                  )}
+
+                  {/* Ручной ввод страниц */}
+                  {currentPage < totalPages - 2 &&
+                    (isEditingPage ? (
+                      <input
+                        type="number"
+                        autoFocus
+                        placeholder="№"
+                        className="h-8 w-12 rounded-lg border-2 border-indigo-400 bg-white px-1 text-center text-xs font-bold text-indigo-700 shadow-sm outline-none focus:ring-0"
+                        value={pageInput}
+                        onChange={(e) => setPageInput(e.target.value)}
+                        onBlur={() => setIsEditingPage(false)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            const p = parseInt(pageInput, 10);
+                            if (p > 0 && p <= totalPages) setCurrentPage(p);
+                            setIsEditingPage(false);
+                            setPageInput("");
+                          }
+                        }}
+                      />
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPageInput("");
+                          setIsEditingPage(true);
+                        }}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-black tracking-widest text-slate-400 transition-colors hover:bg-slate-200/60 hover:text-indigo-600"
+                        title="Ввести номер страницы..."
+                      >
+                        ...
+                      </button>
+                    ))}
+
+                  {totalPages > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentPage(totalPages);
+                      }}
+                      className={`h-8 min-w-[2rem] rounded-lg px-2 text-xs font-black transition-colors ${
+                        currentPage === totalPages
+                          ? "bg-indigo-600 text-white shadow-md"
+                          : "text-slate-600 hover:bg-slate-200/60"
+                      }`}
+                    >
+                      {totalPages}
+                    </button>
+                  )}
+                </div>
+
+                {/* Кнопка Вперед */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentPage((p) => Math.min(totalPages, p + 1));
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200/60 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            }
+          />
         )}
       </div>
 

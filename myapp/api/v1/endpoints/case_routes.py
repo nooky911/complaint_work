@@ -5,7 +5,7 @@ from typing import Annotated
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.schemas.cases import (
-    CaseList,
+    PaginatedCaseListResponse,
     CaseDetail,
     CaseCreate,
     CaseUpdate,
@@ -33,7 +33,7 @@ router.include_router(export_router)
 # Полный список и фильтрация
 @router.get(
     "/",
-    response_model=list[CaseList],
+    response_model=PaginatedCaseListResponse,
     summary="Получить список случаев ремонта с (возможной) фильтрацией",
     status_code=status.HTTP_200_OK,
 )

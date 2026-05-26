@@ -1,4 +1,11 @@
-from .cases import CaseCreate, CaseUpdate, CaseList, CaseDetail, SupplierPreviewRequest
+from .cases import (
+    CaseCreate,
+    CaseUpdate,
+    CaseList,
+    PaginatedCaseListResponse,
+    CaseDetail,
+    SupplierPreviewRequest,
+)
 from .warranty import WarrantyWorkUpdate, WarrantyWorkResponse
 from .filters import FilterOptionsResponse, CaseFilterParams
 from .references import AuxiliaryItem
@@ -9,6 +16,7 @@ __all__ = [
     "CaseCreate",
     "CaseUpdate",
     "CaseList",
+    "PaginatedCaseListResponse",
     "CaseDetail",
     "SupplierPreviewRequest",
     # Схемы для Рекламационной работы

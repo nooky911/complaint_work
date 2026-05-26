@@ -111,6 +111,13 @@ class CaseList(CaseCommonRelations):
     pass
 
 
+class PaginatedCaseListResponse(BaseModel):
+    """Схема ответа для пагинированного списка случаев"""
+
+    items: list[CaseList]
+    total: int
+
+
 class CaseDetail(CaseCommonRelations):
     """Схема для детального просмотра карточки"""
 

@@ -41,17 +41,18 @@ export const useDynamicFilterOptions = (filters) => {
 };
 
 // Хук для получения списка случаев
-export const useCasesList = (filters, sortOrder) => {
+export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
   return useQuery({
-    queryKey: ["cases", filters, sortOrder],
+    queryKey: ["cases", filters, sortOrder, page, limit],
     queryFn: async () => {
-      const params = buildFilterParams(filters, 0, 50);
+      const skip = (page - 1) * limit;
+      const params = buildFilterParams(filters, skip, limit);
       const res = await api.get(`/cases/?${params.toString()}`);
-      return Array.isArray(res.data) ? res.data : [];
+      return res.data;
     },
-    staleTime: 2 * 60 * 1000, // 2 минуты
+    staleTime: 2 * 60 * 1000,
     enabled: true,
-    refetchInterval: 5000, // 5 секунд
+    refetchInterval: 5000,
     refetchOnWindowFocus: true,
   });
 };
