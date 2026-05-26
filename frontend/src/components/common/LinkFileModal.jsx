@@ -33,7 +33,16 @@ export const LinkFileModal = ({
     enabled: isOpen,
   });
 
-  const filteredFiles = files.filter((f) => f.case_id !== currentCaseId);
+  const otherCasesFiles = files.filter((f) => f.case_id !== currentCaseId);
+
+  const uniqueFilesMap = new Map();
+  otherCasesFiles.forEach((file) => {
+    if (!uniqueFilesMap.has(file.original_name)) {
+      uniqueFilesMap.set(file.original_name, file);
+    }
+  });
+
+  const filteredFiles = Array.from(uniqueFilesMap.values());
 
   const handleSelectFile = (file) => {
     const isAlreadyAttached = currentFiles.some(
