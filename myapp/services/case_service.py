@@ -50,6 +50,12 @@ class CaseService:
                 RepairCaseEquipment.locomotive_number == case_data.locomotive_number,
                 RepairCaseEquipment.component_equipment_id
                 == case_data.component_equipment_id,
+                or_(
+                    RepairCaseEquipment.element_equipment_id
+                    == case_data.element_equipment_id,
+                    RepairCaseEquipment.element_equipment_id.is_(None)
+                    & (case_data.element_equipment_id is None),
+                ),
                 RepairCaseEquipment.malfunction_id == case_data.malfunction_id,
                 or_(
                     RepairCaseEquipment.mileage == case_data.mileage,
