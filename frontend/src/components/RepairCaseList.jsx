@@ -36,7 +36,7 @@ const DataHeader = ({ label, value, icon: Icon, iconColor }) => (
     </div>
   </div>
 );
-const EquipmentBlock = ({ label, value, serial, icon: Icon, color }) => (
+const EquipmentBlock = ({ label, value, serial, year, icon: Icon, color }) => (
   <div>
     <div className={`mb-1 flex items-center gap-2 font-black ${color}`}>
       <Icon className="h-5 w-5" />
@@ -46,7 +46,10 @@ const EquipmentBlock = ({ label, value, serial, icon: Icon, color }) => (
     {serial && (
       <p className="mt-1 text-[12px] font-medium text-slate-900">
         зав. №{" "}
-        <span className="text-[13px] font-black text-slate-900">{serial}</span>
+        <span className="text-[13px] font-black text-slate-900">
+          {serial}
+          {year ? ` (${year})` : ""}
+        </span>
       </p>
     )}
   </div>
@@ -190,6 +193,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
                   label="Оборудование"
                   value={`${item.component_equipment?.parent ? getText(item.component_equipment.parent) + " " : ""}${getText(item.component_equipment)}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`}
                   serial={item.component_serial_number_old}
+                  year={item.component_manufacture_date_old}
                   icon={Package}
                   color="text-blue-800"
                 />
@@ -201,6 +205,7 @@ export function RepairCaseList({ cases, onCaseClick }) {
                       : "—"
                   }
                   serial={item.element_serial_number_old}
+                  year={item.element_manufacture_date_old}
                   icon={Wrench}
                   color="text-indigo-800"
                 />
