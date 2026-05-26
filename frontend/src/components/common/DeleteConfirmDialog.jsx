@@ -1,4 +1,5 @@
 import React from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 
 export const DeleteConfirmDialog = ({
@@ -10,19 +11,17 @@ export const DeleteConfirmDialog = ({
 }) => {
   if (!show) return null;
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
       <div
-        className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl"
+        className="animate-in zoom-in-95 w-full max-w-md rounded-xl bg-white p-6 shadow-2xl duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center gap-3 text-red-600">
           <AlertTriangle className="h-6 w-6" />
-          <h3 className="text-lg font-bold">
-            Вы точно хотите удалить файл?
-          </h3>
+          <h3 className="text-lg font-bold">Вы точно хотите удалить файл?</h3>
         </div>
-        <p className="mb-2 text-sm text-gray-600 truncate">
+        <p className="mb-2 truncate text-sm text-gray-600">
           {fileName || "Файл"}
         </p>
         <p className="mb-6 text-sm text-gray-600">Действие необратимо.</p>
@@ -46,6 +45,7 @@ export const DeleteConfirmDialog = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 };
