@@ -194,7 +194,7 @@ export const useEquipmentHierarchy = ({
             }
           }
 
-          if (levelIndex <= 3) {
+          if (mode === "old" && levelIndex <= 3) {
             updateField("malfunction_id", null);
           }
         }, 0);
