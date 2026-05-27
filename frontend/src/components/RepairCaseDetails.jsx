@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Edit, Save, X, Trash2, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -31,6 +31,13 @@ export function RepairCaseDetails({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadedDuringEditIds, setUploadedDuringEditIds] = useState([]);
+  const scrollContainerRef = useRef(null);
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [activeTab]);
 
   const {
     isEditing,
@@ -199,7 +206,11 @@ export function RepairCaseDetails({
           />
         </div>
 
-        <div className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6" style={{ willChange: 'transform' }}>
+        <div
+          ref={scrollContainerRef}
+          className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6"
+          style={{ willChange: "transform" }}
+        >
           {activeTab === "details" ? (
             <div className="space-y-3">
               <GeneralInfo

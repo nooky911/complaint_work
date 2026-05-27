@@ -95,10 +95,13 @@ export const useUpdateCase = () => {
       const updatedCase = { ...currentCase, ...data };
       queryClient.setQueryData(["case", caseId], updatedCase);
 
-      queryClient.setQueriesData(
-        { queryKey: ["cases"] },
-        (old) => old?.map((c) => (c.id === caseId ? updatedCase : c)) || [],
-      );
+      queryClient.setQueriesData({ queryKey: ["cases"] }, (old) => {
+        if (!old || !Array.isArray(old.items)) return old;
+        return {
+          ...old,
+          items: old.items.map((c) => (c.id === caseId ? updatedCase : c)),
+        };
+      });
 
       return { previousCaseData, previousCasesQueries };
     },
@@ -120,11 +123,15 @@ export const useUpdateCase = () => {
     onSuccess: (updatedCase) => {
       queryClient.setQueryData(["case", updatedCase.id], updatedCase);
 
-      queryClient.setQueriesData(
-        { queryKey: ["cases"] },
-        (old) =>
-          old?.map((c) => (c.id === updatedCase.id ? updatedCase : c)) || [],
-      );
+      queryClient.setQueriesData({ queryKey: ["cases"] }, (old) => {
+        if (!old || !Array.isArray(old.items)) return old;
+        return {
+          ...old,
+          items: old.items.map((c) =>
+            c.id === updatedCase.id ? updatedCase : c,
+          ),
+        };
+      });
     },
   });
 };
@@ -143,8 +150,12 @@ export const useDeleteCase = () => {
       const previousCases = queryClient.getQueriesData({ queryKey: ["cases"] });
 
       queryClient.setQueriesData({ queryKey: ["cases"] }, (old) => {
-        if (!Array.isArray(old)) return old;
-        return old.filter((c) => c.id !== caseId);
+        if (!old || !Array.isArray(old.items)) return old;
+        return {
+          ...old,
+          items: old.items.filter((c) => c.id !== caseId),
+          total: Math.max(0, old.total - 1),
+        };
       });
 
       return { previousCases };
