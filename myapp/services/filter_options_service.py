@@ -242,6 +242,21 @@ class FilterOptionsService:
                 "args": [WarrantyWork.claim_act_date, None],
             },
             {
+                "name": "response_letter_numbers",
+                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "args": [WarrantyWork.response_letter_number, None],
+            },
+            {
+                "name": "claim_act_numbers",
+                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "args": [WarrantyWork.claim_act_number, None],
+            },
+            {
+                "name": "work_completion_act_numbers",
+                "func": FilterOptionsService._get_distinct_values_separate_session,
+                "args": [WarrantyWork.work_completion_act_number, None],
+            },
+            {
                 "name": "work_completion_act_dates",
                 "func": FilterOptionsService._get_distinct_values_separate_session,
                 "args": [WarrantyWork.work_completion_act_date, None],

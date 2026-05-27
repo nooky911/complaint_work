@@ -197,6 +197,21 @@ FILTER_TASK_CONFIGS = [
         "func": "FilterOptionsService._get_distinct_values_separate_session",
         "args": [WarrantyWork.work_completion_act_date],
     },
+    {
+        "name": "response_letter_numbers",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WarrantyWork.response_letter_number],
+    },
+    {
+        "name": "claim_act_numbers",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WarrantyWork.claim_act_number],
+    },
+    {
+        "name": "work_completion_act_numbers",
+        "func": "FilterOptionsService._get_distinct_values_separate_session",
+        "args": [WarrantyWork.work_completion_act_number],
+    },
     # Summaries для рекламационной работы
     {
         "name": "notification_summaries",

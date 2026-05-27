@@ -39,7 +39,7 @@ class FilterOptionsResponse(BaseModel):
     claim_act_dates: list[date] = Field(default_factory=list)
     work_completion_act_numbers: list[str] = Field(default_factory=list)
     work_completion_act_dates: list[date] = Field(default_factory=list)
-    research_document: list[str] = Field(default_factory=list)
+    research_documents: list[str] = Field(default_factory=list)
     research_statuses: list[AuxiliaryItem] = Field(default_factory=list)
     investigation_reasons: list[AuxiliaryItem] = Field(default_factory=list)
     shipping_providers: list[AuxiliaryItem] = Field(default_factory=list)
