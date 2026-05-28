@@ -52,7 +52,7 @@ export const CaseDocuments = ({
     if (!fileToDelete) return;
 
     if (isCreationMode) {
-      onRemoveFile(displayFiles.indexOf(fileToDelete));
+      onRemoveFile(fileToDelete);
       setShowDeleteConfirm(false);
       setFileToDelete(null);
       return;

@@ -42,13 +42,23 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
   }, [referencesError]);
 
   const addPendingFiles = (fileList) => {
-    const newFiles = Array.from(fileList).map((file) => ({
-      id: Math.random().toString(36).slice(2, 11),
-      name: file.filename || file.name,
-      file: file,
-      isPending: true,
-      isLink: false,
-    }));
+    const newFiles = Array.from(fileList).map((f) => {
+      if (f.size_bytes !== undefined) return f;
+
+      const fileSize = f.size || f.file?.size || 0;
+
+      return {
+        file: f,
+        category: "primary",
+        name: f.name || f.file?.name,
+        original_name: f.name || f.file?.name,
+        size: fileSize,
+        size_bytes: fileSize,
+        file_size: fileSize,
+        type: f.type || f.file?.type,
+        mime_type: f.type || f.file?.type,
+      };
+    });
     setPendingFiles((prev) => [...prev, ...newFiles]);
   };
 
@@ -64,8 +74,8 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     setPendingFiles((prev) => [...prev, newLink]);
   };
 
-  const removePendingFile = (id) => {
-    setPendingFiles((prev) => prev.filter((f) => f.id !== id));
+  const removePendingFile = (fileToRemove) => {
+    setPendingFiles((prev) => prev.filter((item) => item !== fileToRemove));
   };
 
   useEffect(() => {
