@@ -42,7 +42,7 @@ export const LinkCaseModal = ({
     if (!debouncedSearch) return true;
     const term = debouncedSearch.toLowerCase();
 
-    // 2. Ищем именно по визуальному номеру, а не по ID БД
+    // Поиск именно по визуальному номеру, а не по ID БД
     return (
       String(c.display_number || c.id).includes(term) ||
       String(c.locomotive_number || "")

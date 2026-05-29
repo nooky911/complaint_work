@@ -25,11 +25,32 @@ export const LinkFileModal = ({
     type: "info",
   });
 
-  // Ищем файлы при открытом окне
+  // Поисков файлов при открытом окне
   const { data: files = [], isLoading } = useQuery({
     queryKey: ["searchFiles", category, relatedField, debouncedSearch],
-    queryFn: () =>
-      fileApi.searchUniqueFiles(category, relatedField, debouncedSearch),
+    queryFn: async () => {
+      if (
+        category === "warranty" &&
+        (relatedField === "notification" || relatedField === "re_notification")
+      ) {
+        const [notifFiles, reNotifFiles] = await Promise.all([
+          fileApi.searchUniqueFiles(category, "notification", debouncedSearch),
+          fileApi.searchUniqueFiles(
+            category,
+            "re_notification",
+            debouncedSearch,
+          ),
+        ]);
+
+        const combined = [...notifFiles, ...reNotifFiles];
+
+        const uniqueMap = new Map();
+        combined.forEach((f) => uniqueMap.set(f.id, f));
+        return Array.from(uniqueMap.values());
+      }
+
+      return fileApi.searchUniqueFiles(category, relatedField, debouncedSearch);
+    },
     enabled: isOpen,
   });
 
