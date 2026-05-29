@@ -38,7 +38,10 @@ ALLOWED_MIME_TYPES = {
         "video/3gpp",
         # --- Архивы ---
         "application/zip",
+        "application/x-zip-compressed",
+        "application/zip-compressed",
         "application/x-rar-compressed",
+        "application/vnd.rar",
         "application/x-7z-compressed",
         # Письма Outlook
         "application/vnd.ms-outlook",
