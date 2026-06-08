@@ -2,14 +2,11 @@ import { useMemo } from "react";
 
 import { isValidDate, isDateNotEarlierThan } from "../utils/validators";
 
-const getDepth = (id, allEquipment) => {
-  if (!id || !allEquipment || allEquipment.length === 0) return -1;
+const getDepth = (id, equipmentMap) => {
+  if (!id || !equipmentMap) return -1;
 
   const targetId = Number(id);
-  let current = allEquipment.find(
-    (item) =>
-      Number(item.id) === targetId || Number(item.equipment_id) === targetId,
-  );
+  let current = equipmentMap.get(targetId);
 
   if (!current) return -1;
 
@@ -19,9 +16,7 @@ const getDepth = (id, allEquipment) => {
 
   while (temp.parent_id && safetyCounter < 10) {
     const pId = Number(temp.parent_id);
-    const parent = allEquipment.find(
-      (p) => Number(p.id) === pId || Number(p.equipment_id) === pId,
-    );
+    const parent = equipmentMap.get(pId);
 
     if (!parent) break;
 
@@ -34,6 +29,11 @@ const getDepth = (id, allEquipment) => {
 };
 
 export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
+  const equipmentMap = useMemo(() => {
+    if (!allEquipment || allEquipment.length === 0) return null;
+    return new Map(allEquipment.map((item) => [Number(item.id), item]));
+  }, [allEquipment]);
+
   return useMemo(() => {
     const d = formData;
     const w = d?.warranty_work || {};
@@ -103,12 +103,11 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     const newCompId = d?.new_component_equipment_id;
     const newElemId = d?.new_element_equipment_id;
 
-    const isEquipLoaded = allEquipment && allEquipment.length > 0;
-    const depth = isEquipLoaded ? getDepth(newCompId, allEquipment) : 99;
+    const depth = equipmentMap ? getDepth(newCompId, equipmentMap) : 99;
 
     // Валидация нового оборудования по глубине
     let isNewComponentMissing = false;
-    if (isEquipLoaded) {
+    if (equipmentMap) {
       if (rId === 1) isNewComponentMissing = depth < 1;
       else if (rId === 2) isNewComponentMissing = depth < 2;
       else if (rId === 8) isNewComponentMissing = !newCompId;
@@ -143,5 +142,5 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     });
 
     return { ...errors, hasErrors, isSaveDisabled: hasErrors };
-  }, [formData, hierarchy, allEquipment]);
+  }, [formData, hierarchy, equipmentMap]);
 };

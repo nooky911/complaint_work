@@ -51,7 +51,15 @@ export default React.memo(function DashboardPage() {
 
   // --- СОСТОЯНИЯ ФИЛЬТРОВ ---
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [appliedFilters, setAppliedFilters] = useState(INITIAL_FILTERS);
+  const [appliedFilters, setAppliedFilters] = useState(() => {
+    const saved = localStorage.getItem("appliedFilters");
+    return saved ? JSON.parse(saved) : INITIAL_FILTERS;
+  });
+
+  // Сохраняем фильтры в localStorage при изменении
+  useEffect(() => {
+    localStorage.setItem("appliedFilters", JSON.stringify(appliedFilters));
+  }, [appliedFilters]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const { user: currentUser } = useAuth();
@@ -104,12 +112,12 @@ export default React.memo(function DashboardPage() {
     }
   }, [listError, detailError]);
 
-  const handleCaseUpdate = (updated) => {
+  const handleCaseUpdate = (payload) => {
     updateCaseMutation.mutate({
-      caseId: updated.id,
-      data: updated,
+      caseId: selectedCase.id,
+      data: payload,
     });
-    logger.log("Случай обновляется:", updated.id);
+    logger.log("Случай обновляется:", selectedCase.id);
   };
 
   const handleCaseDelete = (deletedId) => {
@@ -129,11 +137,11 @@ export default React.memo(function DashboardPage() {
     }
   };
 
-  const handleCaseClick = async (caseItem) => {
+  const handleCaseClick = React.useCallback(async (caseItem) => {
     setSelectedCaseIndex(caseItem.display_number);
     setSelectedCase(caseItem);
     logger.log("Выбран случай:", caseItem.id);
-  };
+  }, []);
 
   const handleApplyFilters = (newFilters) => {
     setAppliedFilters(newFilters);

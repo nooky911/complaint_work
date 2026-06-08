@@ -9,15 +9,12 @@ export const useBodyScrollLock = (isLocked = true) => {
     if (isLocked) {
       if (lockCount === 0) {
         const body = document.body;
-        originalOverflow =
-          body.style.overflow || window.getComputedStyle(body).overflow;
+        originalOverflow = body.style.overflow;
 
         const scrollbarWidth =
           window.innerWidth - document.documentElement.clientWidth;
         if (scrollbarWidth > 0) {
-          originalPaddingRight =
-            body.style.paddingRight ||
-            window.getComputedStyle(body).paddingRight;
+          originalPaddingRight = body.style.paddingRight;
           body.style.paddingRight = `${scrollbarWidth}px`;
         }
 

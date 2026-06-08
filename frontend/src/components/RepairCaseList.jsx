@@ -36,6 +36,7 @@ const DataHeader = ({ label, value, icon: Icon, iconColor }) => (
     </div>
   </div>
 );
+
 const EquipmentBlock = ({ label, value, serial, year, icon: Icon, color }) => (
   <div>
     <div className={`mb-1 flex items-center gap-2 font-black ${color}`}>
@@ -101,6 +102,178 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
   );
 };
 
+// Оптимизированный компонент карточки
+const CaseCard = React.memo(({ item, index, onCaseClick }) => {
+  const status = React.useMemo(() => getStatusConfig(item), [item]);
+  const StatusIcon = status.icon;
+
+  const formattedData = React.useMemo(
+    () => ({
+      displayNumber: item.display_number,
+      status: item.status || "Ожидает уведомление",
+      creator: formatFullName(item.creator_full_name),
+      locomotiveModel: getText(item.locomotive_model),
+      locomotiveNumber: item.locomotive_number || "—",
+      regionalCenter: getText(item.regional_center),
+      faultDate: formatDate(item.fault_date),
+      supplier: getText(item.supplier),
+      equipment: `${item.component_equipment?.parent ? getText(item.component_equipment.parent) + " " : ""}${getText(item.component_equipment)}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`,
+      element: item.element_equipment
+        ? `${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
+        : "—",
+      malfunction: getText(item.malfunction),
+    }),
+    [item],
+  );
+
+  return (
+    <div
+      onClick={() => onCaseClick(item, index)}
+      className="group relative min-h-[280px] flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:border-purple-400 hover:shadow-lg active:scale-[0.99]"
+    >
+      <div className="bg-[#0064fe] p-3 text-white">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
+              # {formattedData.displayNumber}
+            </span>
+            <div
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
+            >
+              <StatusIcon className="h-4 w-4" />
+              {formattedData.status}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-md border-l-[4px] border-l-indigo-400 bg-white px-3 py-1 shadow-lg ring-1 ring-black/5">
+            <User className="h-3.5 w-3.5 text-indigo-600" strokeWidth={3} />
+            <span className="text-[11px] font-black tracking-tight text-slate-900 uppercase">
+              {formattedData.creator}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6">
+          <DataHeader
+            label="Тип эл-за"
+            value={formattedData.locomotiveModel}
+            icon={Train}
+            iconColor="text-cyan-300"
+          />
+          <DataHeader
+            label="Номер"
+            value={formattedData.locomotiveNumber}
+            icon={NumberIcon}
+            iconColor="text-amber-300"
+          />
+          <DataHeader
+            label="РЦ"
+            value={formattedData.regionalCenter}
+            icon={MapPin}
+            iconColor="text-rose-300"
+          />
+          <DataHeader
+            label="Дата выявления"
+            value={formattedData.faultDate}
+            icon={Calendar}
+            iconColor="text-emerald-300"
+          />
+
+          <div className="ml-auto flex items-center gap-3 rounded-xl border-2 border-violet-300 bg-gradient-to-r from-violet-100 to-fuchsia-100 px-3 py-1 shadow-md">
+            <Building2 className="h-5 w-5 text-violet-600" />
+            <div>
+              <p className="text-[10px] font-bold text-violet-700 uppercase">
+                Поставщик
+              </p>
+              <p className="text-sm font-bold text-slate-900">
+                {formattedData.supplier}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-b-4 border-blue-400/40 bg-white p-4 text-slate-900">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+          <EquipmentBlock
+            label="Оборудование"
+            value={formattedData.equipment}
+            serial={item.component_serial_number_old}
+            year={item.component_manufacture_date_old}
+            icon={Package}
+            color="text-blue-800"
+          />
+          <EquipmentBlock
+            label={REPAIR_FIELDS_LABELS.element}
+            value={formattedData.element}
+            serial={item.element_serial_number_old}
+            year={item.element_manufacture_date_old}
+            icon={Wrench}
+            color="text-indigo-800"
+          />
+          <EquipmentBlock
+            label={REPAIR_FIELDS_LABELS.malfunction}
+            value={formattedData.malfunction}
+            icon={AlertCircle}
+            color="text-red-700"
+          />
+        </div>
+      </div>
+
+      <div className="bg-white p-4 text-slate-900">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <DocItem
+            icon={Mail}
+            label="Уведомление"
+            num={item.warranty_work?.notification_number}
+            date={item.warranty_work?.notification_date}
+            summary={item.warranty_work?.notification_summary}
+            color="blue"
+          />
+          <DocItem
+            icon={Repeat}
+            label="Повт. Увед."
+            num={item.warranty_work?.re_notification_number}
+            date={item.warranty_work?.re_notification_date}
+            color="indigo"
+          />
+          <DocItem
+            icon={Mail}
+            label="Ответ"
+            num={item.warranty_work?.response_letter_number}
+            date={item.warranty_work?.response_letter_date}
+            summary={item.warranty_work?.response_summary}
+            color="purple"
+          />
+          <DocItem
+            icon={FileCheck}
+            label="Рекл. Акт"
+            num={item.warranty_work?.claim_act_number}
+            date={item.warranty_work?.claim_act_date}
+            summary={
+              item.warranty_work?.claim_act_number
+                ? item.warranty_work?.decision_summary
+                : null
+            }
+            color="amber"
+          />
+          <DocItem
+            icon={ClipboardCheck}
+            label="АВР"
+            num={item.warranty_work?.work_completion_act_number}
+            date={item.warranty_work?.work_completion_act_date}
+            summary={
+              item.warranty_work?.work_completion_act_number
+                ? item.warranty_work?.decision_summary
+                : null
+            }
+            color="emerald"
+          />
+        </div>
+      </div>
+    </div>
+  );
+});
+
 export function RepairCaseList({ cases, onCaseClick, pagination }) {
   if (!cases || cases.length === 0) {
     return (
@@ -115,166 +288,14 @@ export function RepairCaseList({ cases, onCaseClick, pagination }) {
 
   return (
     <div className="h-full min-h-0 space-y-3 overflow-y-auto p-2 pb-5">
-      {cases.map((item, index) => {
-        const status = getStatusConfig(item);
-        const StatusIcon = status.icon;
-
-        return (
-          <div
-            key={item.id}
-            onClick={() => onCaseClick(item, index)}
-            className="group relative min-h-[280px] flex-shrink-0 cursor-pointer overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm transition-all duration-200 hover:border-purple-400 hover:shadow-lg active:scale-[0.99]"
-          >
-            {/* БЛОК 1: ШАПКА */}
-            <div className="bg-[#0064fe] p-3 text-white">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
-                    # {item.display_number}
-                  </span>
-                  <div
-                    className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
-                  >
-                    <StatusIcon className="h-4 w-4" />
-                    {item.status || "Ожидает уведомление"}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 rounded-md border-l-[4px] border-l-indigo-400 bg-white px-3 py-1 shadow-lg ring-1 ring-black/5">
-                  <User
-                    className="h-3.5 w-3.5 text-indigo-600"
-                    strokeWidth={3}
-                  />
-                  <span className="text-[11px] font-black tracking-tight text-slate-900 uppercase">
-                    {formatFullName(item.creator_full_name)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-6">
-                <DataHeader
-                  label="Тип эл-за"
-                  value={getText(item.locomotive_model)}
-                  icon={Train}
-                  iconColor="text-cyan-300"
-                />
-                <DataHeader
-                  label="Номер"
-                  value={item.locomotive_number || "—"}
-                  icon={NumberIcon}
-                  iconColor="text-amber-300"
-                />
-                <DataHeader
-                  label="РЦ"
-                  value={getText(item.regional_center)}
-                  icon={MapPin}
-                  iconColor="text-rose-300"
-                />
-                <DataHeader
-                  label="Дата выявления"
-                  value={formatDate(item.fault_date)}
-                  icon={Calendar}
-                  iconColor="text-emerald-300"
-                />
-
-                <div className="ml-auto flex items-center gap-3 rounded-xl border-2 border-violet-300 bg-gradient-to-r from-violet-100 to-fuchsia-100 px-3 py-1 shadow-md">
-                  <Building2 className="h-5 w-5 text-violet-600" />
-                  <div>
-                    <p className="text-[10px] font-bold text-violet-700 uppercase">
-                      Поставщик
-                    </p>
-                    <p className="text-sm font-bold text-slate-900">
-                      {getText(item.supplier)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-b-4 border-blue-400/40 bg-white p-4 text-slate-900">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                <EquipmentBlock
-                  label="Оборудование"
-                  value={`${item.component_equipment?.parent ? getText(item.component_equipment.parent) + " " : ""}${getText(item.component_equipment)}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`}
-                  serial={item.component_serial_number_old}
-                  year={item.component_manufacture_date_old}
-                  icon={Package}
-                  color="text-blue-800"
-                />
-                <EquipmentBlock
-                  label={REPAIR_FIELDS_LABELS.element}
-                  value={
-                    item.element_equipment
-                      ? `${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
-                      : "—"
-                  }
-                  serial={item.element_serial_number_old}
-                  year={item.element_manufacture_date_old}
-                  icon={Wrench}
-                  color="text-indigo-800"
-                />
-                <EquipmentBlock
-                  label={REPAIR_FIELDS_LABELS.malfunction}
-                  value={getText(item.malfunction)}
-                  icon={AlertCircle}
-                  color="text-red-700"
-                />
-              </div>
-            </div>
-
-            <div className="bg-white p-4 text-slate-900">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <DocItem
-                  icon={Mail}
-                  label="Уведомление"
-                  num={item.warranty_work?.notification_number}
-                  date={item.warranty_work?.notification_date}
-                  summary={item.warranty_work?.notification_summary}
-                  color="blue"
-                />
-                <DocItem
-                  icon={Repeat}
-                  label="Повт. Увед."
-                  num={item.warranty_work?.re_notification_number}
-                  date={item.warranty_work?.re_notification_date}
-                  color="indigo"
-                />
-                <DocItem
-                  icon={Mail}
-                  label="Ответ"
-                  num={item.warranty_work?.response_letter_number}
-                  date={item.warranty_work?.response_letter_date}
-                  summary={item.warranty_work?.response_summary}
-                  color="purple"
-                />
-                <DocItem
-                  icon={FileCheck}
-                  label="Рекл. Акт"
-                  num={item.warranty_work?.claim_act_number}
-                  date={item.warranty_work?.claim_act_date}
-                  summary={
-                    item.warranty_work?.claim_act_number
-                      ? item.warranty_work?.decision_summary
-                      : null
-                  }
-                  color="amber"
-                />
-                <DocItem
-                  icon={ClipboardCheck}
-                  label="АВР"
-                  num={item.warranty_work?.work_completion_act_number}
-                  date={item.warranty_work?.work_completion_act_date}
-                  summary={
-                    item.warranty_work?.work_completion_act_number
-                      ? item.warranty_work?.decision_summary
-                      : null
-                  }
-                  color="emerald"
-                />
-              </div>
-            </div>
-          </div>
-        );
-      })}
+      {cases.map((item, index) => (
+        <CaseCard
+          key={item.id}
+          item={item}
+          index={index}
+          onCaseClick={onCaseClick}
+        />
+      ))}
       <div className="mt-2 flex justify-center">{pagination}</div>
     </div>
   );

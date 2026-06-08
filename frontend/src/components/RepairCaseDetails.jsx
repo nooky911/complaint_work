@@ -152,7 +152,7 @@ export function RepairCaseDetails({
     }
   };
 
-  const status = getStatusConfig(repairCase);
+  const status = React.useMemo(() => getStatusConfig(repairCase), [repairCase]);
   const displayId = caseIndex || repairCase.id;
   const currentData = isEditing ? editData : repairCase;
 

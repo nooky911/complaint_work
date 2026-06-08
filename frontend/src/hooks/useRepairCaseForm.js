@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 import api from "../api/api";
 import { convertCaseToFormData } from "../utils/formatters";
 import { useCaseValidation } from "./useCaseValidation";
 
-const getDepth = (item, all) => {
+const getDepth = (item, allMap) => {
   let depth = 0;
   let curr = item;
   while (curr?.parent_id) {
-    curr = all.find((p) => p.id === curr.parent_id);
+    curr = allMap.get(curr.parent_id);
     if (!curr) break;
     depth++;
   }
@@ -17,7 +16,6 @@ const getDepth = (item, all) => {
 };
 
 export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
-  const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -83,6 +81,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       ]);
 
       const allEquip = equipRes.data;
+      const equipMap = new Map(allEquip.map((i) => [i.id, i]));
       setReferences(refsRes.data);
       setAllEquipment(allEquip);
 
@@ -108,11 +107,11 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
           lvl3: null,
           lvl4: null,
         };
-        let current = allEquip.find((i) => i.id === targetId);
+        let current = equipMap.get(targetId);
         while (current) {
-          const depth = getDepth(current, allEquip);
+          const depth = getDepth(current, equipMap);
           if (depth <= 4) currentLevels[`lvl${depth}`] = current.id;
-          current = allEquip.find((p) => p.id === current.parent_id);
+          current = equipMap.get(current.parent_id);
         }
 
         setFaultyHierarchy({
@@ -192,7 +191,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         locomotive_model_id: modelId,
       });
 
-      const newSupplierId = response.data.supplier_id;
+      let newSupplierId = response.data.supplier_id;
+      if (newSupplierId === "None" || newSupplierId === "") {
+        newSupplierId = null;
+      }
 
       setEditData((prev) => {
         if (prev && prev.supplier_id !== newSupplierId) {
@@ -215,10 +217,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     try {
       const cleanedData = { ...editData };
 
-      // Удаляем user_id если пользователь не superadmin
       if (currentUser?.role !== "superadmin") {
         delete cleanedData.user_id;
       }
+
       const idFields = [
         "repair_type_id",
         "performed_by_id",
@@ -275,10 +277,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         return true;
       }
 
-      const response = await api.patch(`/cases/${repairCase.id}`, payload);
-      onUpdate(response.data);
-
-      await queryClient.invalidateQueries({ queryKey: ["cases"] });
+      await onUpdate(payload);
 
       setIsEditing(false);
       setEditData(null);
