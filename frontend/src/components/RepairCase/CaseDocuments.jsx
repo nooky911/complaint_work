@@ -210,7 +210,10 @@ export const CaseDocuments = ({
                     className="group flex items-center justify-between rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm transition-all hover:border-indigo-100"
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
-                      {getFileIcon(file.mime_type || file.type)}
+                      {getFileIcon(
+                        file.mime_type || file.type,
+                        file.original_name || file.name,
+                      )}
                       <div className="flex items-baseline gap-2 truncate">
                         <button
                           onClick={() =>

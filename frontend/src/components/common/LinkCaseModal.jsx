@@ -33,6 +33,8 @@ export const LinkCaseModal = ({
         : response.data.items || [];
     },
     enabled: isOpen,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   // Фильтруем случаи по номеру (display_number) или номеру локомотива

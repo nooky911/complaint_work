@@ -52,6 +52,8 @@ export const LinkFileModal = ({
       return fileApi.searchUniqueFiles(category, relatedField, debouncedSearch);
     },
     enabled: isOpen,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const otherCasesFiles = files.filter((f) => f.case_id !== currentCaseId);

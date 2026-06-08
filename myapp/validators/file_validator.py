@@ -20,6 +20,8 @@ ALLOWED_MIME_TYPES = {
         # --- Фото ---
         "image/jpeg",
         "image/png",
+        "image/jfif",
+        "image/pjpeg",
         # --- Документы ---
         "application/pdf",
         "application/msword",
@@ -27,6 +29,7 @@ ALLOWED_MIME_TYPES = {
         "text/plain",
         "text/csv",
         "application/rtf",
+        "application/x-rpm",
         # --- Видео ---
         "video/mp4",
         "video/mpeg",

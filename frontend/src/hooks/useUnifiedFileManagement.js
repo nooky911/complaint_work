@@ -95,6 +95,7 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
       primary: [
         "jpg",
         "jpeg",
+        "jfif",
         "png",
         "pdf",
         "doc",
@@ -113,6 +114,7 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
         "rar",
         "7z",
         "msg",
+        "rpm",
       ],
       warranty: ["pdf", "jpg", "jpeg", "png", "msg"],
     };
