@@ -132,6 +132,8 @@ export const useUpdateCase = () => {
           ),
         };
       });
+      queryClient.invalidateQueries({ queryKey: ["case", updatedCase.id] });
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
     },
   });
 };
