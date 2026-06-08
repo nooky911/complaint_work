@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-
+import { useState, useEffect, useMemo } from "react";
 import { useDropdown } from "./useDropdown";
 import { useSearchFilter } from "./useSearchFilter";
+import { sortOptionsBySelection } from "../utils/formatters";
 
 export const useSearchableSelect = (options, value, onChange) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -10,7 +10,9 @@ export const useSearchableSelect = (options, value, onChange) => {
   const selectedOption = options.find((opt) => opt.id === value);
 
   useEffect(() => {
-    setSearchTerm(isOpen ? searchTerm : (selectedOption ? selectedOption.name : ""));
+    setSearchTerm(
+      isOpen ? searchTerm : selectedOption ? selectedOption.name : "",
+    );
   }, [isOpen, selectedOption, searchTerm]);
 
   const toggleDropdown = () => {
@@ -23,6 +25,10 @@ export const useSearchableSelect = (options, value, onChange) => {
   };
 
   const filteredOptions = useSearchFilter(options, searchTerm);
+
+  const sortedOptions = useMemo(() => {
+    return sortOptionsBySelection(filteredOptions, value);
+  }, [filteredOptions, value]);
 
   const handleSelect = (id, name) => {
     onChange(id, name);
@@ -41,7 +47,7 @@ export const useSearchableSelect = (options, value, onChange) => {
     searchTerm,
     setSearchTerm,
     selectedOption,
-    filteredOptions,
+    filteredOptions: sortedOptions,
     toggleDropdown,
     handleSelect,
     handleClear,

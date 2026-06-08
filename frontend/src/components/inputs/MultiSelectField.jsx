@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { useDropdown } from "../../hooks/useDropdown";
 import { useSearchFilter } from "../../hooks/useSearchFilter";
+import { sortOptionsBySelection } from "../../utils/formatters";
 
 export const MultiSelectField = ({
   label,
@@ -16,6 +17,10 @@ export const MultiSelectField = ({
     setSearchTerm(""),
   );
   const filteredOptions = useSearchFilter(options, searchTerm);
+
+  const sortedOptions = useMemo(() => {
+    return sortOptionsBySelection(filteredOptions, selectedValues);
+  }, [filteredOptions, selectedValues]);
 
   useEffect(() => {
     if (isOpen && inputRef.current) inputRef.current.focus();
@@ -78,8 +83,8 @@ export const MultiSelectField = ({
           </div>
 
           <div className="flex-1 overflow-y-auto p-2">
-            {filteredOptions.length > 0 ? (
-              filteredOptions.map((opt, index) => {
+            {sortedOptions.length > 0 ? (
+              sortedOptions.map((opt, index) => {
                 const isObject = typeof opt === "object";
                 const val = isObject ? opt.value || opt.id : opt;
                 const name = isObject ? opt.label || opt.name : opt;

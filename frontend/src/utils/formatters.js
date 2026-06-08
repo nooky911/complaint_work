@@ -94,6 +94,32 @@ export const formatFullName = (fullName) => {
   return parts[0];
 };
 
+//Сортирует массив опций так, чтобы выбранные значения были вверху
+export const sortOptionsBySelection = (options, selectedValues) => {
+  if (!options || !Array.isArray(options) || options.length === 0) return [];
+  if (!selectedValues) return options;
+
+  const selectedList = Array.isArray(selectedValues)
+    ? selectedValues
+    : [selectedValues];
+
+  if (selectedList.length === 0) return options;
+
+  const selectedSet = new Set(selectedList.map(String));
+
+  return [...options].sort((a, b) => {
+    const aVal = String(typeof a === "object" ? a.id || a.value : a);
+    const bVal = String(typeof b === "object" ? b.id || b.value : b);
+
+    const aSelected = selectedSet.has(aVal);
+    const bSelected = selectedSet.has(bVal);
+
+    if (aSelected && !bSelected) return -1;
+    if (!aSelected && bSelected) return 1;
+    return 0;
+  });
+};
+
 // Конвертация данных случая в форму редактирования
 export const convertCaseToFormData = (caseData) => {
   if (!caseData) return null;
