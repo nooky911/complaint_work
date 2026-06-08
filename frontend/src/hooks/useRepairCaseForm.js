@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLockCase, useUnlockCase } from "./api/useCasesApi";
+import { formatFullName } from "../utils/formatters";
+import { useToast } from "./useToast";
 
 import api from "../api/api";
 import { convertCaseToFormData } from "../utils/formatters";
@@ -16,12 +19,15 @@ const getDepth = (item, allMap) => {
 };
 
 export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
+  const lockMutation = useLockCase();
+  const unlockMutation = useUnlockCase();
+  const { showError: showToastError } = useToast();
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [showError, setShowError] = useState(false);
-  const [serverError, setServerError] = useState({ show: false, message: "" });
 
   const [editData, setEditData] = useState(null);
   const [references, setReferences] = useState(null);
@@ -75,6 +81,24 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     setLoading(true);
     setShowError(false);
     try {
+      // Пытаемся заблокировать случай
+      try {
+        await lockMutation.mutateAsync(repairCase.id);
+      } catch (lockError) {
+        console.error("Lock error:", lockError);
+        const lockerName = lockError.response?.data?.detail;
+        if (lockError.response?.status === 423 && lockerName) {
+          const name = formatFullName(lockerName);
+          showToastError(
+            "Случай заблокирован",
+            `Случай сейчас редактирует ${name}`,
+          );
+        }
+        setLoading(false);
+        return;
+      }
+
+      // Загружаем справочники
       const [refsRes, equipRes] = await Promise.all([
         api.get("/references/case-form"),
         api.get("/equipment/equipment-all-flat"),
@@ -124,7 +148,8 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       setEditData(convertCaseToFormData(repairCase));
       setIsEditing(true);
     } catch (error) {
-      console.error("Ошибка загрузки справочников:", error);
+      console.error("Ошибка в handleEditClick:", error);
+      showToastError("Ошибка", "Произошла ошибка при загрузке данных");
     } finally {
       setLoading(false);
     }
@@ -287,16 +312,17 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       console.error("Ошибка при сохранении случая:", error);
 
       if (error.response?.status === 409) {
-        setServerError({
-          show: true,
-          message: "Этот случай уже имеется в базе. Проверьте список записей",
-        });
+        showToastError(
+          "Конфликт",
+          "Этот случай уже имеется в базе. Проверьте список записей",
+        );
       } else {
-        setServerError({
-          show: true,
-          message:
-            error.response?.data?.detail || "Не удалось сохранить данные",
-        });
+        const message =
+          error.response?.data?.detail && error.response.data.detail.length > 3
+            ? `Случай сейчас редактирует ${formatFullName(error.response.data.detail)}`
+            : error.response?.data?.detail || "Не удалось сохранить данные";
+
+        showToastError("Ошибка сохранения", message);
       }
       return false;
     } finally {
@@ -304,7 +330,12 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     }
   };
 
-  const handleCancelEdit = () => {
+  const handleCancelEdit = async () => {
+    try {
+      await unlockMutation.mutateAsync(repairCase.id);
+    } catch (err) {
+      console.error("Ошибка при снятии блокировки:", err);
+    }
     setIsEditing(false);
     setEditData(null);
     setShowError(false);
@@ -344,8 +375,6 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     validation,
     showError,
     setShowError,
-    serverError,
-    closeServerError: () => setServerError({ show: false, message: "" }),
     isSaveDisabled: false,
     handleEditClick,
     handleCancelEdit,

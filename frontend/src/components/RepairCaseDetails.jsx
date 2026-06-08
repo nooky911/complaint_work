@@ -3,6 +3,7 @@ import { Edit, Save, X, Trash2, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import api from "../api/api";
+import { formatFullName } from "../utils/formatters";
 import { useRepairCaseForm } from "../hooks/useRepairCaseForm";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { CaseDocuments } from "./RepairCase/CaseDocuments";
@@ -57,13 +58,26 @@ export function RepairCaseDetails({
     handleEquipmentSelect,
     showError,
     setShowError,
-    serverError,
-    closeServerError,
   } = useRepairCaseForm(repairCase, onUpdate, currentUser);
+
+  const partnerAccess = currentUser?.partner_access || [];
+  const serverError = { show: false, message: "" };
+
+  const isPartnerAccess =
+    partnerAccess.includes(currentUser?.login) &&
+    partnerAccess.includes(repairCase.user?.login);
 
   const canEdit =
     currentUser?.role === "superadmin" ||
-    (currentUser?.role !== "viewer" && repairCase.user_id === currentUser?.id);
+    (currentUser?.role !== "viewer" &&
+      (repairCase.user_id === currentUser?.id || isPartnerAccess));
+
+  // Проверка блокировки другими пользователями
+  const isLockedByOther =
+    repairCase.locked_by_id && repairCase.locked_by_id !== currentUser?.id;
+  const lockerName = repairCase.locked_by?.full_name
+    ? formatFullName(repairCase.locked_by.full_name)
+    : "Другой пользователь";
 
   // Блок скролл body только когда модальное окно реально открыто
   useBodyScrollLock(!!repairCase);
@@ -133,7 +147,7 @@ export function RepairCaseDetails({
     queryClient.refetchQueries({ queryKey: ["filesGrouped", repairCase.id] });
 
     setUploadedDuringEditIds([]);
-    handleCancelEdit();
+    await handleCancelEdit();
   };
 
   const confirmDelete = async () => {
@@ -158,18 +172,20 @@ export function RepairCaseDetails({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <ErrorToast
-        show={serverError.show}
-        onClose={closeServerError}
-        title="Ошибка сервера"
-        message={serverError.message}
-      />
-
       <CaseValidationToast
         show={showToast}
         onClose={() => setShowToast(false)}
         validation={validation}
       />
+
+      {serverError.show && (
+        <ErrorToast
+          show={serverError.show}
+          onClose={() => {}}
+          title="Ошибка"
+          message={serverError.message}
+        />
+      )}
 
       <div
         className="flex max-h-[95vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
@@ -326,13 +342,24 @@ export function RepairCaseDetails({
                   Закрыть
                 </button>
                 {canEdit && (
-                  <button
-                    onClick={handleEditClick}
-                    disabled={loading}
-                    className="flex items-center gap-2 rounded-lg bg-[#0064fe] px-4 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    <Edit className="h-4 w-4" /> Редактировать
-                  </button>
+                  <div className="group relative">
+                    <button
+                      onClick={handleEditClick}
+                      disabled={loading || isLockedByOther}
+                      className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white shadow-md transition-all ${
+                        isLockedByOther
+                          ? "cursor-not-allowed bg-gray-400"
+                          : "bg-[#0064fe] hover:bg-blue-700 active:scale-95"
+                      } disabled:opacity-50`}
+                    >
+                      <Edit className="h-4 w-4" /> Редактировать
+                    </button>
+                    {isLockedByOther && (
+                      <div className="absolute right-0 bottom-full mb-2 hidden rounded bg-black/80 px-2 py-1 text-[10px] whitespace-nowrap text-white group-hover:block">
+                        Сейчас редактирует: {lockerName}
+                      </div>
+                    )}
+                  </div>
                 )}
               </>
             )}

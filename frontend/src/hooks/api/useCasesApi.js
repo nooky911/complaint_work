@@ -175,3 +175,35 @@ export const useDeleteCase = () => {
     },
   });
 };
+
+// Хук для блокировки случая
+export const useLockCase = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (caseId) => {
+      const res = await api.post(`/cases/${caseId}/lock`);
+      return res.data;
+    },
+    onSuccess: (updatedCase) => {
+      queryClient.setQueryData(["case", updatedCase.id], updatedCase);
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+    },
+  });
+};
+
+// Хук для снятия блокировки
+export const useUnlockCase = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (caseId) => {
+      await api.post(`/cases/${caseId}/unlock`);
+      return caseId;
+    },
+    onSuccess: (caseId) => {
+      queryClient.invalidateQueries({ queryKey: ["case", caseId] });
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+    },
+  });
+};

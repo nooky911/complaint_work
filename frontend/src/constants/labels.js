@@ -50,7 +50,7 @@ export const BLOCK_TITLES = {
   warranty_supplier_response: "Ответ поставщика",
   warranty_claim_act_avr: "Рекламационный акт / АВР",
   warranty_research_act: "Акт исследования",
-  ttn_replacement: "Документ о замене",
+  ttn_replacement: "Документ о замене (восполнении)",
   ttn_from_rc: "Документ об отгрузке с РЦ",
   ttn_to_supplier: "Документ об отгрузке Поставщику",
   ttn_from_supplier: "Документ о возврате от Поставщика",
