@@ -99,6 +99,9 @@ class RepairCaseEquipment(Base):
         nullable=False,
     )
 
+    locked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
+    locked_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
+
     # Отношения
     regional_center: Mapped["RegionalCenter"] = relationship(
         "RegionalCenter", back_populates="repair_cases"
@@ -162,4 +165,5 @@ class RepairCaseEquipment(Base):
     files: Mapped[list["CaseFile"]] = relationship(
         "CaseFile", back_populates="case", cascade="all, delete-orphan"
     )
-    user: Mapped["User"] = relationship("User")
+    user: Mapped["User"] = relationship("User", foreign_keys=[user_id])
+    locked_by: Mapped["User | None"] = relationship("User", foreign_keys=[locked_by_id])

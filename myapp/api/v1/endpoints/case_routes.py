@@ -123,7 +123,9 @@ async def update_case(
                 detail="Только superadmin может менять владельца случая",
             )
 
-    updated_case = await CaseService.update_case(session, case_id, case_data)
+    updated_case = await CaseService.update_case(
+        session, case_id, case_data, current_user.id
+    )
 
     if not updated_case:
         raise HTTPException(
@@ -132,6 +134,38 @@ async def update_case(
         )
 
     return updated_case
+
+
+# Блокировка случая
+@router.post(
+    "/{case_id}/lock", response_model=CaseDetail, summary="Заблокировать случай"
+)
+async def lock_case(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+    ],
+):
+    """Пытается установить блокировку на случай для редактирования"""
+    current_user, case = user_and_case
+    try:
+        return await CaseService.lock_case(session, case_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(e))
+
+
+@router.post("/{case_id}/unlock", summary="Снять блокировку")
+async def unlock_case(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Снимает блокировку со случая"""
+    success = await CaseService.unlock_case(session, case_id, current_user.id)
+    if not success:
+        pass
+    return {"status": "ok"}
 
 
 # Удаление случая

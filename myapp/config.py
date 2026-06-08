@@ -9,11 +9,20 @@ class Settings(BaseSettings):
     DB_NAME: str
 
     SECRET_KEY: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 540
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 600
+
+    PARTNER_ACCESS_NAMES: str = ""
 
     FILE_STORAGE_PATH: str = "/app/storage"
 
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "http://localhost:5173,http://10.131.251.65:3333"
+
+    @property
+    def partner_access_list(self) -> set[str]:
+        """Достает строку разрешенных имен для совместного редактирования из .env"""
+        if not self.PARTNER_ACCESS_NAMES:
+            return set()
+        return {name.strip() for name in self.PARTNER_ACCESS_NAMES.split(",")}
 
     @property
     def cors_origins_list(self) -> list[str]:

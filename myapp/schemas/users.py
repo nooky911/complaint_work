@@ -22,6 +22,8 @@ class UserResponse(UserBase):
 
     id: int
     created_at: datetime
+    partner_access: list[str] = []
+    login: str
 
     model_config = ConfigDict(from_attributes=True)
 

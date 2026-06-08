@@ -1,7 +1,7 @@
 from sqlalchemy import select, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from myapp.models import WaybillDoc
 from myapp.models.repair_case_equipment import RepairCaseEquipment
@@ -113,7 +113,10 @@ class CaseService:
     @staticmethod
     @transactional
     async def update_case(
-        session: AsyncSession, case_id: int, case_data: CaseUpdate
+        session: AsyncSession,
+        case_id: int,
+        case_data: CaseUpdate,
+        current_user_id: int | None = None,
     ) -> RepairCaseEquipment | None:
         """Обновление случая и автоматическое переопределение supplier_id"""
         case: RepairCaseEquipment | None = await session.get(
@@ -121,6 +124,10 @@ class CaseService:
         )
         if not case:
             return None
+
+        # Автоматическая смена владельца при редактировании партнером
+        if current_user_id and case.user_id != current_user_id:
+            case.user_id = current_user_id
 
         update_data = case_data.model_dump(
             exclude_unset=True, exclude={"warranty_work", "waybill_doc"}
@@ -178,7 +185,65 @@ class CaseService:
                 session, case_id, case_data.waybill_doc
             )
 
+        # Сброс блокировки при успешном сохранении
+        case.locked_by_id = None
+        case.locked_at = None
+
         return await CaseService._get_case_with_relations(session, case.id)
+
+    @staticmethod
+    @transactional
+    async def lock_case(
+        session: AsyncSession, case_id: int, user_id: int
+    ) -> RepairCaseEquipment:
+        """Попытка заблокировать случай для редактирования"""
+        stmt = (
+            select(RepairCaseEquipment)
+            .where(RepairCaseEquipment.id == case_id)
+            .options(selectinload(RepairCaseEquipment.locked_by))
+        )
+        result = await session.execute(stmt)
+        case = result.scalar_one_or_none()
+
+        if not case:
+            raise ValueError("Случай не найден")
+
+        now = datetime.now(timezone.utc)
+        timeout = timedelta(minutes=30)
+
+        # Проверка текущей блокировки
+        if case.locked_by_id and case.locked_by_id != user_id:
+            if case.locked_at and (now - case.locked_at) < timeout:
+                locker_name = (
+                    case.locked_by.full_name
+                    if case.locked_by
+                    else "Другой пользователь"
+                )
+                raise ValueError(locker_name)
+
+        # Установка или обновление блокировки
+        case.locked_by_id = user_id
+        case.locked_at = now
+        await session.flush()
+
+        return await CaseService._get_case_with_relations(session, case.id)
+
+    @staticmethod
+    @transactional
+    async def unlock_case(session: AsyncSession, case_id: int, user_id: int) -> bool:
+        """Снятие блокировки со случая"""
+        case = await session.get(RepairCaseEquipment, case_id)
+        if not case:
+            return False
+
+        # Снимаем только если блокировка принадлежит текущему пользователю или если мы суперадмин
+        if case.locked_by_id == user_id:
+            case.locked_by_id = None
+            case.locked_at = None
+            await session.flush()
+            return True
+
+        return False
 
     @staticmethod
     @transactional

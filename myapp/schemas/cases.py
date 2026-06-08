@@ -73,6 +73,14 @@ class CaseUpdate(CaseBase):
     waybill_doc: WaybillDocUpdate | None = None
 
 
+class UserPreview(BaseModel):
+    id: int
+    login: str
+    full_name: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class CaseOutputData(CaseBase):
     """Схема для вывода"""
 
@@ -80,6 +88,9 @@ class CaseOutputData(CaseBase):
     date_recorded: datetime
     supplier_id: int | None = None
     user_id: int
+    user: UserPreview | None = None
+    locked_by_id: int | None = None
+    locked_by: UserPreview | None = None
 
     display_number: int | None = None
 

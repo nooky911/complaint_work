@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
-from myapp.auth.dependencies import get_current_user, require_superadmin
+from myapp.auth.dependencies import get_current_user, require_superadmin, PARTNER_ACCESS
 from myapp.database.base import get_db
 from myapp.models.user import User
 from myapp.schemas.users import UserResponse, UserPasswordChange
@@ -21,7 +21,9 @@ async def get_me(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserResponse:
     """Получает профиль текущего авторизованного пользователя"""
-    return UserResponse.model_validate(current_user)
+    user_data = UserResponse.model_validate(current_user)
+    user_data.partner_access = list(PARTNER_ACCESS)
+    return user_data
 
 
 @router.post(

@@ -59,6 +59,7 @@ def load_detail_relations():
             joinedload(RepairCaseEquipment.performed_by),
             joinedload(RepairCaseEquipment.equipment_owner),
             joinedload(RepairCaseEquipment.destination),
+            joinedload(RepairCaseEquipment.locked_by),
         ]
     )
     return relations

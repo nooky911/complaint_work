@@ -9,6 +9,11 @@ from myapp.models import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.services.case_service import CaseService
 from myapp.services.file_service import FileService
+from sqlalchemy.orm import selectinload
+from myapp.config import settings
+
+# Список ФИО пользователей с перекрестным доступом
+PARTNER_ACCESS = settings.partner_access_list
 
 
 def raise_401(detail: str) -> NoReturn:
@@ -84,25 +89,35 @@ async def require_can_edit_case(
     Разрешает редактирование только:
     - superadmin для любого случая
     - создателю случая (по полю user_id)
+    - сотрудникам из списка PARTNER_ACCESS (Барынкин Д.С., Шакиров Р.М.) друг для друга
     """
-    stmt = select(RepairCaseEquipment).where(RepairCaseEquipment.id == case_id)
+    stmt = (
+        select(RepairCaseEquipment)
+        .options(selectinload(RepairCaseEquipment.user))
+        .where(RepairCaseEquipment.id == case_id)
+    )
     result = await session.execute(stmt)
     case = result.scalar_one_or_none()
 
     if not case:
         return current_user, None
 
-    # superadmin может всё
+    # 1. superadmin может всё
     if current_user.role == "superadmin":
         return current_user, case
 
-    # только создатель кейса
-    if getattr(case, "user_id", None) == current_user.id:
+    # 2. проверка на владельца
+    is_owner = getattr(case, "user_id", None) == current_user.id
+    if is_owner:
+        return current_user, case
+
+    # 3. проверка на доступ двум сотрудникам
+    if current_user.login in PARTNER_ACCESS and case.user.login in PARTNER_ACCESS:
         return current_user, case
 
     raise HTTPException(
         status_code=status.HTTP_403_FORBIDDEN,
-        detail="Вы можете редактировать только свои случаи",
+        detail="Вы можете редактировать только свои случаи или случаи вашего напарника",
     )
 
 
