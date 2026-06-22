@@ -27,7 +27,13 @@ export const SimpleEquipmentEditor = ({
   allEquipment = [],
   disableAutoFill = false,
 }) => {
-  const { toasts, addToast, removeToast, showError, showSuccess } = useToast();
+  const {
+    toasts = [],
+    addToast,
+    removeToast,
+    showError,
+    showSuccess,
+  } = useToast() || {};
 
   // Мутации
   const createEquipmentMutation = useCreateEquipment();
@@ -250,7 +256,7 @@ export const SimpleEquipmentEditor = ({
       )}
 
       {/* Контейнер для тостов */}
-      {toasts.map((toast) => (
+      {(toasts || []).map((toast) => (
         <ErrorToast
           key={toast.id}
           show={true}

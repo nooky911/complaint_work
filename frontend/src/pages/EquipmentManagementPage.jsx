@@ -21,11 +21,19 @@ import {
 export default function EquipmentManagementPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { toasts, addToast, removeToast, showError, showSuccess } = useToast();
-
-  // Используем новые хуки
-  const { allEquipment, references, allSuppliers, loading } =
-    useEquipmentData();
+  const {
+    allEquipment = [],
+    references = {},
+    allSuppliers = [],
+    loading,
+  } = useEquipmentData() || {};
+  const {
+    toasts = [],
+    addToast,
+    removeToast,
+    showError,
+    showSuccess,
+  } = useToast() || {};
   const {
     currentData,
     hasSupplierChanges,
@@ -193,103 +201,103 @@ export default function EquipmentManagementPage() {
               </span>
             </div>
           ) : (
-          <div className="rounded-lg border border-gray-200 bg-white p-6">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Оборудование
-              </h3>
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <div className="mb-2 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Оборудование
+                </h3>
 
-              {/* Поставщик */}
-              <div className="w-[400px]">
-                <EditableInlineControl
-                  itemId={currentData.supplier_id}
-                  label="Поставщик"
-                  currentName={(() => {
-                    if (!currentData.supplier_id || !allSuppliers.length)
-                      return "";
-                    const found = allSuppliers.find(
-                      (s) => String(s.id) === String(currentData.supplier_id),
-                    );
-                    return found?.supplier_name || found?.name || "";
-                  })()}
-                  onSave={handleSaveSupplierName}
-                  onAdd={handleCreateSupplier}
-                  disabled={!canEditSupplier}
-                >
-                  <SelectField
-                    label=""
-                    value={currentData.supplier_id}
-                    options={allSuppliers.map((s) => ({
-                      id: s.id,
-                      name: s.supplier_name || s.name,
-                    }))}
-                    onChange={(val) => updateField("supplier_id", val)}
-                    placeholder="—"
-                    isEditing={true}
-                    disabled={!canEditSupplier}
-                  />
-                </EditableInlineControl>
-              </div>
-            </div>
-
-            {/* Редактор иерархии оборудования */}
-            <SimpleEquipmentEditor
-              isEditing={true}
-              currentId={currentData.id || null}
-              onSelect={handleEquipmentSelect}
-              currentData={currentData}
-              updateField={updateField}
-              references={referencesData}
-              allEquipment={allEquipment}
-              disableAutoFill={true}
-            />
-
-            {/* Кнопки сохранения/отмены для поставщика */}
-            {hasSupplierChanges && (
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  onClick={handleCancelSupplierChanges}
-                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
-                >
-                  Отменить
-                </button>
-                <button
-                  onClick={async () => {
-                    if (!currentData.supplier_id) return;
-                    try {
-                      await updateEquipmentMutation.mutateAsync({
-                        id: currentData.id,
-                        supplier_id: currentData.supplier_id,
-                      });
-                      showSuccess(
-                        "Успешно",
-                        "Поставщик привязан к оборудованию",
+                {/* Поставщик */}
+                <div className="w-[400px]">
+                  <EditableInlineControl
+                    itemId={currentData.supplier_id}
+                    label="Поставщик"
+                    currentName={(() => {
+                      if (!currentData.supplier_id || !allSuppliers?.length)
+                        return "";
+                      const found = (allSuppliers || []).find(
+                        (s) => String(s.id) === String(currentData.supplier_id),
                       );
-                      // Сбрасываем состояние изменений после успешного сохранения
-                      setOriginalSupplierId(currentData.supplier_id);
-                    } catch (error) {
-                      console.error("Ошибка при обновлении:", error);
-                      const errorMessage =
-                        error.response?.data?.detail || "Произошла ошибка";
-                      showError("Ошибка", errorMessage);
-                    }
-                  }}
-                  disabled={updateEquipmentMutation.isPending}
-                  className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {updateEquipmentMutation.isPending
-                    ? "Сохранение..."
-                    : "Сохранить"}
-                </button>
+                      return found?.supplier_name || found?.name || "";
+                    })()}
+                    onSave={handleSaveSupplierName}
+                    onAdd={handleCreateSupplier}
+                    disabled={!canEditSupplier}
+                  >
+                    <SelectField
+                      label=""
+                      value={currentData.supplier_id}
+                      options={(allSuppliers || []).map((s) => ({
+                        id: s.id,
+                        name: s.supplier_name || s.name,
+                      }))}
+                      onChange={(val) => updateField("supplier_id", val)}
+                      placeholder="—"
+                      isEditing={true}
+                      disabled={!canEditSupplier}
+                    />
+                  </EditableInlineControl>
+                </div>
               </div>
-            )}
-          </div>
+
+              {/* Редактор иерархии оборудования */}
+              <SimpleEquipmentEditor
+                isEditing={true}
+                currentId={currentData.id || null}
+                onSelect={handleEquipmentSelect}
+                currentData={currentData}
+                updateField={updateField}
+                references={referencesData}
+                allEquipment={allEquipment}
+                disableAutoFill={true}
+              />
+
+              {/* Кнопки сохранения/отмены для поставщика */}
+              {hasSupplierChanges && (
+                <div className="mt-4 flex justify-end gap-2">
+                  <button
+                    onClick={handleCancelSupplierChanges}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+                  >
+                    Отменить
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!currentData.supplier_id) return;
+                      try {
+                        await updateEquipmentMutation.mutateAsync({
+                          id: currentData.id,
+                          supplier_id: currentData.supplier_id,
+                        });
+                        showSuccess(
+                          "Успешно",
+                          "Поставщик привязан к оборудованию",
+                        );
+                        // Сбрасываем состояние изменений после успешного сохранения
+                        setOriginalSupplierId(currentData.supplier_id);
+                      } catch (error) {
+                        console.error("Ошибка при обновлении:", error);
+                        const errorMessage =
+                          error.response?.data?.detail || "Произошла ошибка";
+                        showError("Ошибка", errorMessage);
+                      }
+                    }}
+                    disabled={updateEquipmentMutation.isPending}
+                    className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                  >
+                    {updateEquipmentMutation.isPending
+                      ? "Сохранение..."
+                      : "Сохранить"}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
 
       {/* Контейнер для тостов */}
-      {toasts.map((toast) => (
+      {(toasts || []).map((toast) => (
         <ErrorToast
           key={toast.id}
           show={true}
