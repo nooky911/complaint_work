@@ -4,4 +4,15 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  server: {
+    watch: {
+      ignored: [
+        "**/__pycache__/**",
+        "**/*.log",
+        "**/logs/**",
+        "**/venv/**",
+        "**/.venv/**",
+      ],
+    },
+  },
 });
