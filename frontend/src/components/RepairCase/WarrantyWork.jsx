@@ -530,7 +530,7 @@ export const WarrantyWork = ({
 
             {/* Файлы акта исследования */}
             {caseId && (
-              <div className="mt-2">
+              <div className="mt-0">
                 <CompactWarrantyFiles
                   caseId={caseId}
                   isEditing={isEditing}

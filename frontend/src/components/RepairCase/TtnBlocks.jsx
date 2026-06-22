@@ -276,13 +276,11 @@ export function TtnBlocks({
                 <div className="flex h-[38px] items-center overflow-hidden rounded-lg border border-gray-300 bg-gray-50 px-3 text-sm font-medium text-gray-900 shadow-sm">
                   {ttnData?.waybill_doc?.from_supplier_provider?.name ||
                     (ttnData?.waybill_doc?.from_supplier_provider_id &&
-                      references?.shipping_providers
-                        ?.slice(0, 5)
-                        .find(
-                          (p) =>
-                            p.id ===
-                            ttnData.waybill_doc.from_supplier_provider_id,
-                        )?.name) ||
+                      references?.shipping_providers?.slice(0, 5).find(
+                        (p) =>
+                          p.id ===
+                          ttnData.waybill_doc.from_supplier_provider_id,
+                      )?.name) ||
                     "—"}
                 </div>
               </div>

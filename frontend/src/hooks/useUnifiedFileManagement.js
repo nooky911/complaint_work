@@ -114,9 +114,11 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
         "rar",
         "7z",
         "msg",
+        "eml",
+        "webp",
         "rpm",
       ],
-      warranty: ["pdf", "jpg", "jpeg", "png", "msg"],
+      warranty: ["pdf", "jpg", "jpeg", "png", "msg", "eml"],
     };
 
     const currentAllowedExtensions =

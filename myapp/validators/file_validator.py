@@ -20,6 +20,7 @@ ALLOWED_MIME_TYPES = {
         # --- Фото ---
         "image/jpeg",
         "image/png",
+        "image/webp",
         "image/jfif",
         "image/pjpeg",
         # --- Документы ---

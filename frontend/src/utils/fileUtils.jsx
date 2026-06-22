@@ -62,7 +62,8 @@ export const getFileIcon = (mimeTypeOrFile, fileName = "") => {
   if (
     mimeType?.includes("outlook") ||
     mimeType?.includes("msg") ||
-    name.endsWith(".msg")
+    mimeType?.includes("rfc822") ||
+    /\.(msg|eml)$/.test(name)
   ) {
     return <Mail className="h-3 w-3 shrink-0 text-yellow-500" />;
   }
