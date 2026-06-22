@@ -31,7 +31,7 @@ export const useEquipmentHierarchy = ({
     "Элемент",
   ];
 
-  // ВЫЧИСЛЕНИЕ УРОВНЕЙ ОБОРУДОВАНИЯ (оптимизировано)
+  // ВЫЧИСЛЕНИЕ УРОВНЕЙ ОБОРУДОВАНИЯ
   const equipmentMap = useMemo(
     () => new Map(allEquipment.map((item) => [item.id, item])),
     [allEquipment],
