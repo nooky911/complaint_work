@@ -16,7 +16,6 @@ export const EquipmentFields = ({
     currentData?.repair_type?.id || currentData?.repair_type_id,
   );
 
-  // ЛОГИКА ОТОБРАЖЕНИЯ
   const showComponent =
     mode === "old"
       ? true
@@ -25,9 +24,16 @@ export const EquipmentFields = ({
   const showElement =
     mode === "old" ? true : rId === 3 || (rId === 8 && !!levels?.lvl4);
 
-  // ЛОГИКА БЛОКИРОВКИ
   const disableComponent = mode === "old" ? !levels?.lvl3 : false;
   const disableElement = mode === "old" ? !levels?.lvl4 : false;
+
+  const handleQuantityChange = (field, val) => {
+    if (val === "" || val === null || val === undefined) {
+      updateField(field, "");
+    } else {
+      updateField(field, Number(val));
+    }
+  };
 
   return (
     <div className="space-y-3 pt-2">
@@ -39,11 +45,11 @@ export const EquipmentFields = ({
               label={REPAIR_FIELDS_LABELS.quantity}
               value={
                 mode === "old"
-                  ? currentData?.component_quantity
-                  : currentData?.new_component_quantity
+                  ? (currentData?.component_quantity ?? "")
+                  : (currentData?.new_component_quantity ?? "")
               }
               onChange={(val) =>
-                updateField(
+                handleQuantityChange(
                   mode === "old"
                     ? "component_quantity"
                     : "new_component_quantity",
@@ -97,11 +103,11 @@ export const EquipmentFields = ({
               label={REPAIR_FIELDS_LABELS.quantity}
               value={
                 mode === "old"
-                  ? currentData?.element_quantity
-                  : currentData?.new_element_quantity
+                  ? (currentData?.element_quantity ?? "")
+                  : (currentData?.new_element_quantity ?? "")
               }
               onChange={(val) =>
-                updateField(
+                handleQuantityChange(
                   mode === "old" ? "element_quantity" : "new_element_quantity",
                   val,
                 )

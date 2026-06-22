@@ -246,6 +246,31 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         delete cleanedData.user_id;
       }
 
+      const quantityFields = [
+        "component_quantity",
+        "element_quantity",
+        "new_component_quantity",
+        "new_element_quantity",
+      ];
+
+      quantityFields.forEach((field) => {
+        if (field in cleanedData) {
+          const val = cleanedData[field];
+          // Если юзер стер цифру (пусто, null) или ввел не то — перед отправкой на сервер ставим 1
+          if (
+            val === "" ||
+            val === null ||
+            val === undefined ||
+            isNaN(Number(val)) ||
+            Number(val) < 1
+          ) {
+            cleanedData[field] = 1;
+          } else {
+            cleanedData[field] = Number(val);
+          }
+        }
+      });
+
       const idFields = [
         "repair_type_id",
         "performed_by_id",
@@ -300,6 +325,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         setIsEditing(false);
         setSaving(false);
         return true;
+      }
+
+      if (currentUser?.role === "superadmin" && cleanedData.user_id) {
+        payload.user_id = cleanedData.user_id;
       }
 
       await onUpdate(payload);
