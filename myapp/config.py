@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     FILE_STORAGE_PATH: str = "/app/storage"
 
-    CORS_ORIGINS: str = "http://localhost:5173,http://10.131.251.65:3333"
+    CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
 
     @property
     def partner_access_list(self) -> set[str]:
