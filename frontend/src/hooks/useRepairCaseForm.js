@@ -246,27 +246,38 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         delete cleanedData.user_id;
       }
 
-      const quantityFields = [
-        "component_quantity",
-        "element_quantity",
-        "new_component_quantity",
-        "new_element_quantity",
+      const quantityMap = [
+        { qtyField: "component_quantity", idField: "component_equipment_id" },
+        { qtyField: "element_quantity", idField: "element_equipment_id" },
+        {
+          qtyField: "new_component_quantity",
+          idField: "new_component_equipment_id",
+        },
+        {
+          qtyField: "new_element_quantity",
+          idField: "new_element_equipment_id",
+        },
       ];
 
-      quantityFields.forEach((field) => {
-        if (field in cleanedData) {
-          const val = cleanedData[field];
-          // Если юзер стер цифру (пусто, null) или ввел не то — перед отправкой на сервер ставим 1
-          if (
-            val === "" ||
-            val === null ||
-            val === undefined ||
-            isNaN(Number(val)) ||
-            Number(val) < 1
-          ) {
-            cleanedData[field] = 1;
+      quantityMap.forEach(({ qtyField, idField }) => {
+        if (qtyField in cleanedData) {
+          const val = cleanedData[qtyField];
+          const hasEquipment = !!cleanedData[idField];
+
+          if (!hasEquipment) {
+            cleanedData[qtyField] = null;
           } else {
-            cleanedData[field] = Number(val);
+            if (
+              val === "" ||
+              val === null ||
+              val === undefined ||
+              isNaN(Number(val)) ||
+              Number(val) < 1
+            ) {
+              cleanedData[qtyField] = 1;
+            } else {
+              cleanedData[qtyField] = Number(val);
+            }
           }
         }
       });
