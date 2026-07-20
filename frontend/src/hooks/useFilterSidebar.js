@@ -104,7 +104,7 @@ export const useFilterSidebar = (filters, options) => {
 
   const mergedOptions = useMemo(() => {
     if (!options) return {};
-    
+
     const currentDynamic = dynamicOptions || {};
     const merged = { ...options };
 
@@ -129,6 +129,22 @@ export const useFilterSidebar = (filters, options) => {
       element_serial_numbers: "element_serial_number_old",
       component_serial_numbers_new: "component_serial_number_new",
       element_serial_numbers_new: "element_serial_number_new",
+      notification_numbers: "notification_number",
+      notification_dates: "notification_date",
+      notification_summaries: "notification_summary_id",
+      re_notification_numbers: "re_notification_number",
+      re_notification_dates: "re_notification_date",
+      response_letter_numbers: "response_letter_number",
+      response_letter_dates: "response_letter_date",
+      response_summaries: "response_summary_id",
+      claim_act_numbers: "claim_act_number",
+      claim_act_dates: "claim_act_date",
+      work_completion_act_numbers: "work_completion_act_number",
+      work_completion_act_dates: "work_completion_act_date",
+      decision_summaries: "decision_summary_id",
+      research_statuses: "research_status_id",
+      investigation_reasons: "investigation_reason_id",
+      research_documents: "research_document",
     };
 
     Object.keys(options).forEach((key) => {
