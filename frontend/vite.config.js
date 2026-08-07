@@ -11,6 +11,14 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
+    port: 5173,
+    proxy: {
+      '/api': {
+        target: 'http://fastapi_app:8000',
+        changeOrigin: true,
+      },
+    },
     watch: {
       ignored: [
         "**/__pycache__/**",
