@@ -5,8 +5,9 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   optimizeDeps: {
+    holdDependenciesInMemory: false,
     esbuildOptions: {
-      concurrency: 1,
+      sourcemap: false,
     },
   },
   server: {
