@@ -44,7 +44,7 @@ services:
     container_name: frontend_app
     restart: always
     ports:
-      - "3333:5173"
+      - "3333:80"
     depends_on:
       - fastapi_app
     deploy:
