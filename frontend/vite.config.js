@@ -4,6 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  optimizeDeps: {
+    esbuildOptions: {
+      concurrency: 1,
+    },
+  },
   server: {
     watch: {
       ignored: [
