@@ -121,7 +121,7 @@ export const RepairExecutionBlock = ({
                 </Tooltip>
               </div>
               <DataField
-                label={REPAIR_FIELDS_LABELS.serial_number}
+                label={REPAIR_FIELDS_LABELS.component_serial_number}
                 value={currentData.component_serial_number_new}
               />
               <DataField
@@ -158,7 +158,7 @@ export const RepairExecutionBlock = ({
                 </Tooltip>
               </div>
               <DataField
-                label={REPAIR_FIELDS_LABELS.serial_number}
+                label={REPAIR_FIELDS_LABELS.element_serial_number}
                 value={currentData.element_serial_number_new}
               />
               <DataField
