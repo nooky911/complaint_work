@@ -35,14 +35,14 @@ class CaseStatusService:
         )
         result = await session.execute(status_stmt)
         status_value = result.scalar_one_or_none()
-        return status_value or "Ожидает уведомление поставщика"
+        return status_value or "Ожидает отправки уведомления поставщику"
 
     @staticmethod
     def enrich_case_with_status_and_creator(
         case_obj, status_value
     ) -> RepairCaseEquipment:
         """Добавляет статус и ФИО создателя"""
-        case_obj.status = status_value or "Ожидает уведомление поставщика"
+        case_obj.status = status_value or "Ожидает отправки уведомления поставщику"
 
         if hasattr(case_obj, "user") and case_obj.user:
             case_obj.creator_full_name = case_obj.user.full_name

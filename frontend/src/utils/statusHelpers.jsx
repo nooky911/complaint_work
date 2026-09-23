@@ -142,7 +142,8 @@ export const getStatusConfig = (item) => {
     return {
       style: STYLE_YELLOW,
       icon:
-        rawStatus === "Ожидает уведомление поставщика" || rawStatus === "Новый"
+        rawStatus === "Ожидает отправки уведомления поставщику" ||
+        rawStatus === "Новый"
           ? AlertCircle
           : Clock,
     };

@@ -110,7 +110,7 @@ const CaseCard = React.memo(({ item, index, onCaseClick }) => {
   const formattedData = React.useMemo(
     () => ({
       displayNumber: item.display_number,
-      status: item.status || "Ожидает уведомление поставщика",
+      status: item.status || "Ожидает отправки уведомления поставщику",
       creator: formatFullName(item.creator_full_name),
       locomotiveModel: getText(item.locomotive_model),
       locomotiveNumber: item.locomotive_number || "—",
