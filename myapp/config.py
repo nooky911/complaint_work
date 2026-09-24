@@ -13,9 +13,20 @@ class Settings(BaseSettings):
 
     PARTNER_ACCESS_NAMES: str = ""
 
-    FILE_STORAGE_PATH: str = "/app/storage"
+    FILE_STORAGE_PATH: str = "./storage"
 
     CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
+
+    # Подключение к Oracle Omega
+    ORACLE_HOST: str
+    ORACLE_PORT: int
+    ORACLE_SERVICE: str
+    ORACLE_USER: str
+    ORACLE_PASSWORD: str
+    OMEGA_SYNC_ENABLED: bool = False
+    OMEGA_SYNC_HOUR: int = 2
+    OMEGA_SYNC_MINUTE: int = 0
+    OMEGA_SYNC_REQUEST_DELAY_SECONDS: float = 0.25
 
     @property
     def partner_access_list(self) -> set[str]:
@@ -34,6 +45,11 @@ class Settings(BaseSettings):
     def get_db_url(self, use_async: bool = True) -> str:
         driver = "asyncpg" if use_async else "psycopg2"
         return f"postgresql+{driver}://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+
+    @property
+    def oracle_dsn(self) -> str:
+        """Собирает Oracle Easy Connect DSN для подключения к Omega"""
+        return f"{self.ORACLE_HOST}:{self.ORACLE_PORT}/{self.ORACLE_SERVICE}"
 
 
 settings = Settings()

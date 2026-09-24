@@ -32,6 +32,9 @@ class LocomotiveModel(Base):
     repair_cases: Mapped[list["RepairCaseEquipment"]] = relationship(
         "RepairCaseEquipment", back_populates="locomotive_model"
     )
+    product_passports: Mapped[list["ProductPassport"]] = relationship(
+        "ProductPassport", back_populates="locomotive_model"
+    )
 
     @property
     def name(self) -> str:

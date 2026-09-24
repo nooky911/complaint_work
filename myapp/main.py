@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import uvicorn
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Any
@@ -12,6 +13,9 @@ from myapp.database.base import engine
 from myapp.api import api_router
 from scripts.openapi_fix import openapi_encoding_fix
 from myapp.debug_logger import setup_debug_logging
+from myapp.services.product_passport_scheduler import (
+    run_product_passport_sync_scheduler,
+)
 
 
 # -ФУНКЦИЯ СОЗДАНИЯ ТАБЛИЦ -
@@ -31,7 +35,16 @@ async def lifespan(_: FastAPI):
     print("Приложение запущено. Создание таблиц")
     await create_db_and_tables()
 
+    passport_sync_task = None
+    if settings.OMEGA_SYNC_ENABLED:
+        passport_sync_task = asyncio.create_task(run_product_passport_sync_scheduler())
+
     yield
+
+    if passport_sync_task:
+        passport_sync_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await passport_sync_task
 
     print("Приложение завершает работу")
 

@@ -1,10 +1,16 @@
 import { useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 import EquipmentManagementPage from "./pages/EquipmentManagementPage";
+import ProductPassportsPage from "./pages/ProductPassportsPage";
 import Header from "./components/Layout/Header";
 import ChangePasswordModal from "./components/Modals/ChangePasswordModal";
 
@@ -34,8 +40,18 @@ export default function App() {
             <Routes>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/equipment-management" element={<EquipmentManagementPage />} />
-              <Route path="/login" element={<Navigate to="/dashboard" replace />} />
+              <Route
+                path="/equipment-management"
+                element={<EquipmentManagementPage />}
+              />
+              <Route
+                path="/product-passports"
+                element={<ProductPassportsPage />}
+              />
+              <Route
+                path="/login"
+                element={<Navigate to="/dashboard" replace />}
+              />
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </main>

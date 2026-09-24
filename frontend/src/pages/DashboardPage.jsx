@@ -8,6 +8,7 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  BookOpenText,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -224,6 +225,15 @@ export default React.memo(function DashboardPage() {
 
         {/* ПРАВЫЙ БЛОК КНОПОК */}
         <div className="flex items-center gap-3">
+          {/* Кнопка паспортов */}
+          <button
+            onClick={() => navigate("/product-passports")}
+            className="flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-black tracking-wider text-indigo-600 uppercase shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-100 active:scale-95"
+          >
+            <BookOpenText className="h-4 w-4" />
+            Паспорта
+          </button>
+
           {/* Кнопка экспорта в Excel */}
           <button
             onClick={handleExport}
