@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     PARTNER_ACCESS_NAMES: str = ""
 
-    FILE_STORAGE_PATH: str = "./storage"
+    FILE_STORAGE_PATH: str = "/app/storage"
 
     CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
 
