@@ -142,7 +142,9 @@ class Supplier(Base):
     supplier_name: Mapped[str] = mapped_column(String(100))
 
     repair_cases: Mapped[list["RepairCaseEquipment"]] = relationship(
-        "RepairCaseEquipment", back_populates="supplier"
+        "RepairCaseEquipment",
+        foreign_keys="[RepairCaseEquipment.supplier_id]",
+        back_populates="supplier",
     )
     equipment: Mapped[list["Equipment"]] = relationship(
         "Equipment", back_populates="supplier"

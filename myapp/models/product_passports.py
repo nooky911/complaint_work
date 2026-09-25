@@ -68,6 +68,8 @@ class ProductPassportNode(Base):
         Index("ix_product_passport_nodes_peshka", "peshka"),
         Index("ix_product_passport_nodes_serial_number", "serial_number"),
         Index("ix_product_passport_nodes_stockobj_code", "stockobj_code"),
+        Index("ix_product_passport_nodes_supplier_id", "supplier_id"),
+        Index("ix_product_passport_nodes_equipment_id", "equipment_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -85,7 +87,15 @@ class ProductPassportNode(Base):
     manufacture_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     install_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     manufacturer: Mapped[str | None] = mapped_column(Text, nullable=True)
-    supplier: Mapped[str | None] = mapped_column(Text, nullable=True)
+    omega_supplier_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id"), nullable=True
+    )
+    equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("equipment.id"), nullable=True
+    )
     stockobj_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     passport: Mapped["ProductPassport"] = relationship(back_populates="nodes")
+    supplier_record: Mapped["Supplier | None"] = relationship()
+    equipment_record: Mapped["Equipment | None"] = relationship()

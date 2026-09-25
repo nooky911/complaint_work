@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -10,6 +10,7 @@ from myapp.models.equipment_malfunctions import (
     EquipmentMalfunction,
 )
 from myapp.models.auxiliaries import Supplier
+from myapp.models.product_passports import ProductPassportNode
 from myapp.schemas.equipment import (
     EquipmentWithPathResponse,
     EquipmentCreate,
@@ -95,6 +96,27 @@ class EquipmentService:
         stmt = select(Equipment.id).where(Equipment.supplier_id == supplier_id).limit(1)
         if (await session.execute(stmt)).scalar_one_or_none():
             raise ValueError("Нельзя удалить: поставщик закреплен за оборудованием.")
+
+        passport_stmt = (
+            select(ProductPassportNode.id)
+            .where(ProductPassportNode.supplier_id == supplier_id)
+            .limit(1)
+        )
+        if (await session.execute(passport_stmt)).scalar_one_or_none():
+            raise ValueError("Нельзя удалить: поставщик указан в паспорте изделия")
+
+        case_stmt = (
+            select(RepairCaseEquipment.id)
+            .where(
+                or_(
+                    RepairCaseEquipment.supplier_id == supplier_id,
+                    RepairCaseEquipment.new_supplier_id == supplier_id,
+                )
+            )
+            .limit(1)
+        )
+        if (await session.execute(case_stmt)).scalar_one_or_none():
+            raise ValueError("Нельзя удалить: поставщик указан в случае неисправности")
 
         result = await session.execute(
             delete(Supplier).where(Supplier.id == supplier_id)

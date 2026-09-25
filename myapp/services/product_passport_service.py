@@ -11,6 +11,12 @@ from myapp.schemas.product_passports import (
     ProductPassportResponse,
     ProductPassportSearchItem,
 )
+from myapp.services.product_passport_supplier_service import (
+    ProductPassportSupplierService,
+)
+from myapp.services.product_passport_equipment_service import (
+    ProductPassportEquipmentService,
+)
 
 
 class ProductPassportService:
@@ -78,7 +84,9 @@ class ProductPassportService:
             select(ProductPassport)
             .options(
                 joinedload(ProductPassport.locomotive_model),
-                selectinload(ProductPassport.nodes),
+                selectinload(ProductPassport.nodes).joinedload(
+                    ProductPassportNode.supplier_record
+                ),
             )
             .where(ProductPassport.id == passport_id)
         )
@@ -93,6 +101,8 @@ class ProductPassportService:
         product_type: str,
         locomotive_model_id: int,
         product_number: str,
+        supplier_ids: dict[str, int] | None = None,
+        equipment_ids: dict[str, int] | None = None,
     ) -> ProductPassport:
         """Создаёт модели SQLAlchemy для сохранения паспорта"""
         passport = ProductPassport(
@@ -115,11 +125,33 @@ class ProductPassportService:
                 manufacture_date=node.manufacture_date,
                 install_date=node.install_date,
                 manufacturer=node.manufacturer,
-                supplier=node.supplier,
+                omega_supplier_raw=node.omega_supplier_raw,
                 stockobj_code=node.stockobj_code,
             )
             for node in omega_passport.nodes
         ]
+        if supplier_ids:
+            for node in passport.nodes:
+                node.supplier_id = ProductPassportSupplierService.resolve_id(
+                    locomotive_model_id, node, supplier_ids
+                )
+        if equipment_ids:
+            supplier_names = {
+                supplier_id: name for name, supplier_id in (supplier_ids or {}).items()
+            }
+            for node in passport.nodes:
+                node.equipment_id = ProductPassportEquipmentService.resolve_id(
+                    locomotive_model_id, node, equipment_ids, supplier_names
+                )
+            redundant = ProductPassportEquipmentService.redundant_parents(
+                [
+                    (0, node.omega_code, node.parent_omega_code, node.equipment_id)
+                    for node in passport.nodes
+                ]
+            )
+            for node in passport.nodes:
+                if (0, node.omega_code) in redundant:
+                    node.equipment_id = None
         return passport
 
     @staticmethod
@@ -138,7 +170,20 @@ class ProductPassportService:
                 manufacture_date=node.manufacture_date,
                 install_date=node.install_date,
                 manufacturer=node.manufacturer,
-                supplier=node.supplier,
+                supplier=(
+                    node.supplier_record.supplier_name
+                    if node.supplier_record
+                    else (
+                        None
+                        if passport.locomotive_model_id in (1, 6)
+                        and ProductPassportSupplierService.is_26t_amortizer(
+                            node.tree_name, node.designation
+                        )
+                        else node.omega_supplier_raw
+                    )
+                ),
+                supplier_id=node.supplier_id,
+                equipment_id=node.equipment_id,
             )
             for node in passport.nodes
         ]

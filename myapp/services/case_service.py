@@ -102,6 +102,13 @@ class CaseService:
             locomotive_number=case.locomotive_number,
             locomotive_model_id=case.locomotive_model_id,
         )
+        new_eq_id = case.new_element_equipment_id or case.new_component_equipment_id
+        case.new_supplier_id = await EquipmentService.resolve_supplier(
+            session,
+            equipment_id=new_eq_id,
+            locomotive_number=case.locomotive_number,
+            locomotive_model_id=case.locomotive_model_id,
+        )
 
         session.add(case)
         await session.flush()
@@ -118,7 +125,7 @@ class CaseService:
         case_data: CaseUpdate,
         current_user_id: int | None = None,
     ) -> RepairCaseEquipment | None:
-        """Обновление случая и автоматическое переопределение supplier_id"""
+        """Обновление случая и автоматическое определение обоих поставщиков"""
         case: RepairCaseEquipment | None = await session.get(
             RepairCaseEquipment, case_id
         )
@@ -135,6 +142,8 @@ class CaseService:
 
         eq_changed = "component_equipment_id" in update_data
         el_changed = "element_equipment_id" in update_data
+        new_eq_changed = "new_component_equipment_id" in update_data
+        new_el_changed = "new_element_equipment_id" in update_data
         loco_num_changed = "locomotive_number" in update_data
         loco_model_changed = "locomotive_model_id" in update_data
 
@@ -166,6 +175,24 @@ class CaseService:
                         "locomotive_model_id", case.locomotive_model_id
                     ),
                 )
+
+        if new_eq_changed or new_el_changed or loco_num_changed or loco_model_changed:
+            new_el_id = update_data.get(
+                "new_element_equipment_id", case.new_element_equipment_id
+            )
+            new_comp_id = update_data.get(
+                "new_component_equipment_id", case.new_component_equipment_id
+            )
+            update_data["new_supplier_id"] = await EquipmentService.resolve_supplier(
+                session,
+                equipment_id=new_el_id or new_comp_id,
+                locomotive_number=update_data.get(
+                    "locomotive_number", case.locomotive_number
+                ),
+                locomotive_model_id=update_data.get(
+                    "locomotive_model_id", case.locomotive_model_id
+                ),
+            )
 
         # Обновляем поля
         for field, value in update_data.items():

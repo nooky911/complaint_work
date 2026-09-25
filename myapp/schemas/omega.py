@@ -16,7 +16,7 @@ class OmegaPassportNodeData(BaseModel):
     manufacture_date: date | None
     install_date: date | None
     manufacturer: str | None
-    supplier: str | None
+    omega_supplier_raw: str | None
     stockobj_code: int | None
 
 

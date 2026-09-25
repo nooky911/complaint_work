@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,15 +19,34 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
 
     # Подключение к Oracle Omega
-    ORACLE_HOST: str
-    ORACLE_PORT: int
-    ORACLE_SERVICE: str
-    ORACLE_USER: str
-    ORACLE_PASSWORD: str
+    ORACLE_HOST: str | None = None
+    ORACLE_PORT: int | None = None
+    ORACLE_SERVICE: str | None = None
+    ORACLE_USER: str | None = None
+    ORACLE_PASSWORD: str | None = None
     OMEGA_SYNC_ENABLED: bool = False
     OMEGA_SYNC_HOUR: int = 2
     OMEGA_SYNC_MINUTE: int = 0
     OMEGA_SYNC_REQUEST_DELAY_SECONDS: float = 0.25
+
+    @model_validator(mode="after")
+    def validate_omega_settings(self) -> "Settings":
+        """Требует параметры Oracle только при включённой синхронизации"""
+        if self.OMEGA_SYNC_ENABLED:
+            required = (
+                "ORACLE_HOST",
+                "ORACLE_PORT",
+                "ORACLE_SERVICE",
+                "ORACLE_USER",
+                "ORACLE_PASSWORD",
+            )
+            missing = [name for name in required if not getattr(self, name)]
+            if missing:
+                raise ValueError(
+                    "Для синхронизации Omega не заданы параметры: "
+                    + ", ".join(missing)
+                )
+        return self
 
     @property
     def partner_access_list(self) -> set[str]:
@@ -49,6 +69,8 @@ class Settings(BaseSettings):
     @property
     def oracle_dsn(self) -> str:
         """Собирает Oracle Easy Connect DSN для подключения к Omega"""
+        if not self.ORACLE_HOST or not self.ORACLE_PORT or not self.ORACLE_SERVICE:
+            raise ValueError("Не заданы параметры подключения к Oracle Omega")
         return f"{self.ORACLE_HOST}:{self.ORACLE_PORT}/{self.ORACLE_SERVICE}"
 
 

@@ -31,6 +31,8 @@ class ProductPassportNodeResponse(BaseModel):
     install_date: date | None
     manufacturer: str | None
     supplier: str | None
+    supplier_id: int | None
+    equipment_id: int | None
 
 
 class ProductPassportResponse(BaseModel):

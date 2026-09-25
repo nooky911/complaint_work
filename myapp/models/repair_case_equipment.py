@@ -22,6 +22,7 @@ class RepairCaseEquipment(Base):
             "new_component_equipment_id",
         ),
         Index("idx_repair_case_equipment_supplier_id", "supplier_id"),
+        Index("idx_repair_case_equipment_new_supplier_id", "new_supplier_id"),
         Index(
             "idx_unique_repair_case_core",
             "fault_date",
@@ -93,6 +94,7 @@ class RepairCaseEquipment(Base):
         ForeignKey("destination_types.id")
     )
     supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
+    new_supplier_id: Mapped[int | None] = mapped_column(ForeignKey("suppliers.id"))
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -148,7 +150,10 @@ class RepairCaseEquipment(Base):
         "DestinationType", back_populates="repair_cases"
     )
     supplier: Mapped["Supplier | None"] = relationship(
-        "Supplier", back_populates="repair_cases"
+        "Supplier", foreign_keys=[supplier_id], back_populates="repair_cases"
+    )
+    new_supplier: Mapped["Supplier | None"] = relationship(
+        "Supplier", foreign_keys=[new_supplier_id]
     )
     warranty_work: Mapped["WarrantyWork"] = relationship(
         "WarrantyWork",

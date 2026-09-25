@@ -89,7 +89,7 @@ class OmegaClient:
             manufacture_date=OmegaClient._to_date(row["MANUFACTURE_DATE"]),
             install_date=OmegaClient._to_date(row["INSTALL_DATE"]),
             manufacturer=OmegaClient._clean_text(row["MANUFACTURER"]),
-            supplier=OmegaClient._clean_text(row["SUPPLIER"]),
+            omega_supplier_raw=OmegaClient._clean_text(row["SUPPLIER"]),
             stockobj_code=(
                 int(row["STOCKOBJ_CODE"]) if row["STOCKOBJ_CODE"] is not None else None
             ),

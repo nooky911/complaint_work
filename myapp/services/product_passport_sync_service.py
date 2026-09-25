@@ -6,7 +6,8 @@ from sqlalchemy import select
 
 from myapp.config import settings
 from myapp.database.base import async_session_maker
-from myapp.models.auxiliaries import LocomotiveModel
+from myapp.models.auxiliaries import LocomotiveModel, Supplier
+from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.product_passports import ProductPassport
 from myapp.omega.client import OmegaClient
 from myapp.schemas.omega import OmegaPassportRootData
@@ -63,6 +64,20 @@ class ProductPassportSyncService:
                 model_ids = {
                     row.locomotive_model_name.casefold(): row.id for row in model_rows
                 }
+                supplier_rows = (
+                    await session.execute(select(Supplier.id, Supplier.supplier_name))
+                ).all()
+                supplier_ids = {
+                    row.supplier_name: row.id for row in supplier_rows
+                }
+                equipment_rows = (
+                    await session.execute(
+                        select(Equipment.id, Equipment.equipment_name)
+                    )
+                ).all()
+                equipment_ids = {
+                    row.equipment_name: row.id for row in equipment_rows
+                }
 
             for root in roots:
                 existing = existing_passports.get(root.omega_root_code)
@@ -104,6 +119,8 @@ class ProductPassportSyncService:
                         product_type=product_type,
                         locomotive_model_id=locomotive_model_id,
                         product_number=product_number,
+                        supplier_ids=supplier_ids,
+                        equipment_ids=equipment_ids,
                     )
                     async with async_session_maker() as session:
                         async with session.begin():
