@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     PARTNER_ACCESS_NAMES: str = ""
 
-    FILE_STORAGE_PATH: str = "app/storage"
+    FILE_STORAGE_PATH: str = "/app/storage"
 
     CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
 
@@ -43,7 +43,8 @@ class Settings(BaseSettings):
             missing = [name for name in required if not getattr(self, name)]
             if missing:
                 raise ValueError(
-                    "Для синхронизации Omega не заданы параметры: " + ", ".join(missing)
+                    "Для синхронизации Omega не заданы параметры: "
+                    + ", ".join(missing)
                 )
         return self
 
