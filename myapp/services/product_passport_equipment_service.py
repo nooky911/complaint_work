@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 
 from myapp.constants.product_passport_equipment_constants import (
@@ -15,8 +17,24 @@ from myapp.constants.product_passport_equipment_constants import (
 )
 from myapp.models.product_passports import ProductPassportNode
 
+
 class ProductPassportEquipmentService:
     """Связывает проверенные позиции паспортов 2ЭС6 и 3ЭС6 с классификатором"""
+
+    @staticmethod
+    def match_key(
+        tree_name: str | None,
+        designation: str | None,
+        supplier: str | None,
+        manufacturer: str | None,
+    ) -> str:
+        """Считает ключ точного соответствия по исходным полям Omega"""
+        values = [
+            " ".join((value or "").casefold().replace("ё", "е").split())
+            for value in (tree_name, designation, supplier, manufacturer)
+        ]
+        payload = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
     @staticmethod
     def _matches(value: str, pattern: str, mode: str) -> bool:
@@ -97,20 +115,30 @@ class ProductPassportEquipmentService:
         return None
 
     @classmethod
-    def resolve_name(
+    def _fallback_target(
         cls,
         locomotive_model_id: int,
         tree_name: str,
         designation: str | None,
         serial_number: str | None = None,
         supplier_name: str | None = None,
+        manufacturer: str | None = None,
     ) -> str | None:
-        """Определяет запись классификатора только для согласованных позиций"""
+        """Возвращает внутренний ключ записи для поиска ID в классификаторе"""
         if locomotive_model_id not in (1, 6):
             return None
 
         name = tree_name.upper().replace("–", "-").replace("—", "-")
         code = (designation or "").upper().replace("–", "-").replace("—", "-")
+        if name.startswith("ОГРАНИЧИТЕЛЬ ПЕРЕНАПРЯЖЕНИЙ"):
+            maker = (manufacturer or "").upper()
+            if "ЭКИ" in maker:
+                return "ОПН_3.3_ЭМ_УХЛ1"
+            if "ЗАИ" in maker:
+                return "ОПН_3,3_ЭМ_УХЛ1(ЗАИ)"
+            return None
+        if name.startswith("УЗЕЛ КОМПАКТНЫЙ КОНИЧЕСКИЙ БУКСОВОГО ПОДШИПНИКА"):
+            return None
         primary = cls._resolve_primary(name, code)
         if primary:
             return primary
@@ -120,11 +148,20 @@ class ProductPassportEquipmentService:
         if "АМОРТИЗАТОР" in name and code == "26Т.081.02.000":
             serial = (serial_number or "").strip()
             if serial.isdecimal():
+                if len(serial) == 7:
+                    return "26Т.018"
                 if len(serial) == 5:
                     return AMORTIZER_NAMES["five"]
                 if len(serial) < 5:
                     return AMORTIZER_NAMES["short"]
             return None
+        if (
+            not code
+            and name in {"АМОРТИЗАТОР ЛЕВЫЙ, КП4", "АМОРТИЗАТОР ПРАВЫЙ, КП3"}
+            and (serial_number or "").strip().isdecimal()
+            and len((serial_number or "").strip()) == 5
+        ):
+            return AMORTIZER_NAMES["five"]
 
         if not (code or (serial_number or "").strip()):
             return None
@@ -149,22 +186,70 @@ class ProductPassportEquipmentService:
         )
 
     @classmethod
+    def resolve_match(
+        cls,
+        node: ProductPassportNode,
+        equipment_match_ids: dict[str, tuple[int, int | None]] | None = None,
+        equipment_serial_match_ids: (
+            dict[tuple[str, int], tuple[int, int | None]] | None
+        ) = None,
+    ) -> tuple[int, int | None] | None:
+        """Ищет подтверждённую связь с учётом заводского номера"""
+        match_key = cls.match_key(
+            node.tree_name,
+            node.designation,
+            node.omega_supplier_raw,
+            node.manufacturer,
+        )
+        serial = (node.serial_number or "").strip()
+        match = None
+        if serial:
+            match = (equipment_serial_match_ids or {}).get((match_key, len(serial)))
+        if serial and match is None:
+            match = (equipment_match_ids or {}).get(match_key)
+        return match
+
+    @classmethod
     def resolve_id(
         cls,
         locomotive_model_id: int,
         node: ProductPassportNode,
-        equipment_ids: dict[str, int],
+        equipment_index: dict[str, list[tuple[int, int | None]]],
         supplier_names: dict[int, str] | None = None,
+        equipment_match_ids: dict[str, tuple[int, int | None]] | None = None,
+        equipment_serial_match_ids: (
+            dict[tuple[str, int], tuple[int, int | None]] | None
+        ) = None,
+        parent_equipment_id: int | None = None,
     ) -> int | None:
         """Возвращает ID оборудования, сохраняя исходные поля Omega"""
-        name = cls.resolve_name(
+        if locomotive_model_id not in (1, 6):
+            return None
+        match = cls.resolve_match(node, equipment_match_ids, equipment_serial_match_ids)
+        if match is not None:
+            return match[0]
+        name = cls._fallback_target(
             locomotive_model_id,
             node.tree_name,
             node.designation,
             node.serial_number,
             (supplier_names or {}).get(node.supplier_id) or node.omega_supplier_raw,
+            node.manufacturer,
         )
-        return equipment_ids.get(name) if name else None
+        if not name:
+            return None
+        candidates = equipment_index.get(name, [])
+        if parent_equipment_id is not None:
+            children = [
+                equipment_id
+                for equipment_id, parent_id in candidates
+                if parent_id == parent_equipment_id
+            ]
+            if len(children) == 1:
+                return children[0]
+            if len(children) > 1:
+                return None
+        return candidates[0][0] if candidates else None
 
     @staticmethod
     def redundant_parents(

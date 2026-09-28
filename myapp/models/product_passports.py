@@ -99,3 +99,40 @@ class ProductPassportNode(Base):
     passport: Mapped["ProductPassport"] = relationship(back_populates="nodes")
     supplier_record: Mapped["Supplier | None"] = relationship()
     equipment_record: Mapped["Equipment | None"] = relationship()
+
+
+class ProductPassportEquipmentMatch(Base):
+    """Подтверждённое соответствие позиции Omega оборудованию справочника"""
+
+    __tablename__ = "product_passport_equipment_matches"
+
+    match_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    omega_tree_name: Mapped[str] = mapped_column(Text, nullable=False)
+    omega_designation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    omega_supplier_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    omega_manufacturer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    equipment_id: Mapped[int] = mapped_column(
+        ForeignKey("equipment.id"), nullable=False
+    )
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id"), nullable=True
+    )
+
+
+class ProductPassportEquipmentSerialMatch(Base):
+    """Подтверждённое соответствие с учётом длины заводского номера"""
+
+    __tablename__ = "product_passport_equipment_serial_matches"
+
+    match_key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    serial_length: Mapped[int] = mapped_column(Integer, primary_key=True)
+    omega_tree_name: Mapped[str] = mapped_column(Text, nullable=False)
+    omega_designation: Mapped[str | None] = mapped_column(Text, nullable=True)
+    omega_supplier_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
+    omega_manufacturer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    equipment_id: Mapped[int] = mapped_column(
+        ForeignKey("equipment.id"), nullable=False
+    )
+    supplier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("suppliers.id"), nullable=True
+    )

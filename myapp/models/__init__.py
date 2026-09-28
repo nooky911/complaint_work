@@ -24,5 +24,10 @@ from .auxiliaries import (
     Supplier,
 )
 from .waybill_docs import WaybillDoc, ShippingProvider
-from .product_passports import ProductPassport, ProductPassportNode
+from .product_passports import (
+    ProductPassport,
+    ProductPassportNode,
+    ProductPassportEquipmentMatch,
+    ProductPassportEquipmentSerialMatch,
+)
 from .user import User

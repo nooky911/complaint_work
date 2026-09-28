@@ -102,7 +102,11 @@ class ProductPassportService:
         locomotive_model_id: int,
         product_number: str,
         supplier_ids: dict[str, int] | None = None,
-        equipment_ids: dict[str, int] | None = None,
+        equipment_index: dict[str, list[tuple[int, int | None]]] | None = None,
+        equipment_match_ids: dict[str, tuple[int, int | None]] | None = None,
+        equipment_serial_match_ids: (
+            dict[tuple[str, int], tuple[int, int | None]] | None
+        ) = None,
     ) -> ProductPassport:
         """Создаёт модели SQLAlchemy для сохранения паспорта"""
         passport = ProductPassport(
@@ -135,14 +139,45 @@ class ProductPassportService:
                 node.supplier_id = ProductPassportSupplierService.resolve_id(
                     locomotive_model_id, node, supplier_ids
                 )
-        if equipment_ids:
+        if equipment_index:
             supplier_names = {
                 supplier_id: name for name, supplier_id in (supplier_ids or {}).items()
             }
             for node in passport.nodes:
                 node.equipment_id = ProductPassportEquipmentService.resolve_id(
-                    locomotive_model_id, node, equipment_ids, supplier_names
+                    locomotive_model_id,
+                    node,
+                    equipment_index,
+                    supplier_names,
+                    equipment_match_ids,
+                    equipment_serial_match_ids,
                 )
+                match = ProductPassportEquipmentService.resolve_match(
+                    node, equipment_match_ids, equipment_serial_match_ids
+                )
+                if match and match[1] is not None:
+                    node.supplier_id = match[1]
+            ambiguous_ids = {
+                equipment_id
+                for candidates in equipment_index.values()
+                if len(candidates) > 1
+                for equipment_id, _ in candidates
+            }
+            nodes_by_code = {node.omega_code: node for node in passport.nodes}
+            for node in sorted(passport.nodes, key=lambda item: item.level):
+                if node.equipment_id not in ambiguous_ids:
+                    continue
+                parent = nodes_by_code.get(node.parent_omega_code)
+                if parent and parent.equipment_id is not None:
+                    node.equipment_id = ProductPassportEquipmentService.resolve_id(
+                        locomotive_model_id,
+                        node,
+                        equipment_index,
+                        supplier_names,
+                        equipment_match_ids,
+                        equipment_serial_match_ids,
+                        parent.equipment_id,
+                    )
             redundant = ProductPassportEquipmentService.redundant_parents(
                 [
                     (0, node.omega_code, node.parent_omega_code, node.equipment_id)
@@ -162,7 +197,11 @@ class ProductPassportService:
             ProductPassportNodeResponse(
                 id=node.id,
                 parent_id=node_ids.get(node.parent_omega_code),
-                tree_name=node.tree_name,
+                tree_name=(
+                    node.tree_name.replace(
+                        "Шаф блока аппаратов", "Шкаф блока аппаратов", 1
+                    ).replace("Блок входныс сигналов", "Блок входных сигналов", 1)
+                ),
                 full_name=node.full_name,
                 peshka=node.peshka,
                 designation=node.designation,

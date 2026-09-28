@@ -24,30 +24,47 @@ class ProductPassportSupplierService:
         )
 
     @classmethod
-    def resolve_name(
+    def resolve_id(
         cls,
         locomotive_model_id: int,
-        tree_name: str,
-        supplier: str | None,
-        manufacturer: str | None,
-        designation: str | None = None,
-        serial_number: str | None = None,
-    ) -> str | None:
-        """Возвращает имя поставщика из справочника для 2ЭС6 и 3ЭС6"""
+        node: ProductPassportNode,
+        supplier_ids: dict[str, int],
+    ) -> int | None:
+        """Возвращает ID поставщика по данным Omega"""
         if locomotive_model_id not in (1, 6):
+            return None
+        tree_name = node.tree_name
+        supplier = node.omega_supplier_raw
+        manufacturer = node.manufacturer
+        designation = node.designation
+        serial_number = node.serial_number
+
+        if cls._key(tree_name).startswith("ОГРАНИЧИТЕЛЬ ПЕРЕНАПРЯЖЕНИЙ"):
+            maker = cls._key(manufacturer)
+            if "ЭКИ" in maker:
+                return supplier_ids.get("ОАО «НИИ «ЭКИ»")
+            if "ЗАИ" in maker and (serial_number or "").strip().isdecimal():
+                if len((serial_number or "").strip()) < 6:
+                    return supplier_ids.get("АО «НИИ «ЗАИ»")
+                return supplier_ids.get("ОАО «НИИ «ЗАИ»")
             return None
         if "АМОРТИЗАТОР" in cls._key(tree_name):
             if re.search(r"5BV002[PР]", (designation or "").upper()):
-                return "ООО «ПААЗ»"
+                return supplier_ids.get("ООО «ПААЗ»")
             serial = (serial_number or "").strip()
             if serial.isdecimal() and len(serial) == 7:
-                return "ООО «ПААЗ»"
-            if cls.is_26t_amortizer(tree_name, designation):
+                return supplier_ids.get("ООО «ПААЗ»")
+            if cls.is_26t_amortizer(tree_name, designation) or (
+                not designation
+                and cls._key(tree_name)
+                in {"АМОРТИЗАТОР ЛЕВЫЙ, КП4", "АМОРТИЗАТОР ПРАВЫЙ, КП3"}
+                and cls._key(supplier) == "КОМПАНИЯ ДЕМПФЕРСЕРВИС ООО"
+            ):
                 if serial.isdecimal():
                     if len(serial) == 5:
-                        return "ООО «ТрансЭлКон»"
+                        return supplier_ids.get("ООО «ТрансЭлКон»")
                     if len(serial) < 5:
-                        return "ООО «Спецкомплектсервис»"
+                        return supplier_ids.get("ООО «Спецкомплектсервис»")
             return None
 
         supplier_key = cls._key(supplier)
@@ -59,41 +76,23 @@ class ProductPassportSupplierService:
             and manufacturer_key
             == "ООО УРАЛЬСКИЙ ЗАВОД ГАЗОВОГО И ПРОТИВОПОЖАРНОГО ОБОРУДОВАНИЯ"
         ):
-            return "ООО «Пожарные системы»"
+            return supplier_ids.get("ООО «Пожарные системы»")
 
         if supplier_key == "ПТСК ООО":
-            return "ООО «Лаборатория радиосвязи»"
+            return supplier_ids.get("ООО «Лаборатория радиосвязи»")
 
         if (
             supplier_key == "ТЯГОВЫЕ КОМПОНЕНТЫ ООО"
             and manufacturer_key == "0112"
             and cls._key(tree_name) == "ПРЕОБРАЗОВАТЕЛЬ НАПРЯЖЕНИЯ ПНКВ-3"
         ):
-            return "ООО «НПО САУТ»"
+            return supplier_ids.get("ООО «НПО САУТ»")
 
         override = MANUFACTURER_OVERRIDES.get((supplier_key, manufacturer_key))
         if override:
-            return override
+            return supplier_ids.get(override)
 
         if not supplier_key:
-            return MANUFACTURER_IF_NO_SUPPLIER.get(manufacturer_key)
+            return supplier_ids.get(MANUFACTURER_IF_NO_SUPPLIER.get(manufacturer_key))
 
-        return SUPPLIER_NAMES.get(supplier_key)
-
-    @classmethod
-    def resolve_id(
-        cls,
-        locomotive_model_id: int,
-        node: ProductPassportNode,
-        supplier_ids: dict[str, int],
-    ) -> int | None:
-        """Возвращает ID поставщика без изменения изготовителя и сырых данных Omega"""
-        name = cls.resolve_name(
-            locomotive_model_id,
-            node.tree_name,
-            node.omega_supplier_raw,
-            node.manufacturer,
-            node.designation,
-            node.serial_number,
-        )
-        return supplier_ids.get(name) if name else None
+        return supplier_ids.get(SUPPLIER_NAMES.get(supplier_key))

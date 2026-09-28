@@ -8,7 +8,11 @@ from myapp.config import settings
 from myapp.database.base import async_session_maker
 from myapp.models.auxiliaries import LocomotiveModel, Supplier
 from myapp.models.equipment_malfunctions import Equipment
-from myapp.models.product_passports import ProductPassport
+from myapp.models.product_passports import (
+    ProductPassport,
+    ProductPassportEquipmentMatch,
+    ProductPassportEquipmentSerialMatch,
+)
 from myapp.omega.client import OmegaClient
 from myapp.schemas.omega import OmegaPassportRootData
 from myapp.services.product_passport_service import ProductPassportService
@@ -67,16 +71,50 @@ class ProductPassportSyncService:
                 supplier_rows = (
                     await session.execute(select(Supplier.id, Supplier.supplier_name))
                 ).all()
-                supplier_ids = {
-                    row.supplier_name: row.id for row in supplier_rows
-                }
+                supplier_ids = {row.supplier_name: row.id for row in supplier_rows}
                 equipment_rows = (
                     await session.execute(
-                        select(Equipment.id, Equipment.equipment_name)
+                        select(
+                            Equipment.id,
+                            Equipment.equipment_name,
+                            Equipment.parent_id,
+                        )
                     )
                 ).all()
-                equipment_ids = {
-                    row.equipment_name: row.id for row in equipment_rows
+                equipment_index: dict[str, list[tuple[int, int | None]]] = {}
+                for row in sorted(equipment_rows, key=lambda item: item.id):
+                    equipment_index.setdefault(row.equipment_name, []).append(
+                        (row.id, row.parent_id)
+                    )
+                equipment_match_rows = (
+                    await session.execute(
+                        select(
+                            ProductPassportEquipmentMatch.match_key,
+                            ProductPassportEquipmentMatch.equipment_id,
+                            ProductPassportEquipmentMatch.supplier_id,
+                        )
+                    )
+                ).all()
+                equipment_match_ids = {
+                    row.match_key: (row.equipment_id, row.supplier_id)
+                    for row in equipment_match_rows
+                }
+                equipment_serial_match_rows = (
+                    await session.execute(
+                        select(
+                            ProductPassportEquipmentSerialMatch.match_key,
+                            ProductPassportEquipmentSerialMatch.serial_length,
+                            ProductPassportEquipmentSerialMatch.equipment_id,
+                            ProductPassportEquipmentSerialMatch.supplier_id,
+                        )
+                    )
+                ).all()
+                equipment_serial_match_ids = {
+                    (row.match_key, row.serial_length): (
+                        row.equipment_id,
+                        row.supplier_id,
+                    )
+                    for row in equipment_serial_match_rows
                 }
 
             for root in roots:
@@ -120,7 +158,9 @@ class ProductPassportSyncService:
                         locomotive_model_id=locomotive_model_id,
                         product_number=product_number,
                         supplier_ids=supplier_ids,
-                        equipment_ids=equipment_ids,
+                        equipment_index=equipment_index,
+                        equipment_match_ids=equipment_match_ids,
+                        equipment_serial_match_ids=equipment_serial_match_ids,
                     )
                     async with async_session_maker() as session:
                         async with session.begin():
