@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -7,12 +7,15 @@ import {
 } from "react-router-dom";
 
 import { useAuth } from "./context/AuthContext";
-import LoginPage from "./pages/LoginPage";
-import DashboardPage from "./pages/DashboardPage";
-import EquipmentManagementPage from "./pages/EquipmentManagementPage";
-import ProductPassportsPage from "./pages/ProductPassportsPage";
 import Header from "./components/Layout/Header";
 import ChangePasswordModal from "./components/Modals/ChangePasswordModal";
+
+const LoginPage = lazy(() => import("./pages/LoginPage"));
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const EquipmentManagementPage = lazy(
+  () => import("./pages/EquipmentManagementPage"),
+);
+const ProductPassportsPage = lazy(() => import("./pages/ProductPassportsPage"));
 
 export default function App() {
   const { isAuth, loading } = useAuth();
@@ -27,6 +30,13 @@ export default function App() {
 
   return (
     <Router>
+      <Suspense
+        fallback={
+          <div className="flex h-screen items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+          </div>
+        }
+      >
       {!isAuth ? (
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -62,6 +72,7 @@ export default function App() {
           />
         </div>
       )}
+      </Suspense>
     </Router>
   );
 }

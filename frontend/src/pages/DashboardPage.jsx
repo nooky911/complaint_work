@@ -241,11 +241,11 @@ export default React.memo(function DashboardPage() {
             className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
               isExporting
                 ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                : "border-green-200 bg-green-50 text-green-600 hover:border-green-300 hover:bg-green-100"
+                : "border-green-200 bg-green-50 text-green-700 hover:border-green-300 hover:bg-green-100"
             }`}
           >
             {isExporting ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-600 border-t-transparent"></div>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-700 border-t-transparent"></div>
             ) : (
               <Download className="h-4 w-4" />
             )}
@@ -298,6 +298,7 @@ export default React.memo(function DashboardPage() {
                     setCurrentPage((p) => Math.max(1, p - 1));
                   }}
                   disabled={currentPage === 1}
+                  aria-label="Предыдущая страница"
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200/60 disabled:opacity-30 disabled:hover:bg-transparent"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -412,6 +413,7 @@ export default React.memo(function DashboardPage() {
                     setCurrentPage((p) => Math.min(totalPages, p + 1));
                   }}
                   disabled={currentPage === totalPages}
+                  aria-label="Следующая страница"
                   className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-200/60 disabled:opacity-30 disabled:hover:bg-transparent"
                 >
                   <ChevronRight className="h-5 w-5" />

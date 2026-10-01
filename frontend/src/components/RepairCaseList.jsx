@@ -29,7 +29,7 @@ const DataHeader = ({ label, value, icon: Icon, iconColor }) => (
   <div className="flex items-center gap-2">
     <Icon className={`h-6 w-6 ${iconColor}`} />
     <div>
-      <p className="text-[10px] font-bold text-purple-200 uppercase">{label}</p>
+      <p className="text-[10px] font-bold text-purple-50 uppercase">{label}</p>
       <p className="text-xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
         {value}
       </p>

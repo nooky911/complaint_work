@@ -9,6 +9,7 @@ export const FilterSidebarHeader = ({ onClose }) => {
       </h3>
       <button
         onClick={onClose}
+        aria-label="Закрыть параметры поиска"
         className="rounded-full bg-slate-100 p-2 text-slate-500 hover:bg-red-50 hover:text-red-500"
       >
         <X className="h-5 w-5" />

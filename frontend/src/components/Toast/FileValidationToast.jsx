@@ -35,6 +35,7 @@ export const FileValidationToast = ({ show, onClose, errors }) => {
       </div>
       <button
         onClick={onClose}
+        aria-label="Закрыть уведомление"
         className="ml-2 text-slate-400 hover:text-slate-600"
       >
         <X size={16} />
