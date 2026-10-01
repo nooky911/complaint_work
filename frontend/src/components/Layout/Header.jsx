@@ -24,11 +24,11 @@ export default function Header({ onChangePassword }) {
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white py-1">
       <div className="grid w-full grid-cols-3 items-center px-8">
-        <div 
+        <div
           onClick={() => navigate("/")}
-          className="text-[24px] font-bold cursor-pointer"
+          className="cursor-pointer text-[24px] font-bold"
         >
-          Справка ППР
+          Справка ПРР
         </div>
 
         <div className="flex justify-center">
