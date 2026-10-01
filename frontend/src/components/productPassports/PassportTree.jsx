@@ -134,7 +134,13 @@ export function PassportTree({ passport }) {
             </div>
             <dl className="space-y-3">
               {DETAIL_FIELDS.map(([key, label]) => {
-                const value = selectedNode[key];
+                const missingSupplier =
+                  key === "supplier" &&
+                  selectedNode.supplier_id == null &&
+                  Boolean(selectedNode.manufacturer || selectedNode.serial_number);
+                const value = missingSupplier
+                  ? "Поставщик пуст"
+                  : selectedNode[key];
                 if (value === null || value === undefined || value === "")
                   return null;
                 const formattedValue = DATE_FIELDS.has(key)
@@ -145,7 +151,9 @@ export function PassportTree({ passport }) {
                     <dt className="text-[10px] font-black tracking-wider text-slate-400 uppercase">
                       {label}
                     </dt>
-                    <dd className="mt-0.5 text-sm font-semibold break-words text-slate-800">
+                    <dd
+                      className={`mt-0.5 text-sm font-semibold break-words ${missingSupplier ? "text-amber-700" : "text-slate-800"}`}
+                    >
                       {formattedValue}
                     </dd>
                   </div>

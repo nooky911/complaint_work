@@ -17,9 +17,11 @@ from myapp.constants.product_passport_equipment_constants import (
 )
 from myapp.models.product_passports import ProductPassportNode
 
+NumberedPassportLinks = dict[tuple[int, str], tuple[int, int | None] | None]
+
 
 class ProductPassportEquipmentService:
-    """Связывает проверенные позиции паспортов 2ЭС6 и 3ЭС6 с классификатором"""
+    """Связывает проверенные позиции паспортов с классификатором"""
 
     @staticmethod
     def match_key(
@@ -35,6 +37,67 @@ class ProductPassportEquipmentService:
         ]
         payload = json.dumps(values, ensure_ascii=False, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def remember_numbered_link(
+        cls,
+        links: NumberedPassportLinks,
+        locomotive_model_id: int,
+        node: ProductPassportNode,
+    ) -> None:
+        """Сохраняет однозначную связь номерного узла для такой же безномерной позиции"""
+        if not (node.serial_number or "").strip() or node.equipment_id is None:
+            return
+        key = (
+            locomotive_model_id,
+            cls.match_key(
+                node.tree_name,
+                node.designation,
+                node.omega_supplier_raw,
+                node.manufacturer,
+            ),
+        )
+        candidate = (node.equipment_id, node.supplier_id)
+        if key in links and links[key] != candidate:
+            links[key] = None
+        else:
+            links[key] = candidate
+
+    @classmethod
+    def inherit_numbered_links(
+        cls,
+        locomotive_model_id: int,
+        nodes: list[ProductPassportNode],
+        saved_links: NumberedPassportLinks | None = None,
+    ) -> None:
+        """Привязывает безномерные узлы только при единственном совпадении с номерными"""
+        links = dict(saved_links or {})
+        for node in nodes:
+            cls.remember_numbered_link(links, locomotive_model_id, node)
+
+        for node in nodes:
+            if (node.serial_number or "").strip():
+                continue
+            key = (
+                locomotive_model_id,
+                cls.match_key(
+                    node.tree_name,
+                    node.designation,
+                    node.omega_supplier_raw,
+                    node.manufacturer,
+                ),
+            )
+            match = links.get(key)
+            if match is None:
+                continue
+            equipment_id, supplier_id = match
+            if node.equipment_id not in (None, equipment_id):
+                continue
+            if supplier_id is not None and node.supplier_id not in (None, supplier_id):
+                continue
+            node.equipment_id = equipment_id
+            if supplier_id is not None:
+                node.supplier_id = supplier_id
 
     @staticmethod
     def _matches(value: str, pattern: str, mode: str) -> bool:
@@ -138,6 +201,8 @@ class ProductPassportEquipmentService:
                 return "ОПН_3,3_ЭМ_УХЛ1(ЗАИ)"
             return None
         if name.startswith("УЗЕЛ КОМПАКТНЫЙ КОНИЧЕСКИЙ БУКСОВОГО ПОДШИПНИКА"):
+            if code.replace(" ", "") == "3506/177.787-2LS":
+                return "3506/177.787_2LS"
             return None
         primary = cls._resolve_primary(name, code)
         if primary:
@@ -223,8 +288,21 @@ class ProductPassportEquipmentService:
         parent_equipment_id: int | None = None,
     ) -> int | None:
         """Возвращает ID оборудования, сохраняя исходные поля Omega"""
-        if locomotive_model_id not in (1, 6):
+        if locomotive_model_id not in (1, 6, 3, 7):
             return None
+        if locomotive_model_id in (3, 7) and (
+            node.designation == "ДТ.520202.069"
+            and "АЖ112М2FУХЛ1" in node.tree_name
+            and parent_equipment_id is not None
+        ):
+            for target in ("АЖ112М2FУХЛ1", "АЖ112М2FУХЛ1_МЫС"):
+                children = [
+                    equipment_id
+                    for equipment_id, parent_id in equipment_index.get(target, [])
+                    if parent_id == parent_equipment_id
+                ]
+                if len(children) == 1:
+                    return children[0]
         match = cls.resolve_match(node, equipment_match_ids, equipment_serial_match_ids)
         if match is not None:
             return match[0]

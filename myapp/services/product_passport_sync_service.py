@@ -2,7 +2,7 @@ import asyncio
 import logging
 import re
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 
 from myapp.config import settings
 from myapp.database.base import async_session_maker
@@ -10,12 +10,17 @@ from myapp.models.auxiliaries import LocomotiveModel, Supplier
 from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.product_passports import (
     ProductPassport,
+    ProductPassportNode,
     ProductPassportEquipmentMatch,
     ProductPassportEquipmentSerialMatch,
 )
 from myapp.omega.client import OmegaClient
 from myapp.schemas.omega import OmegaPassportRootData
 from myapp.services.product_passport_service import ProductPassportService
+from myapp.services.product_passport_equipment_service import (
+    NumberedPassportLinks,
+    ProductPassportEquipmentService,
+)
 from myapp.validators.product_passport_validator import ProductPassportValidator
 
 logger = logging.getLogger(__name__)
@@ -43,6 +48,7 @@ class ProductPassportSyncService:
                 "skipped_by_rule": 0,
                 "skipped_unknown_model": 0,
                 "failed": 0,
+                "linked_without_number": 0,
             }
             tree_requests = 0
 
@@ -78,13 +84,20 @@ class ProductPassportSyncService:
                             Equipment.id,
                             Equipment.equipment_name,
                             Equipment.parent_id,
+                            Equipment.supplier_id,
                         )
                     )
                 ).all()
                 equipment_index: dict[str, list[tuple[int, int | None]]] = {}
+                equipment_details: dict[int, tuple[int | None, int | None, str]] = {}
                 for row in sorted(equipment_rows, key=lambda item: item.id):
                     equipment_index.setdefault(row.equipment_name, []).append(
                         (row.id, row.parent_id)
+                    )
+                    equipment_details[row.id] = (
+                        row.parent_id,
+                        row.supplier_id,
+                        row.equipment_name,
                     )
                 equipment_match_rows = (
                     await session.execute(
@@ -116,6 +129,51 @@ class ProductPassportSyncService:
                     )
                     for row in equipment_serial_match_rows
                 }
+                numbered_rows = (
+                    await session.execute(
+                        select(
+                            ProductPassport.locomotive_model_id,
+                            ProductPassportNode.tree_name,
+                            ProductPassportNode.designation,
+                            ProductPassportNode.omega_supplier_raw,
+                            ProductPassportNode.manufacturer,
+                            func.min(ProductPassportNode.serial_number).label(
+                                "serial_number"
+                            ),
+                            ProductPassportNode.equipment_id,
+                            ProductPassportNode.supplier_id,
+                        )
+                        .join(ProductPassportNode)
+                        .where(
+                            ProductPassportNode.serial_number.is_not(None),
+                            func.btrim(ProductPassportNode.serial_number) != "",
+                            ProductPassportNode.equipment_id.is_not(None),
+                        )
+                        .group_by(
+                            ProductPassport.locomotive_model_id,
+                            ProductPassportNode.tree_name,
+                            ProductPassportNode.designation,
+                            ProductPassportNode.omega_supplier_raw,
+                            ProductPassportNode.manufacturer,
+                            ProductPassportNode.equipment_id,
+                            ProductPassportNode.supplier_id,
+                        )
+                    )
+                ).all()
+                numbered_links: NumberedPassportLinks = {}
+                for row in numbered_rows:
+                    node = ProductPassportNode(
+                        tree_name=row.tree_name,
+                        designation=row.designation,
+                        omega_supplier_raw=row.omega_supplier_raw,
+                        manufacturer=row.manufacturer,
+                        serial_number=row.serial_number,
+                        equipment_id=row.equipment_id,
+                        supplier_id=row.supplier_id,
+                    )
+                    ProductPassportEquipmentService.remember_numbered_link(
+                        numbered_links, row.locomotive_model_id, node
+                    )
 
             for root in roots:
                 existing = existing_passports.get(root.omega_root_code)
@@ -159,8 +217,10 @@ class ProductPassportSyncService:
                         product_number=product_number,
                         supplier_ids=supplier_ids,
                         equipment_index=equipment_index,
+                        equipment_details=equipment_details,
                         equipment_match_ids=equipment_match_ids,
                         equipment_serial_match_ids=equipment_serial_match_ids,
+                        numbered_links=numbered_links,
                     )
                     async with async_session_maker() as session:
                         async with session.begin():
@@ -175,6 +235,10 @@ class ProductPassportSyncService:
                         result["reimported"] += 1
                     else:
                         result["imported"] += 1
+                    for node in passport.nodes:
+                        ProductPassportEquipmentService.remember_numbered_link(
+                            numbered_links, locomotive_model_id, node
+                        )
                     existing_passports[root.omega_root_code] = passport
                 except Exception:
                     result["failed"] += 1
@@ -182,10 +246,13 @@ class ProductPassportSyncService:
                         "Не удалось импортировать паспорт %s", root.omega_name
                     )
 
+            result["linked_without_number"] = (
+                await ProductPassportSyncService._link_unnumbered_nodes(numbered_links)
+            )
             logger.info(
                 "Синхронизация паспортов завершена: найдено %s, импортировано %s, "
                 "переимпортировано %s, уже было %s, вне правил %s, "
-                "неизвестных моделей %s, ошибок %s",
+                "неизвестных моделей %s, ошибок %s, без номера связано %s",
                 result["found"],
                 result["imported"],
                 result["reimported"],
@@ -193,8 +260,58 @@ class ProductPassportSyncService:
                 result["skipped_by_rule"],
                 result["skipped_unknown_model"],
                 result["failed"],
+                result["linked_without_number"],
             )
             return result
+
+    @staticmethod
+    async def _link_unnumbered_nodes(
+        numbered_links: NumberedPassportLinks,
+    ) -> int:
+        """Дополняет сохранённые безномерные узлы по однозначным номерным записям"""
+        linked = 0
+        async with async_session_maker() as session:
+            async with session.begin():
+                rows = (
+                    await session.execute(
+                        select(
+                            ProductPassportNode,
+                            ProductPassport.locomotive_model_id,
+                        )
+                        .join(ProductPassport)
+                        .where(
+                            ProductPassportNode.equipment_id.is_(None),
+                            or_(
+                                ProductPassportNode.serial_number.is_(None),
+                                func.btrim(ProductPassportNode.serial_number) == "",
+                            ),
+                        )
+                    )
+                ).all()
+                for node, locomotive_model_id in rows:
+                    key = (
+                        locomotive_model_id,
+                        ProductPassportEquipmentService.match_key(
+                            node.tree_name,
+                            node.designation,
+                            node.omega_supplier_raw,
+                            node.manufacturer,
+                        ),
+                    )
+                    match = numbered_links.get(key)
+                    if match is None:
+                        continue
+                    equipment_id, supplier_id = match
+                    if supplier_id is not None and node.supplier_id not in (
+                        None,
+                        supplier_id,
+                    ):
+                        continue
+                    node.equipment_id = equipment_id
+                    if supplier_id is not None:
+                        node.supplier_id = supplier_id
+                    linked += 1
+        return linked
 
     @staticmethod
     def _parse_identity(root: OmegaPassportRootData) -> tuple[str, str, str]:

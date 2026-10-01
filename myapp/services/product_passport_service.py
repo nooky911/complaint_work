@@ -15,6 +15,7 @@ from myapp.services.product_passport_supplier_service import (
     ProductPassportSupplierService,
 )
 from myapp.services.product_passport_equipment_service import (
+    NumberedPassportLinks,
     ProductPassportEquipmentService,
 )
 
@@ -103,10 +104,14 @@ class ProductPassportService:
         product_number: str,
         supplier_ids: dict[str, int] | None = None,
         equipment_index: dict[str, list[tuple[int, int | None]]] | None = None,
+        equipment_details: (
+            dict[int, tuple[int | None, int | None, str]] | None
+        ) = None,
         equipment_match_ids: dict[str, tuple[int, int | None]] | None = None,
         equipment_serial_match_ids: (
             dict[tuple[str, int], tuple[int, int | None]] | None
         ) = None,
+        numbered_links: NumberedPassportLinks | None = None,
     ) -> ProductPassport:
         """Создаёт модели SQLAlchemy для сохранения паспорта"""
         passport = ProductPassport(
@@ -116,7 +121,7 @@ class ProductPassportService:
             omega_root_code=omega_passport.omega_root_code,
             omega_name=omega_passport.omega_name,
         )
-        passport.nodes = [
+        nodes: list[ProductPassportNode] = [
             ProductPassportNode(
                 omega_code=node.omega_code,
                 parent_omega_code=node.parent_omega_code,
@@ -134,8 +139,9 @@ class ProductPassportService:
             )
             for node in omega_passport.nodes
         ]
+        passport.nodes = nodes
         if supplier_ids:
-            for node in passport.nodes:
+            for node in nodes:
                 node.supplier_id = ProductPassportSupplierService.resolve_id(
                     locomotive_model_id, node, supplier_ids
                 )
@@ -143,7 +149,7 @@ class ProductPassportService:
             supplier_names = {
                 supplier_id: name for name, supplier_id in (supplier_ids or {}).items()
             }
-            for node in passport.nodes:
+            for node in nodes:
                 node.equipment_id = ProductPassportEquipmentService.resolve_id(
                     locomotive_model_id,
                     node,
@@ -163,8 +169,8 @@ class ProductPassportService:
                 if len(candidates) > 1
                 for equipment_id, _ in candidates
             }
-            nodes_by_code = {node.omega_code: node for node in passport.nodes}
-            for node in sorted(passport.nodes, key=lambda item: item.level):
+            nodes_by_code = {node.omega_code: node for node in nodes}
+            for node in sorted(nodes, key=lambda item: item.level):
                 if node.equipment_id not in ambiguous_ids:
                     continue
                 parent = nodes_by_code.get(node.parent_omega_code)
@@ -178,15 +184,40 @@ class ProductPassportService:
                         equipment_serial_match_ids,
                         parent.equipment_id,
                     )
+            if locomotive_model_id in (3, 7):
+                for node in sorted(nodes, key=lambda item: item.level):
+                    if node.equipment_id is not None:
+                        continue
+                    parent = nodes_by_code.get(node.parent_omega_code)
+                    if parent and parent.equipment_id is not None:
+                        node.equipment_id = ProductPassportEquipmentService.resolve_id(
+                            locomotive_model_id,
+                            node,
+                            equipment_index,
+                            supplier_names,
+                            equipment_match_ids,
+                            equipment_serial_match_ids,
+                            parent.equipment_id,
+                        )
             redundant = ProductPassportEquipmentService.redundant_parents(
                 [
                     (0, node.omega_code, node.parent_omega_code, node.equipment_id)
-                    for node in passport.nodes
+                    for node in nodes
                 ]
             )
-            for node in passport.nodes:
+            for node in nodes:
                 if (0, node.omega_code) in redundant:
                     node.equipment_id = None
+        if locomotive_model_id in (3, 7) and supplier_ids:
+            for node in nodes:
+                node.supplier_id = ProductPassportSupplierService.resolve_8_id(
+                    node,
+                    supplier_ids,
+                    equipment_details or {},
+                )
+        ProductPassportEquipmentService.inherit_numbered_links(
+            locomotive_model_id, nodes, numbered_links
+        )
         return passport
 
     @staticmethod
