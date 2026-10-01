@@ -494,10 +494,7 @@ class FilterOptionsService:
         name_column,
         filtered_conditions=None,
     ):
-        """Получить используемые элементы справочника с JOIN к WarrantyWork"""
-        warranty_joins = [
-            (WarrantyWork, WarrantyWork.case_id == RepairCaseEquipment.id)
-        ]
+        """Получить элементы по случаям с обоими блоками документов"""
         return await get_used_items_with_base_join(
             session,
             model,
@@ -505,7 +502,6 @@ class FilterOptionsService:
             name_column,
             RepairCaseEquipment,
             filtered_conditions,
-            warranty_joins,
         )
 
     @staticmethod
