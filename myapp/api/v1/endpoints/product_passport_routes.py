@@ -25,7 +25,7 @@ async def get_product_passport_models(
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_viewer_or_higher)],
 ):
-    """Возвращает только модели, для которых уже импортированы паспорта"""
+    """Возвращает модели с паспортами введённых в эксплуатацию локомотивов"""
     return await ProductPassportService.get_models(session)
 
 
@@ -40,7 +40,7 @@ async def search_product_passports(
     locomotive_model_id: Annotated[int, Query(ge=1)],
     product_number: Annotated[str, Query(min_length=1, max_length=50)],
 ):
-    """Ищет до двадцати паспортов по модели и началу номера"""
+    """Ищет до двадцати доступных паспортов по модели и началу номера"""
     return await ProductPassportService.search(
         session=session,
         locomotive_model_id=locomotive_model_id,
@@ -58,7 +58,7 @@ async def get_product_passport(
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_viewer_or_higher)],
 ):
-    """Возвращает паспорт и все узлы его дерева из БД"""
+    """Возвращает доступный паспорт и все узлы его дерева из БД"""
     passport = await ProductPassportService.get_by_id(session, passport_id)
     if passport is None:
         raise HTTPException(

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     OMEGA_SYNC_HOUR: int = 2
     OMEGA_SYNC_MINUTE: int = 0
     OMEGA_SYNC_REQUEST_DELAY_SECONDS: float = 0.25
+    UL_SYNC_ENABLED: bool = False
+    UL_SERVICE_URL: str = ""
+    UL_SERVICE_USER: str | None = None
+    UL_SERVICE_PASSWORD: str | None = None
+    UL_SERVICE_VERIFY_SSL: bool = True
 
     @model_validator(mode="after")
     def validate_omega_settings(self) -> "Settings":
@@ -46,6 +51,18 @@ class Settings(BaseSettings):
                     "Для синхронизации Omega не заданы параметры: "
                     + ", ".join(missing)
                 )
+        if self.UL_SYNC_ENABLED:
+            missing = [
+                name
+                for name in (
+                    "UL_SERVICE_URL",
+                    "UL_SERVICE_USER",
+                    "UL_SERVICE_PASSWORD",
+                )
+                if not getattr(self, name)
+            ]
+            if missing:
+                raise ValueError("Не заданы параметры UL-сервиса: " + ", ".join(missing))
         return self
 
     @property

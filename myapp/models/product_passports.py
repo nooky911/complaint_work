@@ -38,6 +38,7 @@ class ProductPassport(Base):
         BigInteger, nullable=False, unique=True
     )
     omega_name: Mapped[str] = mapped_column(Text, nullable=False)
+    commissioned_at: Mapped[date | None] = mapped_column(Date, nullable=True)
     imported_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

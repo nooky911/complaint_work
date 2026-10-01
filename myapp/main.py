@@ -36,7 +36,7 @@ async def lifespan(_: FastAPI):
     await create_db_and_tables()
 
     passport_sync_task = None
-    if settings.OMEGA_SYNC_ENABLED:
+    if settings.OMEGA_SYNC_ENABLED and settings.UL_SYNC_ENABLED:
         passport_sync_task = asyncio.create_task(run_product_passport_sync_scheduler())
 
     yield

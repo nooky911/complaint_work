@@ -16,12 +16,13 @@ const DETAIL_FIELDS = [
   ["designation", "Обозначение"],
   ["serial_number", "Заводской номер"],
   ["manufacture_date", "Дата изготовления"],
+  ["commissioned_at", "Дата ввода в эксплуатацию"],
   ["install_date", "Дата установки"],
   ["manufacturer", "Изготовитель"],
   ["supplier", "Поставщик"],
 ];
 
-const DATE_FIELDS = new Set(["manufacture_date", "install_date"]);
+const DATE_FIELDS = new Set(["manufacture_date", "commissioned_at", "install_date"]);
 
 export function PassportTree({ passport }) {
   const { root, childrenByParent } = useMemo(() => {
@@ -140,7 +141,9 @@ export function PassportTree({ passport }) {
                   Boolean(selectedNode.manufacturer || selectedNode.serial_number);
                 const value = missingSupplier
                   ? "Поставщик пуст"
-                  : selectedNode[key];
+                  : key === "commissioned_at"
+                    ? (selectedNode.id === root?.id ? passport.commissioned_at : null)
+                    : selectedNode[key];
                 if (value === null || value === undefined || value === "")
                   return null;
                 const formattedValue = DATE_FIELDS.has(key)

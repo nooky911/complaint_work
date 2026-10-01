@@ -44,6 +44,7 @@ class ProductPassportResponse(BaseModel):
     locomotive_model_name: str
     product_number: str
     omega_name: str
+    commissioned_at: date
     imported_at: datetime
     nodes: list[ProductPassportNodeResponse]
 

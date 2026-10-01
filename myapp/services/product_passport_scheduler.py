@@ -9,16 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 async def run_product_passport_sync_scheduler() -> None:
-    """Запускает синхронизацию при старте и затем раз в сутки"""
+    """Запускает синхронизацию раз в сутки в назначенное время"""
     while True:
+        await asyncio.sleep(_seconds_until_next_run())
         try:
             await ProductPassportSyncService.sync_new_passports()
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("Не удалось выполнить синхронизацию паспортов")
-
-        await asyncio.sleep(_seconds_until_next_run())
 
 
 def _seconds_until_next_run() -> float:

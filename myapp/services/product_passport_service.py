@@ -31,6 +31,7 @@ class ProductPassportService:
         statement = (
             select(LocomotiveModel.id, LocomotiveModel.locomotive_model_name)
             .join(ProductPassport)
+            .where(ProductPassport.commissioned_at.is_not(None))
             .distinct()
             .order_by(LocomotiveModel.locomotive_model_name)
         )
@@ -62,6 +63,7 @@ class ProductPassportService:
             .where(
                 ProductPassport.locomotive_model_id == locomotive_model_id,
                 ProductPassport.product_number.ilike(f"{escaped_number}%", escape="\\"),
+                ProductPassport.commissioned_at.is_not(None),
             )
             .order_by(ProductPassport.product_number)
             .limit(limit)
@@ -89,7 +91,10 @@ class ProductPassportService:
                     ProductPassportNode.supplier_record
                 ),
             )
-            .where(ProductPassport.id == passport_id)
+            .where(
+                ProductPassport.id == passport_id,
+                ProductPassport.commissioned_at.is_not(None),
+            )
         )
         passport = await session.scalar(statement)
         if passport:
@@ -264,6 +269,7 @@ class ProductPassportService:
             locomotive_model_name=passport.locomotive_model_name,
             product_number=passport.product_number,
             omega_name=passport.omega_name,
+            commissioned_at=passport.commissioned_at,
             imported_at=passport.imported_at,
             nodes=nodes,
         )
