@@ -8,6 +8,7 @@ from .files_routes import router as files_router
 from .warranty_routes import router as warranty_router
 from .equipment_routes import router as equipment_router
 from .product_passport_routes import router as product_passport_router
+from .omega_stock_routes import router as omega_stock_router
 
 endpoints_router = APIRouter()
 
@@ -18,3 +19,4 @@ endpoints_router.include_router(files_router)  # /files/**
 endpoints_router.include_router(references_router)  # /references/**
 endpoints_router.include_router(equipment_router)  # /equipment/**
 endpoints_router.include_router(product_passport_router)  # /product-passports/**
+endpoints_router.include_router(omega_stock_router)  # /omega-stock/**

@@ -4,19 +4,17 @@ import {
   Plus,
   ArrowUpDown,
   X,
-  Settings,
   Download,
   ChevronLeft,
   ChevronRight,
-  BookOpenText,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 // Компоненты
 import { RepairCaseList } from "../components/RepairCaseList";
 import { RepairCaseDetails } from "../components/RepairCaseDetails";
 import { FilterSidebar } from "../components/FilterSidebar";
 import { CreateRepairCase } from "../components/CreateRepairCase";
+import { SectionsMenu } from "../components/Layout/SectionsMenu";
 
 // Утилиты и Константы
 import { INITIAL_FILTERS } from "../constants/filters";
@@ -34,8 +32,6 @@ import { useDebouncedValue } from "../hooks/useDebounce";
 import { exportCasesToExcel } from "../api/export";
 
 export default React.memo(function DashboardPage() {
-  const navigate = useNavigate();
-
   // --- ПАГИНАЦИЯ ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
@@ -225,14 +221,7 @@ export default React.memo(function DashboardPage() {
 
         {/* ПРАВЫЙ БЛОК КНОПОК */}
         <div className="flex items-center gap-3">
-          {/* Кнопка паспортов */}
-          <button
-            onClick={() => navigate("/product-passports")}
-            className="flex items-center justify-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-2.5 text-xs font-black tracking-wider text-indigo-600 uppercase shadow-sm transition-all hover:border-indigo-300 hover:bg-indigo-100 active:scale-95"
-          >
-            <BookOpenText className="h-4 w-4" />
-            Паспорта
-          </button>
+          <SectionsMenu isSuperadmin={currentUser?.role === "superadmin"} />
 
           {/* Кнопка экспорта в Excel */}
           <button
@@ -251,17 +240,6 @@ export default React.memo(function DashboardPage() {
             )}
             {isExporting ? "Экспорт..." : "Экспорт в Excel"}
           </button>
-
-          {/* Кнопка управления оборудованием (только для superadmin) */}
-          {currentUser?.role === "superadmin" && (
-            <button
-              onClick={() => navigate("/equipment-management")}
-              className="flex items-center justify-center gap-2 rounded-xl border border-purple-200 bg-purple-50 px-4 py-2.5 text-xs font-black tracking-wider text-purple-600 uppercase shadow-sm transition-all hover:border-purple-300 hover:bg-purple-100 active:scale-95"
-            >
-              <Settings className="h-4 w-4" />
-              Оборудование
-            </button>
-          )}
 
           {/* Кнопка создания */}
           {currentUser?.role !== "viewer" && (
