@@ -9,7 +9,7 @@ ORDER BY SIGN
 
 DOCUMENT_QUERIES = {
     "receipts": """
-        SELECT o.CODE AS DOCUMENT_ID, o.ORDNUM AS NUMBER,
+        SELECT o.CODE AS DOCUMENT_ID, o.ORDNUM AS "NUMBER",
                o.SUPPLDOCDATE AS ACCOMPANYING_DATE,
                w.SIGN || ' - ' || w.NAME AS WAREHOUSE,
                e.NAME AS SUPPLIER, o.SUPPLDOCNUM AS ACCOMPANYING_NUMBER,
@@ -32,7 +32,7 @@ DOCUMENT_QUERIES = {
                CASE WHEN i.ACCEPT_DATE IS NOT NULL THEN 'Принят'
                     WHEN i.CONFIRMED = 1 THEN 'Выдано'
                     ELSE 'Не утвержден' END AS STATUS,
-               i.INVOICENUM AS NUMBER, i.NOTICE AS NOTE,
+               i.INVOICENUM AS "NUMBER", i.NOTICE AS NOTE,
                sender.SIGN || ' - ' || sender.NAME AS WAREHOUSE,
                accepted.FULLNAME AS ACCEPTED_BY,
                receiver.SIGN || ' - ' || receiver.NAME AS RECIPIENT,
@@ -50,7 +50,7 @@ DOCUMENT_QUERIES = {
         OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
     """,
     "outbound": """
-        SELECT i.CODE AS DOCUMENT_ID, i.INVOICENUM AS NUMBER,
+        SELECT i.CODE AS DOCUMENT_ID, i.INVOICENUM AS "NUMBER",
                w.SIGN || ' - ' || w.NAME AS WAREHOUSE,
                e.NAME AS RECIPIENT, i.INVOICEDATE AS DOCUMENT_DATE,
                i.SHIPPING_DATE,
