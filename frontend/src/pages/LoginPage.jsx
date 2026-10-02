@@ -51,14 +51,22 @@ const LoginPage = () => {
               name="login"
               rules={[{ required: true, message: "Введите логин!" }]}
             >
-              <Input prefix={<UserOutlined />} placeholder="Логин" />
+              <Input
+                prefix={<UserOutlined />}
+                placeholder="Логин"
+                autoComplete="username"
+              />
             </Form.Item>
 
             <Form.Item
               name="password"
               rules={[{ required: true, message: "Введите пароль!" }]}
             >
-              <Input.Password prefix={<LockOutlined />} placeholder="Пароль" />
+              <Input.Password
+                prefix={<LockOutlined />}
+                placeholder="Пароль"
+                autoComplete="current-password"
+              />
             </Form.Item>
 
             <Form.Item className="mb-0">
