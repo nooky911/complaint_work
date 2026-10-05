@@ -19,7 +19,7 @@ export function StockDocumentTable({
   const columns = STOCK_DOCUMENT_COLUMNS[kind];
 
   return (
-    <div className="max-h-[calc(100vh-14rem)] overflow-auto">
+    <div className="w-full">
       <table className="w-full min-w-[1100px] border-collapse text-left text-xs">
         <thead className="sticky top-0 z-10 bg-slate-50 text-[12px] font-black tracking-wide text-slate-500 uppercase">
           <tr>

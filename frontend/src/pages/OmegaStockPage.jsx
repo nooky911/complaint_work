@@ -137,7 +137,7 @@ export default function OmegaStockPage() {
               </div>
             </section>
           ) : (
-            <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+            <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                 <div>
                   <h2 className="text-sm font-black text-slate-900">
