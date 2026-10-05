@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Filter, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
 import { useOmegaStockFilterOptions } from "../../hooks/api/useOmegaStockApi";
 import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
@@ -13,7 +13,7 @@ const labelFor = (value, format) => {
   return formatOmegaStockValue(value, format);
 };
 
-export function StockColumnFilter({ kind, column, filters, onChange }) {
+export function StockColumnFilter({ kind, column, filters, onChange, children }) {
   const buttonRef = useRef(null);
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
@@ -107,9 +107,9 @@ export function StockColumnFilter({ kind, column, filters, onChange }) {
         onClick={openMenu}
         aria-label={`Фильтр: ${column.title}`}
         aria-expanded={open}
-        className={`relative -top-px ml-0.5 inline-flex items-center justify-center align-middle rounded p-0 transition-colors hover:bg-indigo-100 hover:text-indigo-700 ${filters[column.key] ? "bg-indigo-100 text-indigo-700" : "text-slate-400"}`}
+        className={`block w-full rounded px-1 py-0.5 text-center transition-colors hover:bg-indigo-100 hover:text-indigo-700 ${filters[column.key] ? "bg-indigo-100 text-indigo-700" : "text-slate-600"}`}
       >
-        <Filter className="h-2.5 w-2.5" />
+        {children}
       </button>
       {open && createPortal(
         <>

@@ -40,7 +40,7 @@ export function StockDocumentDetails({ kind, document }) {
         ) : (
           <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="w-max min-w-full text-left text-xs">
-              <thead className="bg-slate-200 text-[12px] font-black tracking-wide text-slate-600 uppercase">
+              <thead className="bg-slate-200 text-[10px] font-black tracking-wide text-slate-600 uppercase">
                 <tr>
                   {STOCK_ITEM_COLUMNS[kind].map((column) => (
                     <th

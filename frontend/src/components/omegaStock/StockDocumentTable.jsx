@@ -22,27 +22,21 @@ export function StockDocumentTable({
         <thead className="sticky top-0 z-10 bg-slate-50 text-[12px] font-black tracking-wide text-slate-500 uppercase">
           <tr>
             {columns.map((column) => {
-              const words = column.title.split(" ");
-              const lastWord = words.pop();
               return (
                 <th
                   key={column.key}
                   className="border-b border-slate-200 px-2 py-2 text-center align-top"
                 >
-                  <div className="leading-4">
-                    {words.length > 0 && `${words.join(" ")} `}
-                    <span className="whitespace-nowrap">
-                      {lastWord}
-                      <StockColumnFilter
-                        kind={kind}
-                        column={column}
-                        filters={filters}
-                        onChange={(selection) =>
-                          onFilterChange(column.key, selection)
-                        }
-                      />
-                    </span>
-                  </div>
+                  <StockColumnFilter
+                    kind={kind}
+                    column={column}
+                    filters={filters}
+                    onChange={(selection) =>
+                      onFilterChange(column.key, selection)
+                    }
+                  >
+                    <span className="block leading-4">{column.title}</span>
+                  </StockColumnFilter>
                 </th>
               );
             })}
@@ -81,7 +75,7 @@ export function StockDocumentTable({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className="max-w-64 px-2 py-2 align-top leading-5 break-words"
+                      className={`max-w-64 px-2 py-2 align-top leading-5 break-words ${column.key === "supplier" ? "text-center" : "text-left"}`}
                     >
                       {formatOmegaStockValue(
                         document[column.key],
