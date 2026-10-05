@@ -7,11 +7,11 @@ import {
   getOmegaStockItems,
 } from "../../api/omegaStock";
 
-export const useOmegaStockDocuments = (kind, page, pageSize, filters) =>
+export const useOmegaStockDocuments = (kind, page, pageSize, filters, sort) =>
   useQuery({
-    queryKey: ["omega-stock", "documents", kind, page, pageSize, filters],
+    queryKey: ["omega-stock", "documents", kind, page, pageSize, filters, sort],
     queryFn: () =>
-      getOmegaStockDocuments(kind, (page - 1) * pageSize, pageSize + 1, filters),
+      getOmegaStockDocuments(kind, (page - 1) * pageSize, pageSize + 1, filters, sort),
     enabled: Boolean(kind),
   });
 

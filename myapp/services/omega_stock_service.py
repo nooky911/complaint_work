@@ -51,9 +51,15 @@ class OmegaStockService:
         offset: int,
         limit: int,
         column_filters: dict[str, OmegaStockColumnFilter] | None = None,
+        sort_column: str | None = None,
+        sort_direction: str = "desc",
     ) -> list[dict]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("Начальная дата не может быть позже конечной")
+        if sort_column is not None and sort_column not in DOCUMENT_FILTER_COLUMNS[kind]:
+            raise ValueError(f"Неизвестная колонка сортировки: {sort_column}")
+        if sort_direction not in ("asc", "desc"):
+            raise ValueError("Неизвестное направление сортировки")
         allowed_ids = await self._warehouse_ids(kind, warehouse_ids)
         filters = self._validated_filters(kind, column_filters)
         return await asyncio.to_thread(
@@ -66,6 +72,8 @@ class OmegaStockService:
             offset,
             limit,
             filters,
+            sort_column,
+            sort_direction,
         )
 
     @staticmethod

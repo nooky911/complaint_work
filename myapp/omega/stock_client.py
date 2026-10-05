@@ -80,6 +80,8 @@ class OmegaStockClient:
         offset: int,
         limit: int,
         column_filters: dict[str, dict[str, Any]] | None = None,
+        sort_column: str | None = None,
+        sort_direction: str = "desc",
     ) -> list[dict[str, Any]]:
         """Читает страницу документов по складам и датам"""
         if not warehouse_ids:
@@ -108,10 +110,17 @@ class OmegaStockClient:
         conditions.extend(self._column_conditions(kind, column_filters or {}, parameters))
         base_sql = DOCUMENT_QUERIES[kind].format(warehouses=", ".join(warehouse_binds))
         where = " AND ".join(conditions) if conditions else "1=1"
+        if sort_column is None:
+            sort_expression = f'd."{date_column}"'
+        else:
+            sort_expression = f'd."{sort_column.upper()}"'
+            if DOCUMENT_FILTER_COLUMNS[kind][sort_column] == "text":
+                sort_expression = f"UPPER(TRIM({sort_expression}))"
+        direction = "ASC" if sort_direction == "asc" else "DESC"
         sql = f"""
             SELECT d.* FROM ({base_sql}) d
             WHERE {where}
-            ORDER BY d."{date_column}" DESC, d.DOCUMENT_ID DESC
+            ORDER BY {sort_expression} {direction} NULLS LAST, d.DOCUMENT_ID DESC
             OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
         """
         with self._get_connection() as connection:

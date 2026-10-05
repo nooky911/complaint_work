@@ -28,13 +28,14 @@ export default function OmegaStockPage() {
   const [page, setPage] = useState(1);
   const [expandedDocumentId, setExpandedDocumentId] = useState(null);
   const [filters, setFilters] = useState({});
+  const [sort, setSort] = useState(null);
   const selectedType = STOCK_DOCUMENT_TYPES.find((type) => type.key === kind);
   const {
     data: loadedDocuments = [],
     isLoading,
     isError,
     error,
-  } = useOmegaStockDocuments(kind, page, PAGE_SIZE, filters);
+  } = useOmegaStockDocuments(kind, page, PAGE_SIZE, filters, sort);
   const documents = loadedDocuments.slice(0, PAGE_SIZE);
   const hasNextPage = loadedDocuments.length > PAGE_SIZE;
 
@@ -43,6 +44,19 @@ export default function OmegaStockPage() {
     setPage(1);
     setExpandedDocumentId(null);
     setFilters({});
+    setSort(null);
+  };
+
+  const applySort = (column) => {
+    setSort((current) => ({
+      column,
+      direction:
+        current?.column === column && current.direction === "asc"
+          ? "desc"
+          : "asc",
+    }));
+    setPage(1);
+    setExpandedDocumentId(null);
   };
 
   const applyFilter = (column, selection) => {
@@ -174,6 +188,8 @@ export default function OmegaStockPage() {
                   }
                   filters={filters}
                   onFilterChange={applyFilter}
+                  sort={sort}
+                  onSortChange={applySort}
                 />
               )}
 

@@ -60,7 +60,7 @@ export const STOCK_DOCUMENT_COLUMNS = {
 
 export const STOCK_ITEM_COLUMNS = {
   receipts: [
-    { key: "position", title: "Номер позиции" },
+    { key: "position", title: "№ п/п" },
     { key: "card_number", title: "№ (ном)" },
     { key: "nomenclature", title: "Номенклатура" },
     { key: "document_quantity", title: "Кол-во (док)" },

@@ -22,7 +22,7 @@ export function StockDocumentDetails({ kind, document }) {
   } = useOmegaStockFiles(kind, documentId);
 
   return (
-    <div className="w-full min-w-0 space-y-3 border-l-4 border-indigo-400 bg-slate-200/70 px-3 py-3 md:px-4">
+    <div className="w-full min-w-0 border-l-4 border-indigo-400 bg-slate-200/70 px-3 py-3 md:px-4">
       <section className="min-w-0 overflow-hidden rounded-lg border border-slate-300 bg-slate-50 shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
           <h3 className="text-sm font-black text-slate-900">
@@ -69,30 +69,26 @@ export function StockDocumentDetails({ kind, document }) {
             </table>
           </div>
         )}
-      </section>
-
-      <section className="rounded-lg border border-slate-300 bg-slate-50 p-4 shadow-sm">
-        <h3 className="mb-3 text-sm font-black text-slate-900">Файлы</h3>
-        {filesLoading ? (
-          <p className="text-sm text-slate-500">Загрузка файлов...</p>
-        ) : filesError ? (
-          <p className="text-sm text-red-600">Не удалось загрузить файлы</p>
-        ) : files.length === 0 ? (
-          <p className="text-sm text-slate-500">Вложений нет</p>
-        ) : (
-          <div className="flex flex-wrap gap-2">
-            {files.map((file) => (
-              <a
-                key={file.id}
-                href={omegaStockFileUrl(kind, documentId, file.id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-indigo-600 hover:bg-indigo-50"
-              >
-                <FileText className="h-4 w-4" />
-                {file.name}
-              </a>
-            ))}
+        {(filesLoading || filesError || files.length > 0) && (
+          <div className="flex items-center gap-5 overflow-x-auto px-3 pb-2 pt-1 text-xs">
+            {filesLoading ? (
+              <span className="text-slate-500">Загрузка файлов...</span>
+            ) : filesError ? (
+              <span className="text-red-600">Не удалось загрузить файлы</span>
+            ) : (
+              files.map((file) => (
+                <a
+                  key={file.id}
+                  href={omegaStockFileUrl(kind, documentId, file.id)}
+                  download={file.name}
+                  title={`Скачать ${file.name}`}
+                  className="inline-flex shrink-0 items-center gap-1.5 text-slate-600 hover:text-indigo-600 hover:underline"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  <span className="whitespace-nowrap">{file.name}</span>
+                </a>
+              ))
+            )}
           </div>
         )}
       </section>

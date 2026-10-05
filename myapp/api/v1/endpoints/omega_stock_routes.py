@@ -70,11 +70,14 @@ async def get_documents(
     date_to: date | None = None,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    sort_column: Annotated[str | None, Query(max_length=50)] = None,
+    sort_direction: Literal["asc", "desc"] = "desc",
 ):
     response.headers["Cache-Control"] = "no-store"
     return await _read(
         service.list_documents(
-            kind, warehouse_ids, number, date_from, date_to, offset, limit
+            kind, warehouse_ids, number, date_from, date_to, offset, limit,
+            sort_column=sort_column, sort_direction=sort_direction,
         )
     )
 
@@ -91,11 +94,14 @@ async def search_documents(
     response: Response,
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    sort_column: Annotated[str | None, Query(max_length=50)] = None,
+    sort_direction: Literal["asc", "desc"] = "desc",
 ):
     response.headers["Cache-Control"] = "no-store"
     return await _read(
         service.list_documents(
-            kind, None, None, None, None, offset, limit, request.filters
+            kind, None, None, None, None, offset, limit, request.filters,
+            sort_column, sort_direction,
         )
     )
 

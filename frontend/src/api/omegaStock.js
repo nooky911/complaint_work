@@ -1,8 +1,15 @@
 import api from "./api";
 
-export const getOmegaStockDocuments = async (kind, offset = 0, limit = 50, filters = {}) => {
+export const getOmegaStockDocuments = async (kind, offset = 0, limit = 50, filters = {}, sort = null) => {
   const response = await api.post(`/omega-stock/documents/${kind}/search`, { filters }, {
-    params: { offset, limit },
+    params: {
+      offset,
+      limit,
+      ...(sort?.column && {
+        sort_column: sort.column,
+        sort_direction: sort.direction,
+      }),
+    },
   });
   return response.data;
 };
