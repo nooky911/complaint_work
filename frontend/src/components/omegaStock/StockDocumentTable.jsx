@@ -6,37 +6,56 @@ import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
 import { StockColumnFilter } from "./StockColumnFilter";
 import { StockDocumentDetails } from "./StockDocumentDetails";
 
-export function StockDocumentTable({ kind, documents, expandedDocumentId, onSelect, filters, onFilterChange }) {
+export function StockDocumentTable({
+  kind,
+  documents,
+  expandedDocumentId,
+  onSelect,
+  filters,
+  onFilterChange,
+}) {
   const columns = STOCK_DOCUMENT_COLUMNS[kind];
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[1100px] border-collapse text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50 text-[10px] font-black tracking-wide text-slate-500 uppercase">
+        <thead className="sticky top-0 z-10 bg-slate-50 text-[12px] font-black tracking-wide text-slate-500 uppercase">
           <tr>
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className="border-b border-slate-200 px-2 py-2 align-top"
-              >
-                <div className="inline-flex items-start gap-0.5">
-                  <span>{column.title}</span>
-                  <StockColumnFilter
-                    kind={kind}
-                    column={column}
-                    filters={filters}
-                    onChange={(selection) => onFilterChange(column.key, selection)}
-                  />
-                </div>
-              </th>
-            ))}
+            {columns.map((column) => {
+              const words = column.title.split(" ");
+              const lastWord = words.pop();
+              return (
+                <th
+                  key={column.key}
+                  className="border-b border-slate-200 px-2 py-2 text-center align-top"
+                >
+                  <div className="leading-4">
+                    {words.length > 0 && `${words.join(" ")} `}
+                    <span className="whitespace-nowrap">
+                      {lastWord}
+                      <StockColumnFilter
+                        kind={kind}
+                        column={column}
+                        filters={filters}
+                        onChange={(selection) =>
+                          onFilterChange(column.key, selection)
+                        }
+                      />
+                    </span>
+                  </div>
+                </th>
+              );
+            })}
             <th className="border-b border-slate-200 px-3 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {documents.length === 0 && (
             <tr>
-              <td colSpan={columns.length + 1} className="h-56 px-6 text-center text-sm text-slate-500">
+              <td
+                colSpan={columns.length + 1}
+                className="h-56 px-6 text-center text-sm text-slate-500"
+              >
                 Документов по выбранным фильтрам нет
               </td>
             </tr>
@@ -62,13 +81,20 @@ export function StockDocumentTable({ kind, documents, expandedDocumentId, onSele
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                    className="max-w-64 px-2 py-2 align-top leading-5 break-words"
+                      className="max-w-64 px-2 py-2 align-top leading-5 break-words"
                     >
-                      {formatOmegaStockValue(document[column.key], column.format)}
+                      {formatOmegaStockValue(
+                        document[column.key],
+                        column.format,
+                      )}
                     </td>
                   ))}
                   <td className="px-2 py-2 text-indigo-500">
-                    {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    {expanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                   </td>
                 </tr>
                 {expanded && (

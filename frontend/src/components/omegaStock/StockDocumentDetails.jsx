@@ -22,10 +22,12 @@ export function StockDocumentDetails({ kind, document }) {
   } = useOmegaStockFiles(kind, documentId);
 
   return (
-    <div className="w-full min-w-0 max-w-[calc(100vw-8rem)] space-y-3 border-l-4 border-indigo-400 bg-slate-100 px-3 py-3 md:px-4">
-      <section className="min-w-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+    <div className="w-full min-w-0 space-y-3 border-l-4 border-indigo-400 bg-slate-200/70 px-3 py-3 md:px-4">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-slate-300 bg-slate-50 shadow-sm">
         <div className="border-b border-slate-100 px-4 py-3">
-          <h3 className="text-sm font-black text-slate-900">Состав документа</h3>
+          <h3 className="text-sm font-black text-slate-900">
+            Состав документа
+          </h3>
         </div>
         {itemsLoading ? (
           <p className="p-5 text-sm text-slate-500">Загрузка состава...</p>
@@ -38,16 +40,19 @@ export function StockDocumentDetails({ kind, document }) {
         ) : (
           <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
             <table className="w-max min-w-full text-left text-xs">
-              <thead className="bg-slate-50 text-[10px] font-black tracking-wide text-slate-500 uppercase">
+              <thead className="bg-slate-200 text-[12px] font-black tracking-wide text-slate-600 uppercase">
                 <tr>
                   {STOCK_ITEM_COLUMNS[kind].map((column) => (
-                    <th key={column.key} className="whitespace-nowrap px-3 py-2">
+                    <th
+                      key={column.key}
+                      className="px-3 py-2 whitespace-nowrap"
+                    >
                       {column.title}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-200 bg-slate-100">
                 {items.map((item) => (
                   <tr key={`${item.item_id}-${item.lot_movement_id ?? 0}`}>
                     {STOCK_ITEM_COLUMNS[kind].map((column) => (
@@ -66,7 +71,7 @@ export function StockDocumentDetails({ kind, document }) {
         )}
       </section>
 
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <section className="rounded-lg border border-slate-300 bg-slate-50 p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-black text-slate-900">Файлы</h3>
         {filesLoading ? (
           <p className="text-sm text-slate-500">Загрузка файлов...</p>

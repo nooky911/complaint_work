@@ -107,9 +107,9 @@ export function StockColumnFilter({ kind, column, filters, onChange }) {
         onClick={openMenu}
         aria-label={`Фильтр: ${column.title}`}
         aria-expanded={open}
-        className={`shrink-0 rounded p-0.5 transition-colors hover:bg-indigo-100 hover:text-indigo-700 ${filters[column.key] ? "bg-indigo-100 text-indigo-700" : "text-slate-400"}`}
+        className={`relative -top-px ml-0.5 inline-flex items-center justify-center align-middle rounded p-0 transition-colors hover:bg-indigo-100 hover:text-indigo-700 ${filters[column.key] ? "bg-indigo-100 text-indigo-700" : "text-slate-400"}`}
       >
-        <Filter className="h-3 w-3" />
+        <Filter className="h-2.5 w-2.5" />
       </button>
       {open && createPortal(
         <>
