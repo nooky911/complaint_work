@@ -15,6 +15,7 @@ from myapp.constants.omega_stock_constants import (
 )
 from myapp.omega.stock_queries import (
     DETAIL_QUERIES,
+    DOCUMENT_FILTER_COLUMNS,
     DOCUMENT_QUERIES,
     DOCUMENT_TABLES,
     FILE_EXISTS_SQL,
@@ -78,6 +79,7 @@ class OmegaStockClient:
         date_to: date | None,
         offset: int,
         limit: int,
+        column_filters: dict[str, dict[str, Any]] | None = None,
     ) -> list[dict[str, Any]]:
         """Читает страницу документов по складам и датам"""
         if not warehouse_ids:
@@ -90,28 +92,117 @@ class OmegaStockClient:
             parameters[key] = warehouse_id
             warehouse_binds.append(f":{key}")
 
-        alias = "o" if kind == "receipts" else "i"
-        number_column = "ORDNUM" if kind == "receipts" else "INVOICENUM"
-        date_column = "ORDDATE" if kind == "receipts" else "INVOICEDATE"
-        filters = []
+        conditions = []
+        date_column = "ACCOUNTING_DATE" if kind == "receipts" else "DOCUMENT_DATE"
         if number:
-            filters.append(f"AND INSTR({alias}.{number_column}, :p_number) > 0")
+            conditions.append('INSTR(d."NUMBER", :p_number) > 0')
             parameters["p_number"] = number.strip()
         if date_from:
-            filters.append(f"AND {alias}.{date_column} >= :p_date_from")
+            conditions.append(f'd."{date_column}" >= :p_date_from')
             parameters["p_date_from"] = datetime.combine(date_from, time.min)
         if date_to:
-            filters.append(f"AND {alias}.{date_column} < :p_date_to")
+            conditions.append(f'd."{date_column}" < :p_date_to')
             parameters["p_date_to"] = datetime.combine(
                 date_to + timedelta(days=1), time.min
             )
-
-        sql = DOCUMENT_QUERIES[kind].format(
-            warehouses=", ".join(warehouse_binds),
-            filters="\n          ".join(filters),
-        )
+        conditions.extend(self._column_conditions(kind, column_filters or {}, parameters))
+        base_sql = DOCUMENT_QUERIES[kind].format(warehouses=", ".join(warehouse_binds))
+        where = " AND ".join(conditions) if conditions else "1=1"
+        sql = f"""
+            SELECT d.* FROM ({base_sql}) d
+            WHERE {where}
+            ORDER BY d."{date_column}" DESC, d.DOCUMENT_ID DESC
+            OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
+        """
         with self._get_connection() as connection:
             return self._fetch_all(connection, sql, **parameters)
+
+    @staticmethod
+    def _filter_expression(kind: str, column: str) -> str:
+        column_type = DOCUMENT_FILTER_COLUMNS[kind][column]
+        expression = f'd."{column.upper()}"'
+        if column_type == "date":
+            return f"TO_CHAR({expression}, 'YYYY-MM-DD')"
+        if column_type == "datetime":
+            return f"TO_CHAR({expression}, 'YYYY-MM-DD\"T\"HH24:MI')"
+        if column_type == "files":
+            return f"TO_CHAR({expression})"
+        return f"TRIM({expression})"
+
+    def _column_conditions(
+        self,
+        kind: str,
+        filters: dict[str, dict[str, Any]],
+        parameters: dict[str, Any],
+        except_column: str | None = None,
+    ) -> list[str]:
+        conditions = []
+        for column, selection in filters.items():
+            if column == except_column:
+                continue
+            expression = self._filter_expression(kind, column)
+            values = selection["values"]
+            has_empty = None in values
+            actual_values = [value for value in values if value is not None]
+            mode = selection["mode"]
+            if mode == "include" and not values:
+                conditions.append("1=0")
+                continue
+            if mode == "exclude" and not values:
+                continue
+            parts = []
+            for start in range(0, len(actual_values), 500):
+                binds = []
+                for index, value in enumerate(actual_values[start:start + 500], start):
+                    key = f"p_filter_{column}_{index}"
+                    parameters[key] = value
+                    binds.append(f":{key}")
+                parts.append(f"{expression} IN ({', '.join(binds)})")
+            matches = " OR ".join(parts)
+            if mode == "include":
+                if has_empty:
+                    parts.append(f"{expression} IS NULL")
+                conditions.append(f"({' OR '.join(parts)})")
+            else:
+                if matches:
+                    condition = f"NOT ({matches})"
+                    if not has_empty:
+                        condition = f"({expression} IS NULL OR {condition})"
+                else:
+                    condition = "1=1"
+                if has_empty:
+                    condition = f"({expression} IS NOT NULL AND {condition})"
+                conditions.append(condition)
+        return conditions
+
+    def list_filter_options(
+        self,
+        kind: str,
+        warehouse_ids: list[int],
+        column: str,
+        filters: dict[str, dict[str, Any]],
+    ) -> list[str | None]:
+        """Возвращает значения колонки среди документов, прошедших остальные фильтры."""
+        if not warehouse_ids:
+            return []
+        parameters = {}
+        binds = []
+        for index, warehouse_id in enumerate(warehouse_ids):
+            key = f"p_warehouse_{index}"
+            parameters[key] = warehouse_id
+            binds.append(f":{key}")
+        base_sql = DOCUMENT_QUERIES[kind].format(warehouses=", ".join(binds))
+        conditions = self._column_conditions(kind, filters, parameters, column)
+        where = " AND ".join(conditions) if conditions else "1=1"
+        expression = self._filter_expression(kind, column)
+        sql = f"""
+            SELECT DISTINCT {expression} AS FILTER_VALUE
+            FROM ({base_sql}) d
+            WHERE {where}
+            ORDER BY FILTER_VALUE NULLS FIRST
+        """
+        with self._get_connection() as connection:
+            return [row["filter_value"] for row in self._fetch_all(connection, sql, **parameters)]
 
     def document_exists(self, kind: str, document_id: int, warehouse_ids: list[int]) -> bool:
         """Проверяет принадлежность документа доступному складу"""

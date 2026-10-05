@@ -23,9 +23,6 @@ DOCUMENT_QUERIES = {
         LEFT JOIN OMP_ADM.USER_LIST creator ON creator.CODE = b.CREATE_USER
         WHERE NVL(o.ISDELETED, 0) = 0
           AND o.WSCODE IN ({warehouses})
-          {filters}
-        ORDER BY o.ORDDATE DESC, o.CODE DESC
-        OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
     """,
     "inplant": """
         SELECT i.CODE AS DOCUMENT_ID, i.INVOICEDATE AS DOCUMENT_DATE,
@@ -45,9 +42,6 @@ DOCUMENT_QUERIES = {
         WHERE NVL(i.ISDELETED, 0) = 0
           AND i.WSSENDERCODE IN ({warehouses})
           AND receiver.SIGN = 'РЕК_УСОЭ'
-          {filters}
-        ORDER BY i.INVOICEDATE DESC, i.CODE DESC
-        OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
     """,
     "outbound": """
         SELECT i.CODE AS DOCUMENT_ID, i.INVOICENUM AS "NUMBER",
@@ -71,10 +65,28 @@ DOCUMENT_QUERIES = {
         LEFT JOIN OMP_ADM.USER_LIST editor ON editor.CODE = b.UPDATE_USER
         WHERE NVL(i.ISDELETED, 0) = 0
           AND i.WSSENDERCODE IN ({warehouses})
-          {filters}
-        ORDER BY i.INVOICEDATE DESC, i.CODE DESC
-        OFFSET :p_offset ROWS FETCH NEXT :p_limit ROWS ONLY
     """,
+}
+
+# Только эти поля можно подставлять в SQL фильтров. Значения всегда передаются bind-параметрами.
+DOCUMENT_FILTER_COLUMNS = {
+    "receipts": {
+        "number": "text", "accompanying_date": "date", "warehouse": "text",
+        "supplier": "text", "accompanying_number": "text",
+        "accounting_date": "date", "note": "text", "created_at": "datetime",
+        "created_by": "text", "updated_at": "date",
+    },
+    "inplant": {
+        "document_date": "date", "status": "text", "number": "text",
+        "note": "text", "warehouse": "text", "accepted_by": "text",
+        "recipient": "text", "issued_by": "text",
+    },
+    "outbound": {
+        "number": "text", "warehouse": "text", "recipient": "text",
+        "document_date": "date", "shipping_date": "date", "status": "text",
+        "created_at": "datetime", "has_files": "files", "created_by": "text",
+        "updated_at": "date", "updated_by": "text",
+    },
 }
 
 DETAIL_QUERIES = {

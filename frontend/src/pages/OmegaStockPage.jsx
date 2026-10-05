@@ -5,12 +5,12 @@ import {
   ArrowUpFromLine,
   ChevronLeft,
   ChevronRight,
+  RotateCcw,
   Truck,
   Warehouse,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { StockDocumentDetails } from "../components/omegaStock/StockDocumentDetails";
 import { StockDocumentTable } from "../components/omegaStock/StockDocumentTable";
 import { STOCK_DOCUMENT_TYPES } from "../constants/omegaStockConfig";
 import { useOmegaStockDocuments } from "../hooks/api/useOmegaStockApi";
@@ -26,21 +26,34 @@ export default function OmegaStockPage() {
   const navigate = useNavigate();
   const [kind, setKind] = useState(null);
   const [page, setPage] = useState(1);
-  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [expandedDocumentId, setExpandedDocumentId] = useState(null);
+  const [filters, setFilters] = useState({});
   const selectedType = STOCK_DOCUMENT_TYPES.find((type) => type.key === kind);
   const {
     data: loadedDocuments = [],
     isLoading,
     isError,
     error,
-  } = useOmegaStockDocuments(kind, page, PAGE_SIZE);
+  } = useOmegaStockDocuments(kind, page, PAGE_SIZE, filters);
   const documents = loadedDocuments.slice(0, PAGE_SIZE);
   const hasNextPage = loadedDocuments.length > PAGE_SIZE;
 
   const selectKind = (nextKind) => {
     setKind(nextKind);
     setPage(1);
-    setSelectedDocument(null);
+    setExpandedDocumentId(null);
+    setFilters({});
+  };
+
+  const applyFilter = (column, selection) => {
+    setFilters((current) => {
+      const next = { ...current };
+      if (selection) next[column] = selection;
+      else delete next[column];
+      return next;
+    });
+    setPage(1);
+    setExpandedDocumentId(null);
   };
 
   const errorMessage =
@@ -120,13 +133,24 @@ export default function OmegaStockPage() {
                     Нажмите на строку, чтобы открыть состав документа
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => selectKind(null)}
-                  className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
-                >
-                  Другой вид документов
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setFilters({}); setPage(1); setExpandedDocumentId(null); }}
+                    disabled={Object.keys(filters).length === 0}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                    Сбросить фильтры
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectKind(null)}
+                    className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50"
+                  >
+                    Другой вид документов
+                  </button>
+                </div>
               </div>
 
               {isLoading ? (
@@ -142,7 +166,14 @@ export default function OmegaStockPage() {
                 <StockDocumentTable
                   kind={kind}
                   documents={documents}
-                  onSelect={setSelectedDocument}
+                  expandedDocumentId={expandedDocumentId}
+                  onSelect={(documentId) =>
+                    setExpandedDocumentId((current) =>
+                      current === documentId ? null : documentId,
+                    )
+                  }
+                  filters={filters}
+                  onFilterChange={applyFilter}
                 />
               )}
 
@@ -150,7 +181,7 @@ export default function OmegaStockPage() {
                 <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-xs font-bold text-slate-600">
                   <button
                     type="button"
-                    onClick={() => setPage((current) => current - 1)}
+                    onClick={() => { setPage((current) => current - 1); setExpandedDocumentId(null); }}
                     disabled={page === 1}
                     aria-label="Предыдущая страница"
                     className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"
@@ -160,7 +191,7 @@ export default function OmegaStockPage() {
                   Страница {page}
                   <button
                     type="button"
-                    onClick={() => setPage((current) => current + 1)}
+                    onClick={() => { setPage((current) => current + 1); setExpandedDocumentId(null); }}
                     disabled={!hasNextPage}
                     aria-label="Следующая страница"
                     className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"
@@ -173,14 +204,6 @@ export default function OmegaStockPage() {
           )}
         </div>
       </div>
-
-      {selectedDocument && (
-        <StockDocumentDetails
-          kind={kind}
-          document={selectedDocument}
-          onClose={() => setSelectedDocument(null)}
-        />
-      )}
     </div>
   );
 }

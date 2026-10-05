@@ -2,7 +2,18 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+class OmegaStockColumnFilter(BaseModel):
+    mode: Literal["include", "exclude"]
+    values: list[str | None]
+
+
+class OmegaStockFilterRequest(BaseModel):
+    filters: dict[str, OmegaStockColumnFilter] = Field(default_factory=dict)
 
 
 class OmegaStockWarehouse(BaseModel):

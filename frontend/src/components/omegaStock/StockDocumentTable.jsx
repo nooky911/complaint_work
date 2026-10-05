@@ -1,18 +1,13 @@
-import { ChevronRight } from "lucide-react";
+import { Fragment } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { STOCK_DOCUMENT_COLUMNS } from "../../constants/omegaStockConfig";
 import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
+import { StockColumnFilter } from "./StockColumnFilter";
+import { StockDocumentDetails } from "./StockDocumentDetails";
 
-export function StockDocumentTable({ kind, documents, onSelect }) {
+export function StockDocumentTable({ kind, documents, expandedDocumentId, onSelect, filters, onFilterChange }) {
   const columns = STOCK_DOCUMENT_COLUMNS[kind];
-
-  if (documents.length === 0) {
-    return (
-      <div className="flex min-h-56 items-center justify-center px-6 text-center text-sm text-slate-500">
-        Документов пока нет
-      </div>
-    );
-  }
 
   return (
     <div className="overflow-x-auto">
@@ -22,43 +17,70 @@ export function StockDocumentTable({ kind, documents, onSelect }) {
             {columns.map((column) => (
               <th
                 key={column.key}
-                className="border-b border-slate-200 px-4 py-3"
+                className="border-b border-slate-200 px-2 py-2 align-top"
               >
-                {column.title}
+                <div className="inline-flex items-start gap-0.5">
+                  <span>{column.title}</span>
+                  <StockColumnFilter
+                    kind={kind}
+                    column={column}
+                    filters={filters}
+                    onChange={(selection) => onFilterChange(column.key, selection)}
+                  />
+                </div>
               </th>
             ))}
             <th className="border-b border-slate-200 px-3 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {documents.map((document) => (
-            <tr
-              key={document.document_id}
-              role="button"
-              tabIndex={0}
-              onClick={() => onSelect(document)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  onSelect(document);
-                }
-              }}
-              className="cursor-pointer bg-white text-slate-700 transition-colors hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none"
-              aria-label={`Открыть документ №${document.number ?? document.document_id}`}
-            >
-              {columns.map((column) => (
-                <td
-                  key={column.key}
-                  className="max-w-64 px-4 py-3 align-top leading-5 break-words"
-                >
-                  {formatOmegaStockValue(document[column.key], column.format)}
-                </td>
-              ))}
-              <td className="px-3 py-3 text-indigo-500">
-                <ChevronRight className="h-4 w-4" />
+          {documents.length === 0 && (
+            <tr>
+              <td colSpan={columns.length + 1} className="h-56 px-6 text-center text-sm text-slate-500">
+                Документов по выбранным фильтрам нет
               </td>
             </tr>
-          ))}
+          )}
+          {documents.map((document) => {
+            const expanded = expandedDocumentId === document.document_id;
+            return (
+              <Fragment key={document.document_id}>
+                <tr
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={expanded}
+                  onClick={() => onSelect(document.document_id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onSelect(document.document_id);
+                    }
+                  }}
+                  className={`cursor-pointer text-slate-700 transition-colors focus:outline-none ${expanded ? "bg-indigo-50 font-semibold" : "bg-white hover:bg-indigo-50 focus:bg-indigo-50"}`}
+                  aria-label={`${expanded ? "Свернуть" : "Раскрыть"} документ №${document.number ?? document.document_id}`}
+                >
+                  {columns.map((column) => (
+                    <td
+                      key={column.key}
+                    className="max-w-64 px-2 py-2 align-top leading-5 break-words"
+                    >
+                      {formatOmegaStockValue(document[column.key], column.format)}
+                    </td>
+                  ))}
+                  <td className="px-2 py-2 text-indigo-500">
+                    {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  </td>
+                </tr>
+                {expanded && (
+                  <tr>
+                    <td colSpan={columns.length + 1} className="max-w-0 p-0">
+                      <StockDocumentDetails kind={kind} document={document} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            );
+          })}
         </tbody>
       </table>
     </div>

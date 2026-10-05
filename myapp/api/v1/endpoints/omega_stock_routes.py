@@ -14,6 +14,7 @@ from myapp.schemas.omega_stock import (
     OmegaOutboundInvoice,
     OmegaReceipt,
     OmegaStockFile,
+    OmegaStockFilterRequest,
     OmegaStockItem,
     OmegaStockWarehouse,
 )
@@ -76,6 +77,43 @@ async def get_documents(
             kind, warehouse_ids, number, date_from, date_to, offset, limit
         )
     )
+
+
+@router.post(
+    "/documents/{kind}/search",
+    response_model=list[OmegaReceipt | OmegaInplantInvoice | OmegaOutboundInvoice],
+    summary="Найти складские документы с фильтрами колонок",
+)
+async def search_documents(
+    kind: StockKind,
+    request: OmegaStockFilterRequest,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        service.list_documents(
+            kind, None, None, None, None, offset, limit, request.filters
+        )
+    )
+
+
+@router.post(
+    "/documents/{kind}/filter-options/{column}",
+    response_model=list[str | None],
+    summary="Получить доступные значения колонки с учётом других фильтров",
+)
+async def get_document_filter_options(
+    kind: StockKind,
+    column: str,
+    request: OmegaStockFilterRequest,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(service.list_filter_options(kind, column, request.filters))
 
 
 @router.get(

@@ -5,6 +5,8 @@ from datetime import date
 
 from myapp.config import settings
 from myapp.omega.stock_client import OmegaStockClient
+from myapp.omega.stock_queries import DOCUMENT_FILTER_COLUMNS
+from myapp.schemas.omega_stock import OmegaStockColumnFilter
 
 
 class OmegaStockService:
@@ -48,10 +50,12 @@ class OmegaStockService:
         date_to: date | None,
         offset: int,
         limit: int,
+        column_filters: dict[str, OmegaStockColumnFilter] | None = None,
     ) -> list[dict]:
         if date_from and date_to and date_from > date_to:
             raise ValueError("Начальная дата не может быть позже конечной")
         allowed_ids = await self._warehouse_ids(kind, warehouse_ids)
+        filters = self._validated_filters(kind, column_filters)
         return await asyncio.to_thread(
             self.client.list_documents,
             kind,
@@ -61,6 +65,39 @@ class OmegaStockService:
             date_to,
             offset,
             limit,
+            filters,
+        )
+
+    @staticmethod
+    def _validated_filters(
+        kind: str, filters: dict[str, OmegaStockColumnFilter] | None
+    ) -> dict[str, dict]:
+        result = {}
+        for column, selection in (filters or {}).items():
+            if column not in DOCUMENT_FILTER_COLUMNS[kind]:
+                raise ValueError(f"Неизвестная колонка фильтра: {column}")
+            values = selection.values
+            if any(value is not None and len(value) > 1000 for value in values):
+                raise ValueError("Значение фильтра слишком длинное")
+            if DOCUMENT_FILTER_COLUMNS[kind][column] == "files" and any(
+                value not in (None, "0", "1") for value in values
+            ):
+                raise ValueError("Недопустимое значение фильтра файлов")
+            result[column] = {"mode": selection.mode, "values": values}
+        return result
+
+    async def list_filter_options(
+        self,
+        kind: str,
+        column: str,
+        column_filters: dict[str, OmegaStockColumnFilter],
+    ) -> list[str | None]:
+        if column not in DOCUMENT_FILTER_COLUMNS[kind]:
+            raise ValueError(f"Неизвестная колонка фильтра: {column}")
+        filters = self._validated_filters(kind, column_filters)
+        allowed_ids = await self._warehouse_ids(kind)
+        return await asyncio.to_thread(
+            self.client.list_filter_options, kind, allowed_ids, column, filters
         )
 
     async def _document_available(self, kind: str, document_id: int) -> bool:

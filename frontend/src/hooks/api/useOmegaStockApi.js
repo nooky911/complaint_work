@@ -2,16 +2,25 @@ import { useQuery } from "@tanstack/react-query";
 
 import {
   getOmegaStockDocuments,
+  getOmegaStockFilterOptions,
   getOmegaStockFiles,
   getOmegaStockItems,
 } from "../../api/omegaStock";
 
-export const useOmegaStockDocuments = (kind, page, pageSize) =>
+export const useOmegaStockDocuments = (kind, page, pageSize, filters) =>
   useQuery({
-    queryKey: ["omega-stock", "documents", kind, page, pageSize],
+    queryKey: ["omega-stock", "documents", kind, page, pageSize, filters],
     queryFn: () =>
-      getOmegaStockDocuments(kind, (page - 1) * pageSize, pageSize + 1),
+      getOmegaStockDocuments(kind, (page - 1) * pageSize, pageSize + 1, filters),
     enabled: Boolean(kind),
+  });
+
+export const useOmegaStockFilterOptions = (kind, column, filters, enabled) =>
+  useQuery({
+    queryKey: ["omega-stock", "filter-options", kind, column, filters],
+    queryFn: () => getOmegaStockFilterOptions(kind, column, filters),
+    enabled: Boolean(kind && column && enabled),
+    staleTime: 0,
   });
 
 export const useOmegaStockItems = (kind, documentId) =>

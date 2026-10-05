@@ -2,17 +2,17 @@ export const STOCK_DOCUMENT_TYPES = [
   {
     key: "receipts",
     title: "Приходные ордера",
-    description: "Отгрузка оборудования от поставщиков на склады РЦ",
+    description: "Отгрузка оборудования от Поставщиков",
   },
   {
     key: "inplant",
     title: "Внутризаводские накладные",
-    description: "Отгрузка рекламационного оборудования из РЦ на завод",
+    description: "Отгрузка оборудования из РЦ на завод",
   },
   {
     key: "outbound",
     title: "Накладные на сторону",
-    description: "Отгрузка оборудования с завода поставщикам",
+    description: "Отгрузка оборудования Поставщикам",
   },
 ];
 
@@ -20,7 +20,7 @@ export const STOCK_DOCUMENT_COLUMNS = {
   receipts: [
     { key: "number", title: "Номер" },
     { key: "accompanying_date", title: "Дата сопр. документа", format: "date" },
-    { key: "warehouse", title: "Склад" },
+    { key: "warehouse", title: "Склад получатель" },
     { key: "supplier", title: "Поставщик" },
     { key: "accompanying_number", title: "Номер сопр. документа" },
     {
@@ -38,14 +38,14 @@ export const STOCK_DOCUMENT_COLUMNS = {
     { key: "status", title: "Статус" },
     { key: "number", title: "Номер" },
     { key: "note", title: "Примечание" },
-    { key: "warehouse", title: "Склад" },
+    { key: "warehouse", title: "Склад отправитель" },
     { key: "accepted_by", title: "Принял работник" },
     { key: "recipient", title: "Получатель" },
     { key: "issued_by", title: "Выдал" },
   ],
   outbound: [
     { key: "number", title: "Номер" },
-    { key: "warehouse", title: "Склад" },
+    { key: "warehouse", title: "Склад отправитель" },
     { key: "recipient", title: "Получатель" },
     { key: "document_date", title: "Дата", format: "date" },
     { key: "shipping_date", title: "Дата отгрузки", format: "date" },
@@ -67,9 +67,6 @@ export const STOCK_ITEM_COLUMNS = {
     { key: "unit", title: "Ед. изм." },
     { key: "nominal_number", title: "Ном. номер" },
     { key: "quantity", title: "Кол-во (факт)" },
-    { key: "price_rub", title: "Цена, руб." },
-    { key: "vat_rub", title: "НДС, руб." },
-    { key: "total_with_vat", title: "Сумма с НДС, руб." },
     { key: "depot_card", title: "Номера складских карточек" },
     { key: "party_number", title: "Номер партии" },
   ],
