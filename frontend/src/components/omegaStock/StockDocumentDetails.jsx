@@ -35,15 +35,15 @@ export function StockDocumentDetails({ kind, document, onClose }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-slate-900/35"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
       onMouseDown={onClose}
     >
-      <aside
+      <div
         role="dialog"
         aria-modal="true"
         aria-label={`Документ №${document.number ?? documentId}`}
         onMouseDown={(event) => event.stopPropagation()}
-        className="flex h-full w-full max-w-4xl flex-col bg-gray-50 shadow-2xl"
+        className="flex h-full max-h-full w-full flex-col overflow-hidden rounded-xl bg-gray-50 shadow-2xl"
       >
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 bg-white px-5 py-4 md:px-7">
           <div>
@@ -159,7 +159,7 @@ export function StockDocumentDetails({ kind, document, onClose }) {
             )}
           </section>
         </div>
-      </aside>
+      </div>
     </div>
   );
 }

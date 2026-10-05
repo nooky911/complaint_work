@@ -3,9 +3,8 @@ import asyncio
 import uvicorn
 import logging
 from contextlib import asynccontextmanager, suppress
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Any
 
 from myapp.config import settings
 from myapp.database.base import Base
@@ -64,17 +63,6 @@ openapi_encoding_fix(app)
 
 
 logging.basicConfig(level=logging.DEBUG)
-
-
-# Middleware для логирования всех запросов
-@app.middleware("http")
-async def log_requests(request: Request, call_next) -> Any:
-    print(f"Метод: {request.method}")
-    print(f"URL: {request.url}")
-    print(f"Заголовки: {dict(request.headers)}")
-
-    response = await call_next(request)
-    return response
 
 
 # -MIDDLEWARE (CORS) -

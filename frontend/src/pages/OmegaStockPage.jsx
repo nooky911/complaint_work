@@ -65,7 +65,11 @@ export default function OmegaStockPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto bg-gray-50 p-6">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5">
+        <div
+          className={`mx-auto flex w-full flex-col gap-5 ${
+            kind ? "max-w-none" : "max-w-7xl"
+          }`}
+        >
           {!kind ? (
             <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
               <div className="mb-5 flex items-center gap-3">
