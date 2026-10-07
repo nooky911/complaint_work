@@ -11,8 +11,8 @@ DOCUMENT_QUERIES = {
     "receipts": """
         SELECT o.CODE AS DOCUMENT_ID, o.ORDNUM AS "NUMBER",
                o.SUPPLDOCDATE AS ACCOMPANYING_DATE,
-               w.SIGN || ' - ' || w.NAME AS WAREHOUSE,
-               e.NAME AS SUPPLIER, o.SUPPLDOCNUM AS ACCOMPANYING_NUMBER,
+               {warehouse_expr} AS WAREHOUSE,
+               {supplier_expr} AS SUPPLIER, o.SUPPLDOCNUM AS ACCOMPANYING_NUMBER,
                o.ORDDATE AS ACCOUNTING_DATE, o.NOTICE AS NOTE,
                b.CREATE_DATE AS CREATED_AT, creator.FULLNAME AS CREATED_BY,
                b.UPDATE_DATE AS UPDATED_AT
@@ -30,9 +30,9 @@ DOCUMENT_QUERIES = {
                     WHEN i.CONFIRMED = 1 THEN 'Выдано'
                     ELSE 'Не утвержден' END AS STATUS,
                i.INVOICENUM AS "NUMBER", i.NOTICE AS NOTE,
-               sender.SIGN || ' - ' || sender.NAME AS WAREHOUSE,
+               {warehouse_expr} AS WAREHOUSE,
                accepted.FULLNAME AS ACCEPTED_BY,
-               receiver.SIGN || ' - ' || receiver.NAME AS RECIPIENT,
+               {recipient_expr} AS RECIPIENT,
                issued.FULLNAME AS ISSUED_BY
         FROM OMP_ADM.STOCK_INPLANT_INVOICE i
         JOIN OMP_ADM.DIVISIONOBJ sender ON sender.CODE = i.WSSENDERCODE
@@ -45,8 +45,8 @@ DOCUMENT_QUERIES = {
     """,
     "outbound": """
         SELECT i.CODE AS DOCUMENT_ID, i.INVOICENUM AS "NUMBER",
-               w.SIGN || ' - ' || w.NAME AS WAREHOUSE,
-               e.NAME AS RECIPIENT, i.INVOICEDATE AS DOCUMENT_DATE,
+               {warehouse_expr} AS WAREHOUSE,
+               {supplier_expr} AS RECIPIENT, i.INVOICEDATE AS DOCUMENT_DATE,
                i.SHIPPING_DATE,
                CASE WHEN i.CONFIRMED = 1 THEN 'Утв' ELSE 'Неутв' END AS STATUS,
                b.CREATE_DATE AS CREATED_AT,

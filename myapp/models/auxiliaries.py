@@ -1,4 +1,4 @@
-from sqlalchemy import String
+from sqlalchemy import ForeignKey, String, Text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from myapp.database.base import Base
 
@@ -154,3 +154,14 @@ class Supplier(Base):
     def name(self) -> str:
         """Для корректного использования name в AuxiliaryItem"""
         return self.supplier_name
+
+
+class OmegaStockSupplierName(Base):
+    """Соответствие названия контрагента Omega нашему справочнику"""
+
+    __tablename__ = "omega_stock_supplier_names"
+
+    omega_name: Mapped[str] = mapped_column(Text, primary_key=True)
+    supplier_id: Mapped[int] = mapped_column(ForeignKey("suppliers.id"), nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(100))
+    supplier: Mapped["Supplier"] = relationship()

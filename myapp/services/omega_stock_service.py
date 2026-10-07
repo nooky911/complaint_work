@@ -1,9 +1,14 @@
 """Сервис просмотра складских документов Omega"""
 
 import asyncio
+import re
 from datetime import date
 
+from sqlalchemy import select
+
 from myapp.config import settings
+from myapp.database.base import async_session_maker
+from myapp.models.auxiliaries import OmegaStockSupplierName, RegionalCenter, Supplier
 from myapp.omega.stock_client import OmegaStockClient
 from myapp.omega.stock_queries import DOCUMENT_FILTER_COLUMNS
 from myapp.schemas.omega_stock import OmegaStockColumnFilter
@@ -31,6 +36,54 @@ class OmegaStockService:
     async def list_warehouses(self, kind: str) -> list[dict]:
         self._check_connection()
         return await asyncio.to_thread(self.client.list_warehouses, kind)
+
+    @staticmethod
+    async def _display_names() -> tuple[dict[str, str], dict[int, str]]:
+        """Читает соответствия одним запросом к каждому своему справочнику."""
+        async with async_session_maker() as session:
+            suppliers = await session.execute(
+                select(
+                    OmegaStockSupplierName.omega_name,
+                    Supplier.supplier_name,
+                    OmegaStockSupplierName.display_name,
+                ).join(Supplier, Supplier.id == OmegaStockSupplierName.supplier_id)
+            )
+            centers = await session.execute(
+                select(RegionalCenter.regional_center_name)
+            )
+        supplier_names = {
+            omega: override or name for omega, name, override in suppliers
+        }
+        center_names = {}
+        for (name,) in centers:
+            match = re.match(r"РЦ\s*(\d+)\b", name, re.IGNORECASE)
+            if match:
+                center_names[int(match.group(1))] = name
+        return supplier_names, center_names
+
+    @staticmethod
+    def _warehouse_names(
+        warehouses: list[dict], centers: dict[int, str], kind: str
+    ) -> dict[int, str]:
+        result = {}
+        for warehouse in warehouses:
+            sign = re.sub(r"\s+", "", warehouse["sign"].upper())
+            if "УСОЭ" in sign:
+                result[warehouse["id"]] = (
+                    "ГР_УСОЭ - Склад годного оборуд-ия"
+                    if kind == "receipts" else "РЕК_УСОЭ - Склад рекл. оборуд-ия"
+                )
+                continue
+            match = re.search(r"РЦ\D*(\d+)$", sign)
+            if match and int(match.group(1)) in centers:
+                result[warehouse["id"]] = centers[int(match.group(1))]
+        return result
+
+    @staticmethod
+    def _center_by_sign(sign: str, centers: dict[int, str]) -> str | None:
+        normalized = re.sub(r"\s+", "", sign.upper())
+        match = re.search(r"РЦ\D*(\d+)$", normalized)
+        return centers.get(int(match.group(1))) if match else None
 
     async def _warehouse_ids(
         self, kind: str, selected_ids: list[int] | None = None
@@ -60,7 +113,13 @@ class OmegaStockService:
             raise ValueError(f"Неизвестная колонка сортировки: {sort_column}")
         if sort_direction not in ("asc", "desc"):
             raise ValueError("Неизвестное направление сортировки")
-        allowed_ids = await self._warehouse_ids(kind, warehouse_ids)
+        warehouses = await self.list_warehouses(kind)
+        allowed = {warehouse["id"] for warehouse in warehouses}
+        if warehouse_ids is not None and not set(warehouse_ids) <= allowed:
+            raise ValueError("Выбранный склад не относится к этому виду документов")
+        allowed_ids = sorted(set(warehouse_ids)) if warehouse_ids is not None else sorted(allowed)
+        supplier_names, centers = await self._display_names()
+        display_warehouses = self._warehouse_names(warehouses, centers, kind)
         filters = self._validated_filters(kind, column_filters)
         return await asyncio.to_thread(
             self.client.list_documents,
@@ -74,6 +133,8 @@ class OmegaStockService:
             filters,
             sort_column,
             sort_direction,
+            display_warehouses,
+            supplier_names,
         )
 
     @staticmethod
@@ -103,9 +164,12 @@ class OmegaStockService:
         if column not in DOCUMENT_FILTER_COLUMNS[kind]:
             raise ValueError(f"Неизвестная колонка фильтра: {column}")
         filters = self._validated_filters(kind, column_filters)
-        allowed_ids = await self._warehouse_ids(kind)
+        warehouses = await self.list_warehouses(kind)
+        allowed_ids = sorted({warehouse["id"] for warehouse in warehouses})
+        supplier_names, centers = await self._display_names()
         return await asyncio.to_thread(
-            self.client.list_filter_options, kind, allowed_ids, column, filters
+            self.client.list_filter_options, kind, allowed_ids, column, filters,
+            self._warehouse_names(warehouses, centers, kind), supplier_names,
         )
 
     async def _document_available(self, kind: str, document_id: int) -> bool:
@@ -117,7 +181,17 @@ class OmegaStockService:
     async def list_items(self, kind: str, document_id: int) -> list[dict] | None:
         if not await self._document_available(kind, document_id):
             return None
-        return await asyncio.to_thread(self.client.list_items, kind, document_id)
+        items = await asyncio.to_thread(self.client.list_items, kind, document_id)
+        if kind == "inplant":
+            _, centers = await self._display_names()
+            for item in items:
+                sign = item.get("sender_sign")
+                if sign:
+                    item["sender_warehouse"] = (
+                        self._center_by_sign(sign, centers)
+                        or item["sender_warehouse"]
+                    )
+        return items
 
     async def list_files(self, kind: str, document_id: int) -> list[dict] | None:
         if not await self._document_available(kind, document_id):

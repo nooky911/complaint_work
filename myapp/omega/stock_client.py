@@ -82,6 +82,8 @@ class OmegaStockClient:
         column_filters: dict[str, dict[str, Any]] | None = None,
         sort_column: str | None = None,
         sort_direction: str = "desc",
+        warehouse_names: dict[int, str] | None = None,
+        supplier_names: dict[str, str] | None = None,
     ) -> list[dict[str, Any]]:
         """Читает страницу документов по складам и датам"""
         if not warehouse_ids:
@@ -108,7 +110,10 @@ class OmegaStockClient:
                 date_to + timedelta(days=1), time.min
             )
         conditions.extend(self._column_conditions(kind, column_filters or {}, parameters))
-        base_sql = DOCUMENT_QUERIES[kind].format(warehouses=", ".join(warehouse_binds))
+        base_sql = self._document_query(
+            kind, warehouse_binds, warehouse_ids, warehouse_names or {},
+            supplier_names or {}, parameters,
+        )
         where = " AND ".join(conditions) if conditions else "1=1"
         if sort_column is None:
             sort_expression = f'd."{date_column}"'
@@ -137,6 +142,54 @@ class OmegaStockClient:
         if column_type == "files":
             return f"TO_CHAR({expression})"
         return f"TRIM({expression})"
+
+    @staticmethod
+    def _document_query(
+        kind: str,
+        warehouse_binds: list[str],
+        warehouse_ids: list[int],
+        warehouse_names: dict[int, str],
+        supplier_names: dict[str, str],
+        parameters: dict[str, Any],
+    ) -> str:
+        """Подставляет имена из нашего справочника до фильтрации и сортировки Oracle."""
+        warehouse_alias = "sender" if kind == "inplant" else "w"
+        warehouse_raw = f"{warehouse_alias}.SIGN || ' - ' || {warehouse_alias}.NAME"
+        warehouse_cases = []
+        for index, warehouse_id in enumerate(warehouse_ids):
+            if warehouse_id in warehouse_names:
+                key = f"p_warehouse_name_{index}"
+                parameters[key] = warehouse_names[warehouse_id]
+                warehouse_cases.append(f"WHEN {warehouse_binds[index]} THEN :{key}")
+        warehouse_expr = (
+            f"CASE {warehouse_alias}.CODE {' '.join(warehouse_cases)} "
+            f"ELSE {warehouse_raw} END"
+            if warehouse_cases else warehouse_raw
+        )
+
+        supplier_cases = []
+        if kind != "inplant":
+            for index, (omega_name, display_name) in enumerate(supplier_names.items()):
+                raw_key = f"p_supplier_raw_{index}"
+                display_key = f"p_supplier_name_{index}"
+                parameters[raw_key] = omega_name
+                parameters[display_key] = display_name
+                supplier_cases.append(f"WHEN :{raw_key} THEN :{display_key}")
+        supplier_expr = (
+            f"CASE e.NAME {' '.join(supplier_cases)} ELSE e.NAME END"
+            if supplier_cases else "e.NAME"
+        )
+        recipient_expr = "receiver.SIGN || ' - ' || receiver.NAME"
+        if kind == "inplant":
+            parameters["p_usoe_recipient"] = "РЕК_УСОЭ - Склад рекл. оборуд-ия"
+            recipient_expr = ":p_usoe_recipient"
+
+        return DOCUMENT_QUERIES[kind].format(
+            warehouses=", ".join(warehouse_binds),
+            warehouse_expr=warehouse_expr,
+            supplier_expr=supplier_expr,
+            recipient_expr=recipient_expr,
+        )
 
     def _column_conditions(
         self,
@@ -190,6 +243,8 @@ class OmegaStockClient:
         warehouse_ids: list[int],
         column: str,
         filters: dict[str, dict[str, Any]],
+        warehouse_names: dict[int, str] | None = None,
+        supplier_names: dict[str, str] | None = None,
     ) -> list[str | None]:
         """Возвращает значения колонки среди документов, прошедших остальные фильтры."""
         if not warehouse_ids:
@@ -200,7 +255,10 @@ class OmegaStockClient:
             key = f"p_warehouse_{index}"
             parameters[key] = warehouse_id
             binds.append(f":{key}")
-        base_sql = DOCUMENT_QUERIES[kind].format(warehouses=", ".join(binds))
+        base_sql = self._document_query(
+            kind, binds, warehouse_ids, warehouse_names or {},
+            supplier_names or {}, parameters,
+        )
         conditions = self._column_conditions(kind, filters, parameters, column)
         where = " AND ".join(conditions) if conditions else "1=1"
         expression = self._filter_expression(kind, column)

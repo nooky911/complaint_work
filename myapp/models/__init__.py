@@ -22,6 +22,7 @@ from .auxiliaries import (
     EquipmentOwner,
     DestinationType,
     Supplier,
+    OmegaStockSupplierName,
 )
 from .waybill_docs import WaybillDoc, ShippingProvider
 from .product_passports import (
