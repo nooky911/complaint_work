@@ -115,7 +115,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
         onClick={openMenu}
         aria-label={`Фильтр: ${column.title}`}
         aria-expanded={open}
-        className={`block w-full rounded px-4 py-0.5 text-center transition-colors hover:bg-indigo-100 hover:text-indigo-700 ${filters[column.key] ? "bg-indigo-100 text-indigo-700" : "text-slate-600"}`}
+        className={`block w-full rounded px-4 py-0.5 text-center transition-colors ${filters[column.key] ? "bg-indigo-200 text-indigo-800 hover:bg-indigo-200 hover:text-indigo-800" : "text-slate-600 hover:bg-indigo-100 hover:text-indigo-700"}`}
       >
         {children}
       </button>

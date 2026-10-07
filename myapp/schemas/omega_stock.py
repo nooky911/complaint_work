@@ -86,10 +86,7 @@ class OmegaStockItem(BaseModel):
     sender_sign: str | None = None
     item_note: str | None = None
     lot_movement_number: str | None = None
-    parent_lot_movement_number: str | None = None
     original_document_number: str | None = None
-    numbered_object: str | None = None
-    origin_document_type: str | None = None
     origin_document_date: datetime | None = None
 
 

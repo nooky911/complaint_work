@@ -126,7 +126,6 @@ DETAIL_QUERIES = {
                sender.NAME AS SENDER_WAREHOUSE,
                sender.SIGN AS SENDER_SIGN,
                lot_number.NUM AS LOT_MOVEMENT_NUMBER,
-               parent_number.NUM AS PARENT_LOT_MOVEMENT_NUMBER,
                source_lot.LOT_DOC_NUM AS ORIGINAL_DOCUMENT_NUMBER
         FROM OMP_ADM.STOCK_BODY_INPLANT_INVOICE p
         JOIN OMP_ADM.STOCK_INPLANT_INVOICE i ON i.CODE = p.INVOICECODE
@@ -148,10 +147,6 @@ DETAIL_QUERIES = {
               AND source_lot.LOT_DOC_CODE <> p.INVOICECODE
         LEFT JOIN OMP_ADM.OMP_OBJECTS lot_number
                ON lot_number.CODE = source_lot.LOT_SO_NUM_CODE
-        LEFT JOIN OMP_ADM.LOT_STOCK_DOCUMENT_BODY parent_lot
-               ON parent_lot.CODE = source_lot.PARENT_LOT_CODE
-        LEFT JOIN OMP_ADM.OMP_OBJECTS parent_number
-               ON parent_number.CODE = parent_lot.SO_NUM_CODE
         WHERE p.INVOICECODE = :p_document_id
         ORDER BY p.CODE, source_lot.CODE
     """,
@@ -162,8 +157,6 @@ DETAIL_QUERIES = {
                p.QUANTITY, m.SHORTNAME AS UNIT,
                d.DEPOTCARDNUM AS DEPOT_CARD,
                party.NUM AS PARTY_NUMBER,
-               CASE WHEN source_doc.TYPE = 1024 THEN 'ПО' END
-                   AS ORIGIN_DOCUMENT_TYPE,
                source_lot.LOT_DOC_NUM AS ORIGINAL_DOCUMENT_NUMBER,
                source_lot.LOT_DOC_DATE AS ORIGIN_DOCUMENT_DATE
         FROM OMP_ADM.STOCK_BODY_ONSIDE_INVOICE p
@@ -176,8 +169,6 @@ DETAIL_QUERIES = {
               AND source_lot.LOT_DOC_CODE <> p.INVOICECODE
         LEFT JOIN OMP_ADM.OMP_OBJECTS party
                ON party.CODE = source_lot.LOT_SO_NUM_CODE
-        LEFT JOIN OMP_ADM.STOCK_DOCUMENTS source_doc
-               ON source_doc.CODE = source_lot.LOT_DOC_CODE
         WHERE p.INVOICECODE = :p_document_id
         ORDER BY p.CODE, source_lot.CODE
     """,

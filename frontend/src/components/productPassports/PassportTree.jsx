@@ -22,7 +22,23 @@ const DETAIL_FIELDS = [
   ["supplier", "Поставщик"],
 ];
 
-const DATE_FIELDS = new Set(["manufacture_date", "commissioned_at", "install_date"]);
+const DATE_FIELDS = new Set([
+  "manufacture_date",
+  "commissioned_at",
+  "install_date",
+]);
+
+function sectionOrder(node) {
+  for (const name of [node.tree_name, node.full_name]) {
+    const normalized = (name || "").trim().toUpperCase();
+    if (normalized.includes("БУСТЕР")) return 2;
+    const section = normalized.match(
+      /^СЕКЦИЯ\s+[«"']?([АAБB])(?=$|[\s»"'.,:№-])/,
+    );
+    if (section) return ["А", "A"].includes(section[1]) ? 0 : 1;
+  }
+  return 3;
+}
 
 export function PassportTree({ passport }) {
   const { root, childrenByParent } = useMemo(() => {
@@ -35,6 +51,13 @@ export function PassportTree({ passport }) {
       if (!children.has(parentKey)) children.set(parentKey, []);
       children.get(parentKey).push(node);
     });
+
+    // Меняем только порядок секций под локомотивом, сохраняя их состав
+    if (rootNode) {
+      children
+        .get(String(rootNode.id))
+        ?.sort((left, right) => sectionOrder(left) - sectionOrder(right));
+    }
 
     return { root: rootNode, childrenByParent: children };
   }, [passport.nodes]);
@@ -138,11 +161,15 @@ export function PassportTree({ passport }) {
                 const missingSupplier =
                   key === "supplier" &&
                   selectedNode.supplier_id == null &&
-                  Boolean(selectedNode.manufacturer || selectedNode.serial_number);
+                  Boolean(
+                    selectedNode.manufacturer || selectedNode.serial_number,
+                  );
                 const value = missingSupplier
                   ? "Поставщик пуст"
                   : key === "commissioned_at"
-                    ? (selectedNode.id === root?.id ? passport.commissioned_at : null)
+                    ? selectedNode.id === root?.id
+                      ? passport.commissioned_at
+                      : null
                     : selectedNode[key];
                 if (value === null || value === undefined || value === "")
                   return null;
