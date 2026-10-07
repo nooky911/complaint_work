@@ -25,14 +25,14 @@ export function StockDocumentTable({
           <col span={columns.length} />
           <col className="w-8" />
         </colgroup>
-        <thead className="sticky top-0 z-10 bg-slate-100 text-[12px] font-black tracking-wide text-slate-600 uppercase shadow-[0_4px_8px_-2px_rgba(15,23,42,0.22)]">
+        <thead className="sticky top-0 z-10 bg-slate-200 text-[12px] font-black tracking-wide text-slate-700 uppercase shadow-[0_-3px_8px_-2px_rgba(15,23,42,0.18),0_4px_8px_-2px_rgba(15,23,42,0.22)]">
           <tr>
             {columns.map((column) => {
               return (
                 <th
                   key={column.key}
                   aria-sort={sort?.column === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
-                  className="border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-center align-middle"
+                  className="border-y-2 border-slate-400 bg-slate-200 px-2 py-2 text-center align-middle"
                 >
                   <div className="relative flex items-center justify-center">
                     <StockColumnFilter
@@ -64,7 +64,7 @@ export function StockDocumentTable({
                 </th>
               );
             })}
-            <th className="w-8 border-b-2 border-slate-300 bg-slate-100 px-1 py-3" />
+            <th className="w-8 border-y-2 border-slate-400 bg-slate-200 px-1 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
