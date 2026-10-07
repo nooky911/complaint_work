@@ -19,8 +19,8 @@ export const STOCK_DOCUMENT_TYPES = [
 export const STOCK_DOCUMENT_COLUMNS = {
   receipts: [
     { key: "number", title: "Номер" },
-    { key: "accompanying_date", title: "Дата сопр. док-та", format: "date" },
     { key: "accompanying_number", title: "Номер сопр. док-та" },
+    { key: "accompanying_date", title: "Дата сопр. док-та", format: "date" },
     { key: "supplier", title: "Поставщик" },
     { key: "warehouse", title: "Склад получатель" },
     {
