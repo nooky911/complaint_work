@@ -99,7 +99,7 @@ export function StockDocumentTable({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={`max-w-64 px-2 py-2 align-top leading-5 break-words ${column.key === "supplier" ? "text-center" : "text-left"}`}
+                      className="max-w-64 px-2 py-2 text-center align-top leading-5 break-words"
                     >
                       {formatOmegaStockValue(
                         document[column.key],
