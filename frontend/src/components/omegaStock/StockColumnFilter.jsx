@@ -27,15 +27,16 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
   const { data: options = [], isLoading, isError, refetch } =
     useOmegaStockFilterOptions(kind, column.key, otherFilters, open);
 
-  useEffect(() => {
-    if (!open || selected !== null || isLoading || isError) return;
+  const selectedValues = useMemo(() => {
+    if (selected !== null) return selected;
     const current = filters[column.key];
-    setSelected(new Set(options.filter((value) => {
+    return new Set(options.filter((value) => {
+      if (!current && search.trim()) return false;
       if (!current) return true;
       const contains = current.values.includes(value);
       return current.mode === "include" ? contains : !contains;
-    })));
-  }, [open, selected, isLoading, isError, options, filters, column.key]);
+    }));
+  }, [selected, options, filters, column.key, search]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -64,12 +65,19 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
   const matching = options.filter((value) =>
     labelFor(value, column.format).toLocaleLowerCase("ru").includes(search.toLocaleLowerCase("ru")),
   );
-  const allMatchingSelected = matching.length > 0 && matching.every((value) => selected?.has(value));
-  const someMatchingSelected = matching.some((value) => selected?.has(value));
+  const allMatchingSelected = matching.length > 0 && matching.every((value) => selectedValues.has(value));
+  const someMatchingSelected = matching.some((value) => selectedValues.has(value));
+
+  const changeSearch = (value) => {
+    if (!search.trim() && value.trim() && !filters[column.key] && selectedValues.size === options.length) {
+      setSelected(new Set());
+    }
+    setSearch(value);
+  };
 
   const toggleValue = (value) => {
     setSelected((current) => {
-      const next = new Set(current ?? []);
+      const next = new Set(current ?? selectedValues);
       if (next.has(value)) next.delete(value);
       else next.add(value);
       return next;
@@ -78,7 +86,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
 
   const toggleMatching = () => {
     setSelected((current) => {
-      const next = new Set(current ?? []);
+      const next = new Set(current ?? selectedValues);
       for (const value of matching) {
         if (allMatchingSelected) next.delete(value);
         else next.add(value);
@@ -88,11 +96,11 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
   };
 
   const apply = () => {
-    if (selected === null) return;
-    const excluded = options.filter((value) => !selected.has(value));
+    if (isLoading || isError) return;
+    const excluded = options.filter((value) => !selectedValues.has(value));
     if (excluded.length === 0) onChange(null);
-    else if (selected.size <= excluded.length) {
-      onChange({ mode: "include", values: options.filter((value) => selected.has(value)) });
+    else if (selectedValues.size <= excluded.length) {
+      onChange({ mode: "include", values: options.filter((value) => selectedValues.has(value)) });
     } else {
       onChange({ mode: "exclude", values: excluded });
     }
@@ -126,7 +134,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
               <input
                 autoFocus
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) => changeSearch(event.target.value)}
                 placeholder="Поиск"
                 className="w-full rounded-lg border border-slate-200 py-2 pr-2 pl-8 text-sm text-slate-800 outline-none focus:border-indigo-400"
               />
@@ -146,7 +154,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
                     checked={allMatchingSelected}
                     ref={(element) => { if (element) element.indeterminate = someMatchingSelected && !allMatchingSelected; }}
                     onChange={toggleMatching}
-                    disabled={matching.length === 0 || selected === null}
+                    disabled={matching.length === 0}
                     className="accent-indigo-600"
                   />
                   Выделить все {search && "найденные"}
@@ -156,7 +164,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
                     <label key={value ?? "__empty__"} className="flex cursor-pointer items-start gap-2 rounded px-1 py-1.5 text-slate-700 hover:bg-indigo-50">
                       <input
                         type="checkbox"
-                        checked={selected?.has(value) ?? false}
+                        checked={selectedValues.has(value)}
                         onChange={() => toggleValue(value)}
                         className="mt-0.5 accent-indigo-600"
                       />
@@ -172,7 +180,7 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
                 )}
                 <div className="mt-2 flex justify-end gap-2 border-t border-slate-100 pt-3">
                   <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100">Отмена</button>
-                  <button type="button" onClick={apply} disabled={selected === null} className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700 disabled:opacity-40">ОК</button>
+                  <button type="button" onClick={apply} className="rounded-lg bg-indigo-600 px-4 py-2 font-bold text-white hover:bg-indigo-700 disabled:opacity-40">ОК</button>
                 </div>
               </>
             )}

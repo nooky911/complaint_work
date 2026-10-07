@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { FileText } from "lucide-react";
 
 import { omegaStockFileUrl } from "../../api/omegaStock";
@@ -10,6 +11,9 @@ import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
 
 export function StockDocumentDetails({ kind, document }) {
   const documentId = document.document_id;
+  const topScrollRef = useRef(null);
+  const tableScrollRef = useRef(null);
+  const [scrollMetrics, setScrollMetrics] = useState({ width: 0, overflowing: false });
   const {
     data: items = [],
     isLoading: itemsLoading,
@@ -20,6 +24,25 @@ export function StockDocumentDetails({ kind, document }) {
     isLoading: filesLoading,
     isError: filesError,
   } = useOmegaStockFiles(kind, documentId);
+
+  useEffect(() => {
+    const scroller = tableScrollRef.current;
+    const table = scroller?.firstElementChild;
+    if (!scroller || !table) return undefined;
+
+    const observer = new ResizeObserver(() => {
+      const width = scroller.scrollWidth;
+      const overflowing = width > scroller.clientWidth + 1;
+      setScrollMetrics((current) =>
+        current.width === width && current.overflowing === overflowing
+          ? current
+          : { width, overflowing },
+      );
+    });
+    observer.observe(scroller);
+    observer.observe(table);
+    return () => observer.disconnect();
+  }, [kind, items]);
 
   return (
     <div className="w-full min-w-0 border-l-4 border-indigo-400 bg-slate-200/70 px-3 py-3 md:px-4">
@@ -38,36 +61,62 @@ export function StockDocumentDetails({ kind, document }) {
         ) : items.length === 0 ? (
           <p className="p-5 text-sm text-slate-500">В документе нет позиций</p>
         ) : (
-          <div className="w-full max-w-full overflow-x-auto overscroll-x-contain">
-            <table className="w-max min-w-full text-left text-xs">
-              <thead className="bg-slate-200 text-[10px] font-black tracking-wide text-slate-600 uppercase">
-                <tr>
-                  {STOCK_ITEM_COLUMNS[kind].map((column) => (
-                    <th
-                      key={column.key}
-                      className="px-3 py-2 whitespace-nowrap"
-                    >
-                      {column.title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 bg-slate-100">
-                {items.map((item) => (
-                  <tr key={`${item.item_id}-${item.lot_movement_id ?? 0}`}>
+          <>
+            {scrollMetrics.overflowing && (
+              <div
+                ref={topScrollRef}
+                role="region"
+                aria-label="Прокрутка состава документа по горизонтали"
+                tabIndex={0}
+                onScroll={(event) => {
+                  if (tableScrollRef.current) {
+                    tableScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+                  }
+                }}
+                className="h-5 w-full overflow-x-scroll overflow-y-hidden"
+              >
+                <div style={{ width: scrollMetrics.width, height: 1 }} />
+              </div>
+            )}
+            <div
+              ref={tableScrollRef}
+              onScroll={(event) => {
+                if (topScrollRef.current) {
+                  topScrollRef.current.scrollLeft = event.currentTarget.scrollLeft;
+                }
+              }}
+              className="w-full max-w-full overflow-x-auto overscroll-x-contain"
+            >
+              <table className="w-max min-w-full text-left text-xs">
+                <thead className="bg-slate-200 text-[10px] font-black tracking-wide text-slate-600 uppercase">
+                  <tr>
                     {STOCK_ITEM_COLUMNS[kind].map((column) => (
-                      <td
+                      <th
                         key={column.key}
-                        className="max-w-80 px-3 py-2 align-top break-words text-slate-700"
+                        className="px-3 py-2 whitespace-nowrap"
                       >
-                        {formatOmegaStockValue(item[column.key], column.format)}
-                      </td>
+                        {column.title}
+                      </th>
                     ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-slate-100">
+                  {items.map((item) => (
+                    <tr key={`${item.item_id}-${item.lot_movement_id ?? 0}`}>
+                      {STOCK_ITEM_COLUMNS[kind].map((column) => (
+                        <td
+                          key={column.key}
+                          className="max-w-80 px-3 py-2 align-top break-words text-slate-700"
+                        >
+                          {formatOmegaStockValue(item[column.key], column.format)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
         {(filesLoading || filesError || files.length > 0) && (
           <div className="flex items-center gap-5 overflow-x-auto px-3 pb-2 pt-1 text-xs">

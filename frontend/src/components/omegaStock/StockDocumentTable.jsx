@@ -20,15 +20,19 @@ export function StockDocumentTable({
 
   return (
     <div className="w-full">
-      <table className="w-full min-w-[1100px] border-collapse text-left text-xs">
-        <thead className="sticky top-0 z-10 bg-slate-50 text-[12px] font-black tracking-wide text-slate-500 uppercase">
+      <table className={`w-full table-fixed border-collapse text-left text-xs ${kind === "receipts" ? "" : "2xl:min-w-[1100px] 2xl:table-auto"}`}>
+        <colgroup>
+          <col span={columns.length} />
+          <col className="w-8" />
+        </colgroup>
+        <thead className="sticky top-0 z-10 bg-slate-100 text-[12px] font-black tracking-wide text-slate-600 uppercase shadow-[0_4px_8px_-2px_rgba(15,23,42,0.22)]">
           <tr>
             {columns.map((column) => {
               return (
                 <th
                   key={column.key}
                   aria-sort={sort?.column === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
-                  className="border-b border-slate-200 px-2 py-2 text-center align-middle"
+                  className="border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-center align-middle"
                 >
                   <div className="relative flex items-center justify-center">
                     <StockColumnFilter
@@ -39,7 +43,7 @@ export function StockDocumentTable({
                         onFilterChange(column.key, selection)
                       }
                     >
-                      <span className="block leading-4">{column.title}</span>
+                      <span className="block leading-4 break-words">{column.title}</span>
                     </StockColumnFilter>
                     <button
                       type="button"
@@ -60,7 +64,7 @@ export function StockDocumentTable({
                 </th>
               );
             })}
-            <th className="border-b border-slate-200 px-3 py-3" />
+            <th className="w-8 border-b-2 border-slate-300 bg-slate-100 px-1 py-3" />
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -103,11 +107,11 @@ export function StockDocumentTable({
                       )}
                     </td>
                   ))}
-                  <td className="px-2 py-2 text-indigo-500">
+                  <td className="w-8 px-1 py-2 text-center text-indigo-500">
                     {expanded ? (
-                      <ChevronDown className="h-4 w-4" />
+                      <ChevronDown className="mx-auto h-4 w-4" />
                     ) : (
-                      <ChevronRight className="h-4 w-4" />
+                      <ChevronRight className="mx-auto h-4 w-4" />
                     )}
                   </td>
                 </tr>

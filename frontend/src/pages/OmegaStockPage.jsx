@@ -76,7 +76,7 @@ export default function OmegaStockPage() {
       : "Не удалось загрузить документы из Omega";
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 flex-col">
       <div className="flex items-center gap-4 border-b border-gray-200 bg-white px-6 py-4">
         <button
           type="button"
@@ -91,9 +91,9 @@ export default function OmegaStockPage() {
         </h1>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto bg-gray-50 p-6">
+      <div className={`min-h-0 flex-1 overflow-auto bg-gray-50 ${kind ? "px-2 py-6" : "p-6"}`}>
         <div
-          className={`mx-auto flex w-full flex-col gap-5 ${
+          className={`mx-auto flex w-full min-w-0 flex-col gap-5 ${
             kind ? "max-w-none" : "max-w-7xl"
           }`}
         >
@@ -137,7 +137,7 @@ export default function OmegaStockPage() {
               </div>
             </section>
           ) : (
-            <section className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <section className="min-w-0 rounded-xl border border-gray-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4">
                 <div>
                   <h2 className="text-sm font-black text-slate-900">
