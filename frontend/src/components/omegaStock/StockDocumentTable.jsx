@@ -20,7 +20,7 @@ export function StockDocumentTable({
 
   return (
     <div className="w-full">
-      <table className={`w-full table-fixed border-collapse text-left text-xs ${kind === "receipts" ? "" : "2xl:min-w-[1100px] 2xl:table-auto"}`}>
+      <table className="w-full table-auto border-collapse text-left text-xs">
         <colgroup>
           <col span={columns.length} />
           <col className="w-8" />
@@ -32,7 +32,7 @@ export function StockDocumentTable({
                 <th
                   key={column.key}
                   aria-sort={sort?.column === column.key ? (sort.direction === "asc" ? "ascending" : "descending") : "none"}
-                  className="border-y-2 border-slate-400 bg-slate-200 px-2 py-2 text-center align-middle"
+                  className="max-w-64 border-y-2 border-slate-400 bg-slate-200 px-2 py-2 text-center align-middle"
                 >
                   <div className="relative flex items-center justify-center">
                     <StockColumnFilter
