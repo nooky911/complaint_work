@@ -3,6 +3,7 @@ import json
 import re
 
 from myapp.constants.product_passport_equipment_constants import (
+    CLASSIFIER_NAME_ALIASES,
     CONTACTOR_NAMES,
     PKD_NAME,
     FIRE_SYSTEM_NAME,
@@ -316,7 +317,9 @@ class ProductPassportEquipmentService:
         )
         if not name:
             return None
-        candidates = equipment_index.get(name, [])
+        # После миграции берём новое обозначение; до неё поддерживаем старое.
+        target_name = CLASSIFIER_NAME_ALIASES.get(name, name)
+        candidates = equipment_index.get(target_name, []) or equipment_index.get(name, [])
         if parent_equipment_id is not None:
             children = [
                 equipment_id
