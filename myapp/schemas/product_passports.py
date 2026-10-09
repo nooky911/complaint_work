@@ -24,7 +24,7 @@ class ProductPassportNodeResponse(BaseModel):
     parent_id: int | None
     tree_name: str
     full_name: str | None
-    peshka: str | None
+    article: str | None
     designation: str | None
     serial_number: str | None
     manufacture_date: date | None

@@ -67,7 +67,7 @@ export const STOCK_ITEM_COLUMNS = {
     { key: "nominal_number", title: "Ном. номер" },
     { key: "quantity", title: "Кол-во (факт)" },
     { key: "depot_card", title: "Номера складских карточек" },
-    { key: "party_number", title: "Зав. № обр-ния" },
+    { key: "party_number", title: "Номер оборудования" },
   ],
   inplant: [
     { key: "nominal_number", title: "Ном. номер" },
@@ -81,7 +81,7 @@ export const STOCK_ITEM_COLUMNS = {
     { key: "invoice_date", title: "Дата накладной СУ", format: "datetime" },
     { key: "sender_sign", title: "Обозначение отправителя" },
     { key: "item_note", title: "Примечание" },
-    { key: "lot_movement_number", title: "Зав. № обр-ния" },
+    { key: "lot_movement_number", title: "Номер оборудования" },
     { key: "original_document_number", title: "Номер документа партии" },
   ],
   outbound: [
@@ -90,7 +90,7 @@ export const STOCK_ITEM_COLUMNS = {
     { key: "nominal_number", title: "Ном. номер" },
     { key: "unit", title: "Ед. изм." },
     { key: "quantity", title: "Количество" },
-    { key: "party_number", title: "Зав. № обр-ния" },
+    { key: "party_number", title: "Номер оборудования" },
     { key: "original_document_number", title: "Номер документа" },
     { key: "origin_document_date", title: "Дата документа", format: "date" },
   ],

@@ -1,6 +1,8 @@
+import logging
 from typing import Annotated
-
+from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.auth.dependencies import require_viewer_or_higher
@@ -12,8 +14,10 @@ from myapp.schemas.product_passports import (
     ProductPassportSearchItem,
 )
 from myapp.services.product_passport_service import ProductPassportService
+from myapp.services.product_passport_export_service import ProductPassportExportService
 
 router = APIRouter(prefix="/product-passports", tags=["Паспорта изделий"])
+logger = logging.getLogger(__name__)
 
 
 @router.get(
@@ -65,3 +69,29 @@ async def get_product_passport(
             status_code=status.HTTP_404_NOT_FOUND, detail="Паспорт не найден"
         )
     return ProductPassportService.to_response(passport)
+
+
+@router.get("/{passport_id}/export", summary="Скачать паспорт в Excel")
+async def export_product_passport(
+    passport_id: Annotated[int, Path(ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Выгружает полное дерево и характеристики на одном листе XLSX"""
+    try:
+        result = await ProductPassportExportService.export(session, passport_id)
+    except Exception:
+        logger.exception("Не удалось выгрузить паспорт %s в Excel", passport_id)
+        raise HTTPException(
+            status_code=500, detail="Не удалось создать файл паспорта"
+        ) from None
+    if result is None:
+        raise HTTPException(status_code=404, detail="Паспорт не найден")
+    stream, filename = result
+    return StreamingResponse(
+        stream,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f"attachment; filename*=utf-8''{quote(filename)}"
+        },
+    )

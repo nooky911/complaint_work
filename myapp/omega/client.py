@@ -83,7 +83,7 @@ class OmegaClient:
             level=int(row["LVL"]),
             tree_name=OmegaClient._required_text(row["TREE_NAME"]),
             full_name=OmegaClient._clean_text(row["FULL_NAME"]),
-            peshka=OmegaClient._clean_text(row["PESHKA"]),
+            article=OmegaClient._clean_text(row["ARTICLE"]),
             designation=OmegaClient._clean_text(row["DESIGNATION"]),
             serial_number=OmegaClient._clean_text(row["SERIAL_NUMBER"]),
             manufacture_date=OmegaClient._to_date(row["MANUFACTURE_DATE"]),

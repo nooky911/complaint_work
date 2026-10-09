@@ -10,7 +10,7 @@ class OmegaPassportNodeData(BaseModel):
     level: int
     tree_name: str
     full_name: str | None
-    peshka: str | None
+    article: str | None
     designation: str | None
     serial_number: str | None
     manufacture_date: date | None

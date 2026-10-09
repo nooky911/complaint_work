@@ -133,7 +133,7 @@ class ProductPassportService:
                 level=node.level,
                 tree_name=node.tree_name,
                 full_name=node.full_name,
-                peshka=node.peshka,
+                article=node.article,
                 designation=node.designation,
                 serial_number=node.serial_number,
                 manufacture_date=node.manufacture_date,
@@ -239,7 +239,7 @@ class ProductPassportService:
                     ).replace("Блок входныс сигналов", "Блок входных сигналов", 1)
                 ),
                 full_name=node.full_name,
-                peshka=node.peshka,
+                article=node.article,
                 designation=node.designation,
                 serial_number=node.serial_number,
                 manufacture_date=node.manufacture_date,

@@ -6,13 +6,16 @@ import {
   CircleDot,
   Hash,
   Wrench,
+  Download,
+  LoaderCircle,
 } from "lucide-react";
 
 import { formatDate } from "../../utils/formatters";
+import { exportProductPassport } from "../../api/productPassports";
 
 const DETAIL_FIELDS = [
   ["full_name", "Полное наименование"],
-  ["peshka", "Пэшка"],
+  ["article", "Артикул"],
   ["designation", "Обозначение"],
   ["serial_number", "Заводской номер"],
   ["manufacture_date", "Дата изготовления"],
@@ -41,6 +44,20 @@ function sectionOrder(node) {
 }
 
 export function PassportTree({ passport }) {
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const downloadPassport = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError("");
+    try {
+      await exportProductPassport(passport.id);
+    } catch {
+      setExportError("Не удалось скачать паспорт. Попробуйте ещё раз.");
+    } finally {
+      setExporting(false);
+    }
+  };
   const { root, childrenByParent } = useMemo(() => {
     const children = new Map();
     let rootNode = null;
@@ -132,14 +149,34 @@ export function PassportTree({ passport }) {
   return (
     <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
       <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
           <h2 className="text-base font-black text-slate-900">
             Состав паспорта
           </h2>
-          <div className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-600">
-            {passport.locomotive_model_name} №{passport.product_number}
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={downloadPassport}
+              disabled={exporting}
+              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-60"
+            >
+              {exporting ? (
+                <LoaderCircle className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {exporting ? "Создание файла…" : "Скачать Excel"}
+            </button>
+            <div className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-600">
+              {passport.locomotive_model_name} №{passport.product_number}
+            </div>
           </div>
         </div>
+        {exportError && (
+          <p role="alert" className="px-5 py-2 text-xs text-red-600">
+            {exportError}
+          </p>
+        )}
         <div className="flex-1 overflow-auto p-2">
           {root && renderNode(root)}
         </div>

@@ -82,7 +82,8 @@ class ProductPassportNode(Base):
     level: Mapped[int] = mapped_column(Integer, nullable=False)
     tree_name: Mapped[str] = mapped_column(Text, nullable=False)
     full_name: Mapped[str | None] = mapped_column(Text, nullable=True)
-    peshka: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Сохраняем имя существующей колонки для совместимости с импортированными данными.
+    article: Mapped[str | None] = mapped_column("peshka", String(50), nullable=True)
     designation: Mapped[str | None] = mapped_column(String(255), nullable=True)
     serial_number: Mapped[str | None] = mapped_column(String(255), nullable=True)
     manufacture_date: Mapped[date | None] = mapped_column(Date, nullable=True)

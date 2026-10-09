@@ -33,7 +33,7 @@ SELECT
     tree.parent_code,
     tree.code,
     q.NAME AS tree_name,
-    s.SIGN AS peshka,
+    s.SIGN AS article,
     a.A_13404 AS full_name,
     a.A_13405 AS designation,
     a.A_13415 AS serial_number,

@@ -333,7 +333,7 @@ class ProductPassportSyncService:
             "level",
             "tree_name",
             "full_name",
-            "peshka",
+            "article",
             "designation",
             "serial_number",
             "manufacture_date",
