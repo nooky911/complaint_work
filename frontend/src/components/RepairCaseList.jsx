@@ -25,11 +25,11 @@ const NumberIcon = () => (
 );
 
 const SectionsIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
-    <path d="M0 12h3m5 0h2m5 0h2m5 0h2" />
-    <rect x="3" y="8" width="5" height="8" rx="1.5" />
-    <rect x="10" y="8" width="5" height="8" rx="1.5" />
-    <rect x="17" y="8" width="5" height="8" rx="1.5" />
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <rect x="4.5" y="6" width="15" height="10" rx="1" />
+    <path d="M1 14h3.5M19.5 14H23" />
+    <circle cx="7.5" cy="18.5" r="2" />
+    <circle cx="16.5" cy="18.5" r="2" />
   </svg>
 );
 
