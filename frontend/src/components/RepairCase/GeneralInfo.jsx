@@ -5,6 +5,7 @@ import {
   formatSectionMask,
   formatToDB,
   getText,
+  sortRegionalCenterOptions,
 } from "../../utils/formatters";
 import {
   DataField,
@@ -152,7 +153,7 @@ export const GeneralInfo = ({
               <SelectField
                 label={REPAIR_FIELDS_LABELS.regional_center}
                 value={currentData?.regional_center_id}
-                options={references?.regional_centers}
+                options={sortRegionalCenterOptions(references?.regional_centers)}
                 isEditing={true}
                 onChange={(value) => updateField("regional_center_id", value)}
                 className="col-span-1"

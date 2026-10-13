@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 
 import { useOmegaStockFilterOptions } from "../../hooks/api/useOmegaStockApi";
 import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
+import { sortRegionalCenterOptions } from "../../utils/formatters";
 
 const MAX_VISIBLE_OPTIONS = 200;
 
@@ -24,8 +25,12 @@ export function StockColumnFilter({ kind, column, filters, onChange, children })
     delete next[column.key];
     return next;
   }, [filters, column.key]);
-  const { data: options = [], isLoading, isError, refetch } =
+  const { data: rawOptions = [], isLoading, isError, refetch } =
     useOmegaStockFilterOptions(kind, column.key, otherFilters, open);
+  const options = useMemo(() =>
+    column.key === "warehouse" || (kind === "inplant" && column.key === "recipient")
+      ? sortRegionalCenterOptions(rawOptions) : rawOptions,
+  [rawOptions, kind, column.key]);
 
   const selectedValues = useMemo(() => {
     if (selected !== null) return selected;

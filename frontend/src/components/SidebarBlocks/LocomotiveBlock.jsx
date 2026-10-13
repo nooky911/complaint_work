@@ -4,6 +4,7 @@ import {
   SectionSelect,
 } from "../inputs";
 import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import { sortRegionalCenterOptions } from "../../utils/formatters";
 
 export const LocomotiveBlock = ({ filters, options, updateFilter }) => {
   return (
@@ -49,7 +50,7 @@ export const LocomotiveBlock = ({ filters, options, updateFilter }) => {
       <MultiSelectField
         label={REPAIR_FIELDS_LABELS.regional_center}
         selectedValues={filters.regional_center_id}
-        options={options?.regional_centers}
+        options={sortRegionalCenterOptions(options?.regional_centers)}
         onChange={(v) => updateFilter("regional_center_id", v)}
         placeholder="Все центры"
       />

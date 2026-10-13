@@ -1,5 +1,3 @@
-import { format } from "date-fns";
-
 import { SECTIONS_CONFIG } from "../constants/sections_mask";
 
 export const DATE_MASK = "__.__.____";
@@ -93,6 +91,34 @@ export const formatFullName = (fullName) => {
 
   return parts[0];
 };
+
+const nameCollator = new Intl.Collator("ru", {
+  numeric: true,
+  sensitivity: "base",
+});
+
+const optionName = (option) => String(option?.name ?? option ?? "");
+const centerNumber = (name) => {
+  const match = name.match(/Р\s*Ц[\s_№-]*(\d+)/i);
+  return match ? Number(match[1]) : null;
+};
+
+// Учитывает номер РЦ даже внутри полного названия склада
+export const sortRegionalCenterOptions = (options = []) =>
+  [...options].sort((a, b) => {
+    const aName = optionName(a);
+    const bName = optionName(b);
+    if (!aName || !bName)
+      return Number(Boolean(aName)) - Number(Boolean(bName));
+
+    const aNumber = centerNumber(aName);
+    const bNumber = centerNumber(bName);
+    if (aNumber !== null && bNumber !== null && aNumber !== bNumber)
+      return aNumber - bNumber;
+    if ((aNumber === null) !== (bNumber === null))
+      return aNumber === null ? 1 : -1;
+    return nameCollator.compare(aName, bName);
+  });
 
 //Сортирует массив опций так, чтобы выбранные значения были вверху
 export const sortOptionsBySelection = (options, selectedValues) => {
