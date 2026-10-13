@@ -7,6 +7,7 @@ import {
   Download,
   ChevronLeft,
   ChevronRight,
+  Search,
 } from "lucide-react";
 
 // Компоненты
@@ -23,6 +24,7 @@ import { useAuth } from "../context/AuthContext";
 import { logger } from "../utils/logger";
 import {
   useCasesList,
+  useCaseDisplayNumbers,
   useCaseDetail,
   useUpdateCase,
   useDeleteCase,
@@ -30,6 +32,7 @@ import {
 } from "../hooks/api/index";
 import { useDebouncedValue } from "../hooks/useDebounce";
 import { exportCasesToExcel } from "../api/export";
+import { useDropdown } from "../hooks/useDropdown";
 
 export default React.memo(function DashboardPage() {
   // --- ПАГИНАЦИЯ ---
@@ -45,6 +48,26 @@ export default React.memo(function DashboardPage() {
   const [loadingText, setLoadingText] = useState("Загрузка карточки...");
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [quickCaseNumber, setQuickCaseNumber] = useState(null);
+  const [caseNumberInput, setCaseNumberInput] = useState("");
+  const [draftCaseNumber, setDraftCaseNumber] = useState(null);
+  const {
+    isOpen: isNumberSearchOpen,
+    setIsOpen: setNumberSearchOpen,
+    containerRef: numberSearchRef,
+  } = useDropdown();
+  const debouncedCaseNumberInput = useDebouncedValue(caseNumberInput, 250);
+  const numberChoices = useCaseDisplayNumbers(
+    debouncedCaseNumberInput,
+    isNumberSearchOpen,
+  );
+  const numberSearchPending = caseNumberInput !== debouncedCaseNumberInput;
+  const candidateNumber =
+    draftCaseNumber ??
+    (!numberSearchPending &&
+    numberChoices.data?.includes(Number(caseNumberInput))
+      ? Number(caseNumberInput)
+      : null);
 
   // --- СОСТОЯНИЯ ФИЛЬТРОВ ---
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -63,22 +86,24 @@ export default React.memo(function DashboardPage() {
 
   // Debounced фильтры для оптимизации
   const debouncedAppliedFilters = useDebouncedValue(appliedFilters, 300);
+  const effectiveFilters = useMemo(
+    () =>
+      quickCaseNumber
+        ? { display_number: quickCaseNumber }
+        : debouncedAppliedFilters,
+    [quickCaseNumber, debouncedAppliedFilters],
+  );
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedAppliedFilters, sortOrder]);
+  }, [debouncedAppliedFilters, sortOrder, quickCaseNumber]);
 
   // React Query хуки
   const {
     data: casesData = { items: [], total: 0 },
     isLoading: loading,
     error: listError,
-  } = useCasesList(
-    debouncedAppliedFilters,
-    sortOrder,
-    currentPage,
-    itemsPerPage,
-  );
+  } = useCasesList(effectiveFilters, sortOrder, currentPage, itemsPerPage);
   const cases = casesData.items || [];
   const totalCount = casesData.total || 0;
   const totalPages = Math.ceil(totalCount / itemsPerPage) || 1;
@@ -141,20 +166,24 @@ export default React.memo(function DashboardPage() {
   }, []);
 
   const handleApplyFilters = (newFilters) => {
+    setQuickCaseNumber(null);
     setAppliedFilters(newFilters);
   };
 
   const handleClearAllFilters = () => {
+    setQuickCaseNumber(null);
     setAppliedFilters(INITIAL_FILTERS);
   };
 
-  const activeCount = countActiveFilters(appliedFilters);
+  const activeCount = quickCaseNumber ? 0 : countActiveFilters(appliedFilters);
 
   // Функция экспорта
   const handleExport = async () => {
     try {
       setIsExporting(true);
-      await exportCasesToExcel(appliedFilters);
+      await exportCasesToExcel(
+        quickCaseNumber ? { display_number: quickCaseNumber } : appliedFilters,
+      );
     } catch (error) {
       logger.log("Экспорт завершен с ошибкой:", error.message);
     } finally {
@@ -168,7 +197,7 @@ export default React.memo(function DashboardPage() {
       <div className="flex w-full flex-shrink-0 items-start justify-between px-4 pt-2 md:px-3">
         <div className="flex flex-col gap-2">
           {/* БЛОК КНОПОК */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {/* Кнопка фильтров */}
             <button
               onClick={() => setIsFilterOpen(true)}
@@ -210,6 +239,136 @@ export default React.memo(function DashboardPage() {
               <ArrowUpDown className="h-4 w-4 text-slate-500" />
               {sortOrder === "desc" ? "Сначала новые" : "Сначала старые"}
             </button>
+
+            {/* Кнопка поиска случая по его номеру */}
+            <div
+              className="relative flex items-center gap-1"
+              ref={numberSearchRef}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isNumberSearchOpen) {
+                    setCaseNumberInput(
+                      quickCaseNumber ? String(quickCaseNumber) : "",
+                    );
+                    setDraftCaseNumber(quickCaseNumber);
+                  }
+                  setNumberSearchOpen(!isNumberSearchOpen);
+                }}
+                aria-expanded={isNumberSearchOpen}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-colors ${
+                  quickCaseNumber
+                    ? "border-indigo-600 bg-indigo-600 text-white"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <Search className="h-4 w-4" />
+                {quickCaseNumber
+                  ? `Случай №${quickCaseNumber}`
+                  : "Номер случая"}
+              </button>
+              {quickCaseNumber && (
+                <button
+                  type="button"
+                  title="Сбросить поиск по номеру"
+                  aria-label="Сбросить поиск по номеру"
+                  onClick={() => {
+                    setQuickCaseNumber(null);
+                    setNumberSearchOpen(false);
+                  }}
+                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              {isNumberSearchOpen && (
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!candidateNumber) return;
+                    setCurrentPage(1);
+                    setQuickCaseNumber(candidateNumber);
+                    setNumberSearchOpen(false);
+                  }}
+                  className="absolute top-full left-0 z-50 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-300 bg-white p-3 shadow-xl"
+                >
+                  <label
+                    htmlFor="dashboard-case-number"
+                    className="mb-2 block text-xs font-bold text-slate-600"
+                  >
+                    Номер случая в списке
+                  </label>
+                  <input
+                    id="dashboard-case-number"
+                    type="text"
+                    inputMode="numeric"
+                    autoFocus
+                    autoComplete="off"
+                    maxLength={10}
+                    value={caseNumberInput}
+                    placeholder="Введите номер"
+                    onChange={(event) => {
+                      setCaseNumberInput(event.target.value.replace(/\D/g, ""));
+                      setDraftCaseNumber(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Escape") setNumberSearchOpen(false);
+                    }}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  />
+                  <div className="mt-2 max-h-48 overflow-y-auto">
+                    {numberChoices.isFetching || numberSearchPending ? (
+                      <p className="py-3 text-center text-xs text-slate-500">
+                        Загрузка…
+                      </p>
+                    ) : numberChoices.isError ? (
+                      <button
+                        type="button"
+                        onClick={() => numberChoices.refetch()}
+                        className="py-3 text-xs text-red-700"
+                      >
+                        Ошибка загрузки. Повторить
+                      </button>
+                    ) : numberChoices.data?.length ? (
+                      numberChoices.data.map((number) => (
+                        <button
+                          key={number}
+                          type="button"
+                          onClick={() => {
+                            setDraftCaseNumber(number);
+                            setCaseNumberInput(String(number));
+                          }}
+                          className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-bold ${candidateNumber === number ? "bg-indigo-100 text-indigo-800" : "text-slate-700 hover:bg-slate-50"}`}
+                        >
+                          {number}
+                        </button>
+                      ))
+                    ) : (
+                      <p className="py-3 text-center text-xs text-slate-500">
+                        Такого номера нет
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setNumberSearchOpen(false)}
+                      className="rounded-lg px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!candidateNumber}
+                      className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      ОК
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
 
           {/* Счётчик */}

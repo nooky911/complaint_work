@@ -4,6 +4,22 @@ import { useMemo } from "react";
 import api from "../../api/api";
 import { buildFilterParams } from "../../utils/filterUtils";
 
+// Хук для получения списка номеров случаев
+export const useCaseDisplayNumbers = (search, enabled) =>
+  useQuery({
+    queryKey: ["cases", "display-numbers", search],
+    queryFn: async ({ signal }) => {
+      const response = await api.get("/cases/display-numbers", {
+        params: { search, limit: 50 },
+        signal,
+      });
+      return response.data;
+    },
+    enabled,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  });
+
 // Хук для получения базовых опций фильтров
 export const useFilterOptions = () => {
   return useQuery({

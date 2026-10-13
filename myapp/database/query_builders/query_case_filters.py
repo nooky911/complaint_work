@@ -30,6 +30,18 @@ def build_repair_case_conditions(
     """Условия фильтрации для случая неисправности"""
     conditions = []
 
+    if params.display_number is not None:
+        # Общая нумерация по ID до любых фильтров, как ROW_NUMBER в списке
+        numbered_case_id = (
+            select(RepairCaseEquipment.id)
+            .order_by(RepairCaseEquipment.id)
+            .offset(params.display_number - 1)
+            .limit(1)
+            .correlate(None)
+            .scalar_subquery()
+        )
+        conditions.append(RepairCaseEquipment.id == numbered_case_id)
+
     # 1. Даты
     if params.date_from:
         conditions.append(RepairCaseEquipment.fault_date >= params.date_from)

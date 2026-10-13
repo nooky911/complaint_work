@@ -1,6 +1,7 @@
 // API hooks
 export {
   useCasesList,
+  useCaseDisplayNumbers,
   useCaseDetail,
   useUpdateCase,
   useDeleteCase,

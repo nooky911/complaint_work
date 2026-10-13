@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
@@ -13,6 +13,24 @@ class CaseFilterService:
     """Сервис для фильтрации случаев и получения опций фильтров"""
 
     @staticmethod
+    def _numbered_cases():
+        return select(
+            RepairCaseEquipment.id,
+            func.row_number().over(order_by=RepairCaseEquipment.id).label("display_number"),
+        ).cte("numbered_cases")
+
+    @staticmethod
+    async def get_display_numbers(session: AsyncSession, search: str = "", limit: int = 50) -> list[int]:
+        numbered = CaseFilterService._numbered_cases()
+        statement = select(numbered.c.display_number)
+        if search:
+            statement = statement.where(numbered.c.display_number.cast(String).startswith(search, autoescape=True))
+            statement = statement.order_by(numbered.c.display_number.asc())
+        else:
+            statement = statement.order_by(numbered.c.display_number.desc())
+        return list((await session.scalars(statement.limit(limit))).all())
+
+    @staticmethod
     async def filter_cases(
         session: AsyncSession, params: CaseFilterParams
     ) -> dict:  # Меняем возвращаемый тип на dict
@@ -25,12 +43,7 @@ class CaseFilterService:
         total_result = await session.execute(count_stmt)
         total_count = total_result.scalar_one()
 
-        numbered_cte = select(
-            RepairCaseEquipment.id,
-            func.row_number()
-            .over(order_by=RepairCaseEquipment.id)
-            .label("display_number"),
-        ).cte("numbered_cases")
+        numbered_cte = CaseFilterService._numbered_cases()
 
         stmt = base_stmt.outerjoin(
             numbered_cte, RepairCaseEquipment.id == numbered_cte.c.id

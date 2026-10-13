@@ -14,7 +14,7 @@ import {
   Repeat,
 } from "lucide-react";
 
-import { formatDate, getText, formatFullName } from "../utils/formatters";
+import { formatDate, getText, formatFullName, formatSectionMask } from "../utils/formatters";
 import { getStatusConfig } from "../utils/statusHelpers";
 import { REPAIR_FIELDS_LABELS } from "../constants/labels";
 
@@ -22,6 +22,15 @@ const NumberIcon = () => (
   <span className="text-xl leading-none font-black text-amber-300 select-none">
     №
   </span>
+);
+
+const SectionsIcon = ({ className }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden="true">
+    <path d="M0 12h3m5 0h2m5 0h2m5 0h2" />
+    <rect x="3" y="8" width="5" height="8" rx="1.5" />
+    <rect x="10" y="8" width="5" height="8" rx="1.5" />
+    <rect x="17" y="8" width="5" height="8" rx="1.5" />
+  </svg>
 );
 
 // Вспомогательные компоненты
@@ -114,6 +123,7 @@ const CaseCard = React.memo(({ item, index, onCaseClick }) => {
       creator: formatFullName(item.creator_full_name),
       locomotiveModel: getText(item.locomotive_model),
       locomotiveNumber: item.locomotive_number || "—",
+      sections: formatSectionMask(item.section_mask),
       regionalCenter: getText(item.regional_center),
       faultDate: formatDate(item.fault_date),
       supplier: getText(item.supplier),
@@ -164,6 +174,12 @@ const CaseCard = React.memo(({ item, index, onCaseClick }) => {
             value={formattedData.locomotiveNumber}
             icon={NumberIcon}
             iconColor="text-amber-300"
+          />
+          <DataHeader
+            label={REPAIR_FIELDS_LABELS.section}
+            value={formattedData.sections}
+            icon={SectionsIcon}
+            iconColor="text-violet-300"
           />
           <DataHeader
             label="РЦ"

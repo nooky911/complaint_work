@@ -77,6 +77,21 @@ async def create_case(
         )
 
 
+# Фильтр по номеру случая
+@router.get(
+    "/display-numbers",
+    response_model=list[int],
+    summary="Поиск отображаемого номера случая",
+)
+async def get_display_numbers(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    search: Annotated[str, Query(pattern=r"^[0-9]*$", max_length=10)] = "",
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+):
+    return await CaseFilterService.get_display_numbers(session, search, limit)
+
+
 # Детали случаи
 @router.get(
     "/{case_id}",

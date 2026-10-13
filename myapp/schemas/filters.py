@@ -63,6 +63,7 @@ class CaseFilterParams(BaseModel):
 
     skip: int = 0
     limit: int = 50
+    display_number: int | None = Field(default=None, ge=1)
 
     # Даты неисправности
     date_from: date | None = None
