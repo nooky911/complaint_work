@@ -13,6 +13,7 @@ class CaseBase(BaseModel):
     fault_date: date | None = None
     section_mask: int | None = None
     locomotive_number: str | None = None
+    passport_id: int | None = None
     mileage: int | None = None
     component_quantity: int | None = None
     element_quantity: int | None = None
@@ -85,6 +86,7 @@ class CaseOutputData(CaseBase):
     """Схема для вывода"""
 
     id: int
+    locomotive_identity_locked: bool = False
     date_recorded: datetime
     supplier_id: int | None = None
     user_id: int

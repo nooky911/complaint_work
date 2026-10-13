@@ -1,4 +1,4 @@
-from sqlalchemy import ForeignKey, String, Text
+from sqlalchemy import CheckConstraint, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from myapp.database.base import Base
 
@@ -40,6 +40,19 @@ class LocomotiveModel(Base):
     def name(self) -> str:
         """Для корректного использования name в AuxiliaryItem"""
         return self.locomotive_model_name
+
+
+class LocomotiveNumberException(Base):
+    """Номера, разрешённые для новых случаев без паспорта."""
+
+    __tablename__ = "locomotive_number_exceptions"
+    __table_args__ = (
+        CheckConstraint("section_mask > 0 AND section_mask <= 7", name="ck_locomotive_exception_sections"),
+    )
+
+    locomotive_model_id: Mapped[int] = mapped_column(ForeignKey("locomotive_models.id"), primary_key=True)
+    locomotive_number: Mapped[str] = mapped_column(String(50), primary_key=True)
+    section_mask: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
 class FaultDiscoveryPlace(Base):

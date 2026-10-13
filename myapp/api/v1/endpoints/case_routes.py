@@ -13,7 +13,7 @@ from myapp.schemas.cases import (
 )
 from myapp.schemas.filters import CaseFilterParams
 from myapp.services.equipment_service import EquipmentService
-from myapp.services.case_service import CaseService
+from myapp.services.case_service import CaseService, CaseValidationError
 from myapp.services.case_filter_service import CaseFilterService
 from myapp.database.base import get_db
 from .warranty_routes import router as warranty_router
@@ -66,6 +66,10 @@ async def create_case(
 
     try:
         return await CaseService.create_case(session, case_data, target_user_id)
+    except CaseValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
     except ValueError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -123,9 +127,14 @@ async def update_case(
                 detail="Только superadmin может менять владельца случая",
             )
 
-    updated_case = await CaseService.update_case(
-        session, case_id, case_data, current_user.id
-    )
+    try:
+        updated_case = await CaseService.update_case(
+            session, case_id, case_data, current_user.id
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
 
     if not updated_case:
         raise HTTPException(

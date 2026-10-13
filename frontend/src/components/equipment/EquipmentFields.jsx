@@ -1,7 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 
 import { EditableField } from "../inputs";
 import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import {
+  MANUFACTURE_DATE_ERROR,
+  isValidManufactureDate,
+} from "../../utils/validators";
 
 export const EquipmentFields = ({
   mode,
@@ -11,6 +15,18 @@ export const EquipmentFields = ({
   isEditing,
 }) => {
   const sfx = mode === "old" ? "_old" : "_new";
+  const [rejectedDates, setRejectedDates] = useState({});
+
+  const handleManufactureDateChange = (field, value) => {
+    const invalid = !isValidManufactureDate(value);
+    setRejectedDates((previous) => ({ ...previous, [field]: invalid }));
+    if (!invalid) updateField(field, value);
+  };
+
+  const manufactureDateError = (field) =>
+    rejectedDates[field] || !isValidManufactureDate(currentData?.[field])
+      ? MANUFACTURE_DATE_ERROR
+      : undefined;
 
   const rId = Number(
     currentData?.repair_type?.id || currentData?.repair_type_id,
@@ -85,8 +101,9 @@ export const EquipmentFields = ({
                   : currentData?.component_manufacture_date_new
               }
               onChange={(val) =>
-                updateField(`component_manufacture_date${sfx}`, val)
+                handleManufactureDateChange(`component_manufacture_date${sfx}`, val)
               }
+              error={manufactureDateError(`component_manufacture_date${sfx}`)}
               isEditing={isEditing}
               type="text"
               isDisabled={disableComponent}
@@ -141,8 +158,9 @@ export const EquipmentFields = ({
                   : currentData?.element_manufacture_date_new
               }
               onChange={(val) =>
-                updateField(`element_manufacture_date${sfx}`, val)
+                handleManufactureDateChange(`element_manufacture_date${sfx}`, val)
               }
+              error={manufactureDateError(`element_manufacture_date${sfx}`)}
               isEditing={isEditing}
               type="text"
               isDisabled={disableElement}

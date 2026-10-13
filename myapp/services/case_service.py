@@ -14,9 +14,85 @@ from myapp.services.warranty_service import WarrantyService
 from myapp.services.case_status_service import CaseStatusService
 from myapp.services.waybill_service import WaybillService
 from myapp.services.files.file_management_service import FileManagementService
+from myapp.models.auxiliaries import LocomotiveNumberException
+from myapp.models.product_passports import ProductPassport
+from myapp.services.product_passport_service import ProductPassportService
+
+
+class CaseValidationError(ValueError):
+    """Ошибка входных данных случая, отличная от ошибки дубликата"""
+
+    def __init__(self, field: str, message: str = "Дата изготовления не должна содержать буквы"):
+        self.field = field
+        super().__init__(message)
 
 
 class CaseService:
+
+    @staticmethod
+    async def _prepare_locomotive(session: AsyncSession, data: dict, case=None) -> None:
+        identity_fields = ("locomotive_model_id", "locomotive_number", "section_mask", "passport_id")
+        if case is not None and case.locomotive_identity_locked:
+            for field in identity_fields:
+                if field in data and data[field] != getattr(case, field):
+                    raise CaseValidationError(field, "Модель, номер и секции этого архивного случая изменять нельзя")
+            return
+        if case is not None and not any(field in data for field in identity_fields):
+            return
+
+        passport = None
+        if data.get("passport_id") is not None:
+            passport = await session.get(ProductPassport, data["passport_id"])
+            if passport is None:
+                raise CaseValidationError("passport_id", "Выбранный паспорт не найден")
+            for field, value in (("locomotive_model_id", passport.locomotive_model_id),
+                                 ("locomotive_number", passport.product_number)):
+                if field in data and data[field] is not None and data[field] != value:
+                    raise CaseValidationError(field, "Модель или номер не соответствует выбранному паспорту")
+            model_id, number = passport.locomotive_model_id, passport.product_number
+        else:
+            model_id = data.get("locomotive_model_id", getattr(case, "locomotive_model_id", None))
+            number = data.get("locomotive_number", getattr(case, "locomotive_number", None))
+            if model_id is None or not isinstance(number, str) or not number.strip():
+                raise CaseValidationError("locomotive_number", "Выберите модель и номер локомотива")
+            number = number.strip()
+
+        exception = await session.get(LocomotiveNumberException, (model_id, number))
+        if exception is not None:
+            if passport is not None:
+                raise CaseValidationError("passport_id", "Этот локомотив используется без привязки к паспорту")
+            allowed_mask = exception.section_mask
+        else:
+            if passport is None:
+                passport = await session.scalar(select(ProductPassport).where(
+                    ProductPassport.locomotive_model_id == model_id,
+                    ProductPassport.product_number == number,
+                ))
+            if passport is None:
+                raise CaseValidationError("locomotive_number", "Номер недоступен для этой модели: нужен паспорт или разрешённое исключение")
+            masks = await ProductPassportService.get_section_masks(session, [passport.id])
+            allowed_mask = masks.get(passport.id, 0)
+            if not allowed_mask:
+                raise CaseValidationError("section_mask", "В паспорте не удалось определить доступные секции")
+
+        mask = data.get("section_mask", getattr(case, "section_mask", None))
+        if type(mask) is not int or mask <= 0 or mask & ~allowed_mask:
+            raise CaseValidationError("section_mask", "Выбранные секции отсутствуют у этого локомотива")
+        data.update(locomotive_model_id=model_id, locomotive_number=number,
+                    passport_id=passport.id if passport else None)
+
+    @staticmethod
+    def _validate_manufacture_dates(case_data: CaseCreate | CaseUpdate) -> None:
+        data = case_data.model_dump(exclude_unset=True)
+        for field in (
+            "component_manufacture_date_old",
+            "element_manufacture_date_old",
+            "component_manufacture_date_new",
+            "element_manufacture_date_new",
+        ):
+            value = data.get(field)
+            if value is not None and any(character.isalpha() for character in value):
+                raise CaseValidationError(field)
 
     @staticmethod
     async def _get_case_with_relations(
@@ -43,11 +119,15 @@ class CaseService:
     ) -> RepairCaseEquipment:
         """Создание случая"""
 
+        CaseService._validate_manufacture_dates(case_data)
+        case_creation_data = case_data.model_dump(exclude={"warranty_work", "user_id", "waybill_doc"})
+        await CaseService._prepare_locomotive(session, case_creation_data)
+
         # Проверка на точный дубликат перед созданием
         existing_case = await session.execute(
             select(RepairCaseEquipment).where(
                 RepairCaseEquipment.fault_date == case_data.fault_date,
-                RepairCaseEquipment.locomotive_number == case_data.locomotive_number,
+                RepairCaseEquipment.locomotive_number == case_creation_data["locomotive_number"],
                 RepairCaseEquipment.component_equipment_id
                 == case_data.component_equipment_id,
                 or_(
@@ -67,9 +147,6 @@ class CaseService:
             raise ValueError("Случай уже существует")
 
         # Разделение данных
-        case_creation_data = case_data.model_dump(
-            exclude={"warranty_work", "user_id", "waybill_doc"}
-        )
         warranty_work_data = (
             case_data.warranty_work.model_dump(exclude_unset=True)
             if case_data.warranty_work
@@ -126,19 +203,21 @@ class CaseService:
         current_user_id: int | None = None,
     ) -> RepairCaseEquipment | None:
         """Обновление случая и автоматическое определение обоих поставщиков"""
+        CaseService._validate_manufacture_dates(case_data)
         case: RepairCaseEquipment | None = await session.get(
             RepairCaseEquipment, case_id
         )
         if not case:
             return None
 
-        # Автоматическая смена владельца при редактировании партнером
-        if current_user_id and case.user_id != current_user_id:
-            case.user_id = current_user_id
-
         update_data = case_data.model_dump(
             exclude_unset=True, exclude={"warranty_work", "waybill_doc"}
         )
+        await CaseService._prepare_locomotive(session, update_data, case)
+
+        # Автоматическая смена владельца после проверки входных данных
+        if current_user_id and case.user_id != current_user_id:
+            case.user_id = current_user_id
 
         eq_changed = "component_equipment_id" in update_data
         el_changed = "element_equipment_id" in update_data

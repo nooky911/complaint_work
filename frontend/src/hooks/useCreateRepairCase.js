@@ -5,6 +5,7 @@ import api from "../api/api";
 import { getInitialCaseData } from "../utils/formatters";
 import { useCaseValidation } from "./useCaseValidation";
 import { useFormReferences } from "./api/index";
+import { useLocomotiveNumbers } from "./api/useReferencesApi";
 import { logger } from "../utils/logger";
 
 export const useCreateRepairCase = (onSuccess, currentUser) => {
@@ -28,10 +29,16 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     error: referencesError,
   } = useFormReferences(currentUser?.role);
 
+  const locomotiveSelection = useLocomotiveNumbers(
+    formData.locomotive_model_id,
+    formData.locomotive_number || "",
+    !!formData.locomotive_number,
+  );
   const validation = useCaseValidation(
     formData,
     faultyHierarchy,
     referencesData?.equipment || [],
+    locomotiveSelection,
   );
 
   // Обработка ошибок
@@ -87,8 +94,8 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     }
   }, [currentUser, formData.user_id]);
 
-  const updateField = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+  const updateField = (field, value, relatedFields = {}) => {
+    setFormData((prev) => ({ ...prev, ...relatedFields, [field]: value }));
   };
 
   const updateTtnField = (field, value) => {
@@ -173,6 +180,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     setSaving(true);
     try {
       const payload = { ...formData };
+      delete payload.locomotive_identity_locked;
       const response = await api.post("/cases/", payload);
       const newCaseId = response.data.id;
 

@@ -10,9 +10,16 @@ export const SearchableSelect = ({
   isDisabled,
   label,
   error,
+  onSearchChange,
+  onOpen,
+  isLoading = false,
+  loadError = false,
+  onRetry,
+  className = "",
 }) => {
   const {
     isOpen,
+    setIsOpen,
     containerRef,
     searchTerm,
     setSearchTerm,
@@ -23,8 +30,14 @@ export const SearchableSelect = ({
     handleClear,
   } = useSearchableSelect(options, value, onChange);
 
+  const handleToggle = () => {
+    if (isDisabled) return;
+    if (!isOpen) onOpen?.();
+    toggleDropdown();
+  };
+
   return (
-    <div className="flex flex-col gap-1" ref={containerRef}>
+    <div className={`flex flex-col gap-1 ${className}`} ref={containerRef}>
       <label className="ml-1 text-xs font-bold tracking-wider text-slate-500 uppercase">
         {label}
       </label>
@@ -41,17 +54,31 @@ export const SearchableSelect = ({
           placeholder={placeholder}
           value={isOpen ? searchTerm : selectedOption?.name || ""}
           disabled={isDisabled}
-          onClick={toggleDropdown}
+          aria-label={label}
+          aria-expanded={isOpen && !isDisabled}
+          aria-invalid={!!error}
+          autoComplete="off"
+          onClick={handleToggle}
           onChange={(e) => {
-            if (!isOpen) toggleDropdown();
+            if (!isOpen) handleToggle();
             setSearchTerm(e.target.value);
+            onSearchChange?.(e.target.value);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setIsOpen(false);
+            if (event.key === "Enter" && isOpen) {
+              event.preventDefault();
+              if (!isLoading && !loadError && filteredOptions.length === 1) {
+                handleSelect(filteredOptions[0].id, filteredOptions[0].name);
+              }
+            }
           }}
         />
         <div
           className="absolute inset-y-0 right-0 flex cursor-pointer items-center px-3"
           onClick={(e) => {
             e.stopPropagation();
-            toggleDropdown();
+            handleToggle();
           }}
         >
           <ChevronDown
@@ -68,7 +95,14 @@ export const SearchableSelect = ({
             >
               — Сбросить выбор —
             </div>
-            {filteredOptions.length > 0 ? (
+            {isLoading ? (
+              <div className="px-3 py-3 text-center text-xs text-slate-500">Загрузка…</div>
+            ) : loadError ? (
+              <div className="px-3 py-3 text-center text-xs text-red-700">
+                Не удалось загрузить номера
+                {onRetry && <button type="button" onClick={onRetry} className="ml-2 underline">Повторить</button>}
+              </div>
+            ) : filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
                 <div
                   key={opt.id}
@@ -90,6 +124,7 @@ export const SearchableSelect = ({
           </div>
         )}
       </div>
+      {typeof error === "string" && <p role="alert" className="text-xs text-red-700">{error}</p>}
     </div>
   );
 };

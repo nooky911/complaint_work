@@ -2,6 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 
 import api from "../../api/api";
 
+export const useLocomotiveNumbers = (modelId, search = "", enabled = true) =>
+  useQuery({
+    queryKey: ["references", "locomotive-numbers", modelId, search],
+    queryFn: async ({ signal }) => {
+      const response = await api.get("/references/locomotive-numbers", {
+        params: { locomotive_model_id: modelId, search, limit: 200 },
+        signal,
+      });
+      return response.data;
+    },
+    enabled: enabled && !!modelId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+
 // Хук для получения справочников для формы
 export const useFormReferences = (userRole) => {
   return useQuery({

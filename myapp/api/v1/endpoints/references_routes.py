@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Query, Depends
 from typing import Annotated
+from sqlalchemy.ext.asyncio import AsyncSession
+from myapp.database.base import get_db
 
 from myapp.auth.dependencies import (
     require_viewer_or_higher,
@@ -10,6 +12,7 @@ from myapp.models.user import User
 from myapp.schemas.references import (
     CaseFormReferencesResponse,
     EquipmentManagementReferencesResponse,
+    LocomotiveNumberItem,
 )
 from myapp.schemas.filters import FilterOptionsResponse, CaseFilterParams
 from myapp.services.reference_service import ReferenceService
@@ -17,6 +20,18 @@ from myapp.services.case_filter_service import CaseFilterService
 
 
 router = APIRouter(prefix="/references", tags=["Выпадающие списки"])
+
+
+@router.get("/locomotive-numbers", response_model=list[LocomotiveNumberItem],
+            summary="Номера локомотивов выбранной модели для формы случая")
+async def get_locomotive_numbers(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_editor_or_superadmin)],
+    locomotive_model_id: Annotated[int, Query(ge=1)],
+    search: Annotated[str, Query(max_length=50)] = "",
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+):
+    return await ReferenceService.get_locomotive_numbers(session, locomotive_model_id, search, limit)
 
 
 @router.get(

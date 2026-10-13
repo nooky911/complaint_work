@@ -8,6 +8,7 @@ from myapp.constants.filter_constants import DB_SEMAPHORE_LIMIT
 from myapp.models.auxiliaries import (
     RegionalCenter,
     LocomotiveModel,
+    LocomotiveNumberException,
     Supplier,
     RepairType,
     FaultDiscoveryPlace,
@@ -27,12 +28,64 @@ from myapp.models.warranty_work import (
     InvestigationReason,
 )
 from myapp.models.waybill_docs import ShippingProvider
+from myapp.models.product_passports import ProductPassport
+from myapp.services.product_passport_service import ProductPassportService
 
 
 class ReferenceService:
     """Сервис для работы со справочниками"""
 
     _db_semaphore = asyncio.Semaphore(DB_SEMAPHORE_LIMIT)
+
+    @staticmethod
+    async def get_locomotive_numbers(
+        session, locomotive_model_id: int, search: str = "", limit: int = 50
+    ) -> list[dict]:
+        """Поиск только внутри выбранной модели; исключения берём из БД"""
+        exceptions = (
+            await session.scalars(
+                select(LocomotiveNumberException).where(
+                    LocomotiveNumberException.locomotive_model_id == locomotive_model_id
+                )
+            )
+        ).all()
+        variants = {
+            item.locomotive_number: dict(
+                locomotive_number=item.locomotive_number,
+                passport_id=None,
+                section_mask=item.section_mask,
+            )
+            for item in exceptions
+        }
+        escaped = (
+            search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        )
+        passports = (
+            await session.scalars(
+                select(ProductPassport)
+                .where(
+                    ProductPassport.locomotive_model_id == locomotive_model_id,
+                    ProductPassport.product_number.ilike(f"%{escaped}%", escape="\\"),
+                )
+                .order_by(ProductPassport.product_number)
+                .limit(limit + len(exceptions))
+            )
+        ).all()
+        masks = await ProductPassportService.get_section_masks(
+            session, [p.id for p in passports]
+        )
+        for passport in passports:
+            if passport.product_number not in variants and masks.get(passport.id):
+                variants[passport.product_number] = dict(
+                    locomotive_number=passport.product_number,
+                    passport_id=passport.id,
+                    section_mask=masks[passport.id],
+                )
+        return [
+            variants[number]
+            for number in sorted(variants)
+            if search.strip().casefold() in number.casefold()
+        ][:limit]
 
     @staticmethod
     def _map_to_id_name(rows) -> list[dict]:

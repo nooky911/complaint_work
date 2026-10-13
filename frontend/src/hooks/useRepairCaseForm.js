@@ -6,6 +6,7 @@ import { useToast } from "./useToast";
 import api from "../api/api";
 import { convertCaseToFormData } from "../utils/formatters";
 import { useCaseValidation } from "./useCaseValidation";
+import { useLocomotiveNumbers } from "./api/useReferencesApi";
 
 const getDepth = (item, allMap) => {
   let depth = 0;
@@ -36,7 +37,12 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const [faultyHierarchy, setFaultyHierarchy] = useState(null);
   const [equipmentChain, setEquipmentChain] = useState([]);
 
-  const validation = useCaseValidation(editData, faultyHierarchy, allEquipment);
+  const locomotiveSelection = useLocomotiveNumbers(
+    editData?.locomotive_model_id,
+    editData?.locomotive_number || "",
+    isEditing && !!editData?.locomotive_number && !editData?.locomotive_identity_locked,
+  );
+  const validation = useCaseValidation(editData, faultyHierarchy, allEquipment, locomotiveSelection);
 
   useEffect(() => {
     if (!isEditing || !editData) return;
@@ -155,8 +161,12 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     }
   };
 
-  const updateField = (field, value) => {
+  const updateField = (field, value, relatedFields = {}) => {
     setEditData((prev) => {
+      const identityFields = ["locomotive_model_id", "locomotive_number", "section_mask", "passport_id"];
+      if (prev?.locomotive_identity_locked && (
+        identityFields.includes(field) || identityFields.some((key) => key in relatedFields)
+      )) return prev;
       const ttnFields = [
         "ttn_replacement",
         "ttn_replacement_date",
@@ -180,7 +190,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         };
       }
 
-      return { ...prev, [field]: value };
+      return { ...prev, ...relatedFields, [field]: value };
     });
   };
 
@@ -331,6 +341,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
 
       const initialData = convertCaseToFormData(repairCase);
       const payload = getDirtyValues(initialData, cleanedData);
+      delete payload.locomotive_identity_locked;
 
       if (Object.keys(payload).length === 0) {
         setIsEditing(false);

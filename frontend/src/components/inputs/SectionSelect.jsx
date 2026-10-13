@@ -11,11 +11,13 @@ export const SectionSelect = ({
   onChange,
   className = "",
   error,
+  isDisabled = false,
+  availableMask = 7,
 }) => {
   const { isOpen, setIsOpen, containerRef } = useDropdown();
 
   const toggleBit = (bit) => {
-    onChange((mask || 0) ^ bit);
+    if (!isDisabled && (availableMask & bit)) onChange((mask || 0) ^ bit);
   };
   const isSelected = (bit) => !!(mask & bit);
 
@@ -34,9 +36,19 @@ export const SectionSelect = ({
         </label>
       )}
       <div
-        onClick={() => setIsOpen(!isOpen)}
-        className={`flex h-[38px] cursor-pointer items-center justify-between rounded-lg border px-3 shadow-sm transition-all ${
-          error
+        role="button"
+        aria-label={label}
+        aria-disabled={isDisabled}
+        tabIndex={isDisabled ? -1 : 0}
+        onClick={() => { if (!isDisabled) setIsOpen(!isOpen); }}
+        onKeyDown={(event) => {
+          if (!isDisabled && (event.key === "Enter" || event.key === " ")) {
+            event.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        className={`flex h-[38px] items-center justify-between rounded-lg border px-3 shadow-sm transition-all ${
+          isDisabled ? "cursor-not-allowed border-gray-100 bg-gray-50" : error
             ? "border-red-500 bg-red-50 shadow-red-50"
             : isOpen
               ? "border-indigo-500 ring-1 ring-indigo-50"
@@ -44,7 +56,7 @@ export const SectionSelect = ({
         }`}
       >
         <span
-          className={`text-sm font-bold ${error ? "text-red-900" : displayValue === "Все" ? "text-slate-400" : "text-slate-800"}`}
+          className={`text-sm font-bold ${isDisabled ? "text-gray-400" : error ? "text-red-900" : displayValue === "Все" ? "text-slate-400" : "text-slate-800"}`}
         >
           {displayValue}
         </span>
@@ -53,10 +65,10 @@ export const SectionSelect = ({
         />
       </div>
 
-      {isOpen && (
+      {isOpen && !isDisabled && (
         <div className="animate-in fade-in zoom-in-95 absolute left-0 z-[120] mt-2 w-full overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-2xl duration-200">
           <div className="space-y-1">
-            {SECTIONS_CONFIG.map((s) => (
+            {SECTIONS_CONFIG.filter((s) => availableMask & s.bit).map((s) => (
               <div
                 key={s.bit}
                 onClick={() => toggleBit(s.bit)}

@@ -16,6 +16,7 @@ from .case_files import (
 from .auxiliaries import (
     RegionalCenter,
     LocomotiveModel,
+    LocomotiveNumberException,
     FaultDiscoveryPlace,
     RepairType,
     RepairPerformer,

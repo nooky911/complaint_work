@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, Text, ForeignKey, TIMESTAMP, text, Index
+from sqlalchemy import Boolean, Integer, String, Date, Text, ForeignKey, TIMESTAMP, text, Index
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 
@@ -43,6 +43,12 @@ class RepairCaseEquipment(Base):
     fault_date: Mapped[date] = mapped_column(Date, nullable=False)
     section_mask: Mapped[int] = mapped_column(Integer, nullable=False)
     locomotive_number: Mapped[str | None] = mapped_column(String(50))
+    passport_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_passports.id", ondelete="RESTRICT"), index=True
+    )
+    locomotive_identity_locked: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     mileage: Mapped[int | None] = mapped_column(Integer)
     component_quantity: Mapped[int] = mapped_column(Integer, server_default=text("1"))
     element_quantity: Mapped[int | None] = mapped_column(Integer)

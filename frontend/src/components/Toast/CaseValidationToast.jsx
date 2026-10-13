@@ -33,6 +33,11 @@ export const CaseValidationToast = ({ show, onClose, validation }) => {
           {validation.isSectionMissing && <li>Укажите секцию</li>}
           {validation.isRegionMissing && <li>Выберите региональный центр</li>}
           {validation.isLocoModelMissing && <li>Выберите модель локомотива</li>}
+          {validation.isLocoNumberMissing && <li>Выберите номер локомотива из списка</li>}
+          {validation.isLocoNumberInvalid && <li>Выберите доступный номер для этой модели</li>}
+          {validation.isSectionInvalid && <li>Выбранные секции отсутствуют у локомотива</li>}
+          {validation.isLocomotiveLoading && <li>Дождитесь проверки номера локомотива</li>}
+          {validation.isLocomotiveLoadError && <li>Не удалось проверить номер. Повторите загрузку</li>}
           {validation.isDiscoveredAtMissing && <li>Укажите, где выявлено</li>}
           {validation.isRepairTypeMissing && <li>Укажите тип ремонта</li>}
           {validation.isQuantityInvalid && <li>Кол-во должно быть ≥ 1</li>}

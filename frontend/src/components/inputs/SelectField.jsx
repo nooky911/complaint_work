@@ -33,7 +33,7 @@ export const SelectField = ({
             error
               ? "border-red-500 bg-red-50 text-red-900 focus:border-red-600"
               : "border-gray-200 bg-white text-slate-900 focus:border-indigo-500"
-          } disabled:bg-gray-50`}
+          } disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}
         >
           <option value="">{placeholder}</option>
           {options?.map((opt) => (

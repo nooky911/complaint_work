@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 
-import { isValidDate, isDateNotEarlierThan } from "../utils/validators";
+import {
+  isValidDate,
+  isDateNotEarlierThan,
+  MANUFACTURE_DATE_FIELDS,
+  isValidManufactureDate,
+} from "../utils/validators";
 
 const getDepth = (id, equipmentMap) => {
   if (!id || !equipmentMap) return -1;
@@ -28,7 +33,7 @@ const getDepth = (id, equipmentMap) => {
   return calculatedDepth;
 };
 
-export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
+export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomotiveSelection) => {
   const equipmentMap = useMemo(() => {
     if (!allEquipment || allEquipment.length === 0) return null;
     return new Map(allEquipment.map((item) => [Number(item.id), item]));
@@ -51,6 +56,9 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
       w?.work_completion_act_date,
     ].filter(Boolean);
     const areOtherDatesInvalid = otherDates.some((date) => !isValidDate(date));
+    const areManufactureDatesInvalid = MANUFACTURE_DATE_FIELDS.some(
+      (field) => !isValidManufactureDate(d?.[field]),
+    );
 
     // Проверка, что даты рекламационной работы не раньше fault_date
     const areOtherDatesEarlierThanFault = otherDates.some(
@@ -80,6 +88,22 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
     const isSectionMissing = !d?.section_mask;
     const isRegionMissing = !d?.regional_center_id;
     const isLocoModelMissing = !d?.locomotive_model_id;
+    const identityLocked = !!d?.locomotive_identity_locked;
+    const isLocoNumberMissing = !d?.locomotive_number;
+    const selectedLocomotive = locomotiveSelection?.data?.find(
+      (item) => item.locomotive_number === d?.locomotive_number &&
+        (item.passport_id ?? null) === (d?.passport_id ?? null),
+    );
+    const isLocomotiveLoading = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
+      !!locomotiveSelection?.isLoading;
+    const isLocomotiveLoadError = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
+      !!locomotiveSelection?.isError;
+    const isLocoNumberInvalid = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
+      !isLocomotiveLoading && !isLocomotiveLoadError && !selectedLocomotive;
+    const availableSectionMask = identityLocked ? (d?.section_mask || 0) :
+      (selectedLocomotive?.section_mask || 0);
+    const isSectionInvalid = !identityLocked && !!d?.section_mask &&
+      !!selectedLocomotive && !!(d.section_mask & ~availableSectionMask);
     const isDiscoveredAtMissing = !d?.fault_discovered_at_id;
     const isQuantityInvalid =
       !d?.component_quantity || Number(d?.component_quantity) < 1;
@@ -119,12 +143,18 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
       dateError,
       isFaultDateInvalid,
       areOtherDatesInvalid,
+      areManufactureDatesInvalid,
       areOtherDatesEarlierThanFault,
       areTTNDatesInvalid,
       isFaultDateMissing,
       isSectionMissing,
       isRegionMissing,
       isLocoModelMissing,
+      isLocoNumberMissing,
+      isLocoNumberInvalid,
+      isLocomotiveLoading,
+      isLocomotiveLoadError,
+      isSectionInvalid,
       isDiscoveredAtMissing,
       isQuantityInvalid,
       isDesignationMissing,
@@ -141,6 +171,6 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = []) => {
       return value === true;
     });
 
-    return { ...errors, hasErrors, isSaveDisabled: hasErrors };
-  }, [formData, hierarchy, equipmentMap]);
+    return { ...errors, availableSectionMask, hasErrors, isSaveDisabled: hasErrors };
+  }, [formData, hierarchy, equipmentMap, locomotiveSelection]);
 };

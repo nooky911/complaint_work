@@ -129,6 +129,8 @@ export const convertCaseToFormData = (caseData) => {
     fault_date: caseData.fault_date,
     section_mask: caseData.section_mask,
     locomotive_number: caseData.locomotive_number,
+    passport_id: caseData.passport_id ?? null,
+    locomotive_identity_locked: !!caseData.locomotive_identity_locked,
     mileage: caseData.mileage,
     supplier: caseData.supplier || null,
 
@@ -225,6 +227,8 @@ export const getInitialCaseData = () => ({
   fault_date: null,
   section_mask: null,
   locomotive_number: "",
+  passport_id: null,
+  locomotive_identity_locked: false,
   mileage: null,
 
   // 2. Количества

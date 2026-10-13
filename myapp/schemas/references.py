@@ -10,6 +10,14 @@ class AuxiliaryItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class LocomotiveNumberItem(BaseModel):
+    """Вариант выбора номера внутри одной модели"""
+
+    locomotive_number: str
+    passport_id: int | None = None
+    section_mask: int
+
+
 class EquipmentItem(AuxiliaryItem):
     """Схема для оборудования с родительскими отношениями"""
 

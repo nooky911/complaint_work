@@ -36,6 +36,7 @@ export const EditableField = ({
           value={displayValue}
           disabled={isDisabled}
           onChange={handleChange}
+          aria-invalid={Boolean(error)}
           placeholder={placeholder}
           className={`min-h-[80px] resize-y ${baseStyles}`}
         />
@@ -45,6 +46,7 @@ export const EditableField = ({
           value={displayValue}
           disabled={isDisabled}
           onChange={handleChange}
+          aria-invalid={Boolean(error)}
           placeholder={placeholder}
           className={`${baseStyles} ${
             type === "number"
@@ -52,6 +54,11 @@ export const EditableField = ({
               : ""
           }`}
         />
+      )}
+      {typeof error === "string" && error && (
+        <p role="alert" className="mt-1 text-xs text-red-700">
+          {error}
+        </p>
       )}
     </div>
   );

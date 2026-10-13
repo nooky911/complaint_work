@@ -1,4 +1,6 @@
-from sqlalchemy import select
+import re
+
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -22,6 +24,52 @@ from myapp.services.product_passport_equipment_service import (
 
 class ProductPassportService:
     """Поиск и чтение сохранённых паспортов"""
+
+    @staticmethod
+    def section_bit(tree_name: str | None, full_name: str | None = None) -> int:
+        for name in (tree_name, full_name):
+            normalized = (name or "").strip().upper()
+            if "БУСТЕР" in normalized:
+                return 4
+            match = re.match(
+                r"^СЕКЦИЯ\s+[«\"']?([АAБB])(?=$|[\s»\"'.,:№-])", normalized
+            )
+            if match:
+                return 1 if match[1] in ("А", "A") else 2
+        return 0
+
+    @staticmethod
+    async def get_section_masks(
+        session: AsyncSession, passport_ids: list[int]
+    ) -> dict[int, int]:
+        """Читает секции только среди непосредственных детей корня паспорта"""
+        if not passport_ids:
+            return {}
+        nodes = ProductPassportNode.__table__
+        root = nodes.alias("passport_root")
+        rows = (
+            await session.execute(
+                select(
+                    nodes.c.passport_id,
+                    nodes.c.tree_name,
+                    nodes.c.full_name,
+                )
+                .select_from(
+                    nodes.join(root, and_(
+                        nodes.c.passport_id == root.c.passport_id,
+                        nodes.c.parent_omega_code == root.c.omega_code,
+                    ))
+                )
+                .where(
+                    root.c.parent_omega_code.is_(None),
+                    nodes.c.passport_id.in_(passport_ids),
+                )
+            )
+        ).all()
+        masks = {passport_id: 0 for passport_id in passport_ids}
+        for passport_id, name, full_name in rows:
+            masks[passport_id] |= ProductPassportService.section_bit(name, full_name)
+        return masks
 
     @staticmethod
     async def get_models(
@@ -109,9 +157,7 @@ class ProductPassportService:
         product_number: str,
         supplier_ids: dict[str, int] | None = None,
         equipment_index: dict[str, list[tuple[int, int | None]]] | None = None,
-        equipment_details: (
-            dict[int, tuple[int | None, int | None, str]] | None
-        ) = None,
+        equipment_details: dict[int, tuple[int | None, int | None, str]] | None = None,
         equipment_match_ids: dict[str, tuple[int, int | None]] | None = None,
         equipment_serial_match_ids: (
             dict[tuple[str, int], tuple[int, int | None]] | None

@@ -1,5 +1,18 @@
 import { DATE_MASK, normalizeDateForInput } from "./formatters.js";
 
+export const MANUFACTURE_DATE_FIELDS = [
+  "component_manufacture_date_old",
+  "element_manufacture_date_old",
+  "component_manufacture_date_new",
+  "element_manufacture_date_new",
+];
+
+export const MANUFACTURE_DATE_ERROR =
+  "Дата изготовления не должна содержать буквы";
+
+export const isValidManufactureDate = (value) =>
+  value == null || !/\p{L}/u.test(String(value));
+
 export const isValidDate = (dateValue, checkFuture = true) => {
   if (!dateValue || dateValue === DATE_MASK) return true;
 

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Train } from "lucide-react";
 import {
   formatDate,
@@ -12,8 +12,11 @@ import {
   SectionSelect,
   DatePickerField,
   EditableField,
+  SearchableSelect,
 } from "../inputs/index.jsx";
 import { BLOCK_TITLES, REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import { useLocomotiveNumbers } from "../../hooks/api/useReferencesApi";
+import { useDebouncedValue } from "../../hooks/useDebounce";
 
 export const GeneralInfo = ({
   isEditing,
@@ -24,6 +27,31 @@ export const GeneralInfo = ({
   validation,
   showError,
 }) => {
+  const [numberSearch, setNumberSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(numberSearch, 300);
+  const identityLocked = !!currentData?.locomotive_identity_locked;
+  const numbers = useLocomotiveNumbers(currentData?.locomotive_model_id, debouncedSearch,
+    isEditing && !identityLocked);
+  const searchPending = numberSearch !== debouncedSearch;
+  const numberOptions = (searchPending ? [] : numbers.data || []).map((item) => ({
+    ...item, id: item.locomotive_number, name: item.locomotive_number,
+  }));
+  if (currentData?.locomotive_number && !numberOptions.some((item) => item.id === currentData.locomotive_number)) {
+    numberOptions.push({ id: currentData.locomotive_number, name: currentData.locomotive_number,
+      passport_id: currentData.passport_id ?? null, section_mask: validation?.availableSectionMask || 0 });
+  }
+  const clearNumber = (search) => {
+    setNumberSearch(search);
+    updateField("locomotive_number", "", { passport_id: null, section_mask: null });
+  };
+  const selectNumber = (value) => {
+    const choice = numberOptions.find((item) => item.id === value);
+    setNumberSearch("");
+    updateField("locomotive_number", value || "", {
+      passport_id: choice?.passport_id ?? null,
+      section_mask: ((currentData?.section_mask || 0) & (choice?.section_mask || 0)) || null,
+    });
+  };
   return (
     <div className="space-y-1">
       <div className="relative mb-3 flex items-center gap-2 rounded-lg border border-blue-100 bg-gradient-to-r from-blue-50 to-white px-3 py-2 shadow-md">
@@ -63,15 +91,29 @@ export const GeneralInfo = ({
                 value={currentData?.locomotive_model_id}
                 options={references?.locomotive_models}
                 isEditing={true}
-                onChange={(value) => updateField("locomotive_model_id", value)}
+                onChange={(value) => {
+                  setNumberSearch("");
+                  updateField("locomotive_model_id", value, {
+                    locomotive_number: "", passport_id: null, section_mask: null,
+                  });
+                }}
+                disabled={identityLocked}
                 className="col-span-1"
                 error={showError && validation?.isLocoModelMissing}
               />
-              <EditableField
+              <SearchableSelect
                 label={REPAIR_FIELDS_LABELS.locomotive_number}
                 value={currentData?.locomotive_number}
-                isEditing={true}
-                onChange={(value) => updateField("locomotive_number", value)}
+                options={numberOptions}
+                onChange={selectNumber}
+                onSearchChange={clearNumber}
+                onOpen={() => setNumberSearch("")}
+                isDisabled={identityLocked || !currentData?.locomotive_model_id}
+                placeholder={currentData?.locomotive_model_id ? "Выберите номер или найдите его" : "Сначала выберите модель"}
+                isLoading={numbers.isFetching || searchPending}
+                loadError={numbers.isError}
+                onRetry={numbers.refetch}
+                error={showError && (validation?.isLocoNumberMissing || validation?.isLocoNumberInvalid)}
                 className="col-span-1"
               />
               <SectionSelect
@@ -79,7 +121,9 @@ export const GeneralInfo = ({
                 isEditing={true}
                 mask={currentData?.section_mask}
                 onChange={(value) => updateField("section_mask", value)}
-                error={showError && validation?.isSectionMissing}
+                isDisabled={identityLocked || !currentData?.locomotive_number || !validation?.availableSectionMask}
+                availableMask={validation?.availableSectionMask || 0}
+                error={showError && (validation?.isSectionMissing || validation?.isSectionInvalid)}
                 className="col-span-1"
               />
             </>
