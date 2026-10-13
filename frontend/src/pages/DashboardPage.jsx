@@ -264,9 +264,7 @@ export default React.memo(function DashboardPage() {
                 }`}
               >
                 <Search className="h-4 w-4" />
-                {quickCaseNumber
-                  ? `Случай №${quickCaseNumber}`
-                  : "Номер случая"}
+                {quickCaseNumber ? `Случай №${quickCaseNumber}` : "№ случая"}
               </button>
               {quickCaseNumber && (
                 <button
