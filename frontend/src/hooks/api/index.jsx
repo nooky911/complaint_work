@@ -1,4 +1,4 @@
-// API hooks
+// API хуки
 export {
   useCasesList,
   useCaseDisplayNumbers,
