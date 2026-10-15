@@ -1,21 +1,21 @@
 import asyncio
-from contextlib import asynccontextmanager, suppress
 import logging
-
+import uvicorn
+from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from scripts.openapi_fix import openapi_encoding_fix
-import uvicorn
 
 from myapp.api import api_router
 from myapp.config import settings
 from myapp.database.base import Base, engine
 from myapp.debug_logger import setup_debug_logging
-from myapp.services.omega_services.product_passport_scheduler import run_product_passport_sync_scheduler
+from myapp.services.omega_services.product_passport_scheduler import (
+    run_product_passport_sync_scheduler,
+)
 
 
 # -*- coding: utf-8 -*-
-
 
 
 # -ФУНКЦИЯ СОЗДАНИЯ ТАБЛИЦ -
