@@ -3,12 +3,8 @@ import api from "../api/api";
 
 /** Загружает экземпляры паспорта или состав замены для создания и редактирования случая */
 export const usePassportEquipment = (data, preview = false) => {
-  const enabled = !!(
-    data?.passport_id &&
-    data?.component_equipment_id &&
-    data?.fault_date &&
-    data?.section_mask
-  );
+  // До указания даты акта можно выбрать экземпляры из текущего состава паспорта
+  const enabled = !!(data?.passport_id && data?.section_mask);
   const links = (data?.passport_links || []).map(
     ({ node_id, role, parent_node_id, version }) => ({
       node_id,
@@ -18,12 +14,17 @@ export const usePassportEquipment = (data, preview = false) => {
     }),
   );
   const params = {
-    component_equipment_id: data?.component_equipment_id,
+    component_equipment_id: data?.component_equipment_id || undefined,
     element_equipment_id: data?.element_equipment_id || undefined,
     section_mask: data?.section_mask,
-    fault_date: data?.fault_date,
+    fault_date: data?.fault_date || undefined,
     case_id: data?.id || undefined,
-    component_node_ids: !preview ? links.filter((x) => x.role === "component").map((x) => x.node_id).join(",") || undefined : undefined,
+    component_node_ids: !preview
+      ? links
+          .filter((x) => x.role === "component")
+          .map((x) => x.node_id)
+          .join(",") || undefined
+      : undefined,
   };
   return useQuery({
     queryKey: [

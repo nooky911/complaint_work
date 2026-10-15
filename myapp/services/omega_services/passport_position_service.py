@@ -8,6 +8,7 @@ from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.product_passports import (
     ProductPassportEvent,
     ProductPassportEventItem,
+    ProductPassportNode,
 )
 from myapp.services import CaseValidationError
 from myapp.services.omega_services.product_passport_service import (
@@ -257,6 +258,59 @@ class PassportPositionService:
             )
         ]
 
+    @staticmethod
+    def equipment_path(equipment_id, equipment):
+        """Возвращает путь от типа оборудования до корня классификатора"""
+        path, seen = [], set()
+        while equipment_id in equipment and equipment_id not in seen:
+            seen.add(equipment_id)
+            path.append(equipment_id)
+            equipment_id = equipment[equipment_id]["parent_id"]
+        return list(reversed(path))
+
+    @classmethod
+    async def classifier_ids(
+        cls, session, nodes, states, equipment, by_code, section_mask
+    ):
+        """Оставляет паспортные обозначения выбранных секций и оборудование для ручного ввода"""
+        paths = {eid: cls.equipment_path(eid, equipment) for eid in equipment}
+        known_ids = (
+            await session.scalars(
+                select(ProductPassportNode.equipment_id)
+                .where(ProductPassportNode.equipment_id.is_not(None))
+                .distinct()
+            )
+        ).all()
+        # Ограничиваем конкретные паспортные обозначения, а не всё их семейство
+        managed_designations = {
+            paths[eid][3] for eid in known_ids if len(paths.get(eid, [])) >= 4
+        }
+        available = set()
+        for node in nodes.values():
+            state = states[node.id]
+            if not state.get("is_present", True):
+                continue
+            section = cls.context(node, by_code)["section"]
+            if section and not section & section_mask:
+                continue
+            available.update(paths.get(state.get("equipment_id"), []))
+        allowed = set(equipment)
+        children = defaultdict(set)
+        for eid, row in equipment.items():
+            children[row["parent_id"]].add(eid)
+            path = paths[eid]
+            if (
+                len(path) >= 4
+                and path[3] in managed_designations
+                and path[3] not in available
+            ):
+                allowed.discard(eid)
+        # Убираем пустые ветки, сохраняя детей для ручного ввода под доступным обозначением
+        for eid in sorted(equipment, key=lambda key: len(paths[key]), reverse=True):
+            if children[eid] and not children[eid] & allowed:
+                allowed.discard(eid)
+        return sorted(allowed)
+
     @classmethod
     async def options(
         cls,
@@ -270,10 +324,17 @@ class PassportPositionService:
         component_nodes=None,
     ):
         """Возвращает доступные экземпляры для выбора в случае"""
-        _, nodes, states, _, by_code = await cls.load(
+        _, nodes, states, equipment, by_code = await cls.load(
             session, passport_id, as_of, case_id
         )
-        result = {"component": [], "element": [], "required_roles": []}
+        result = {
+            "component": [],
+            "element": [],
+            "required_roles": [],
+            "allowed_equipment_ids": await cls.classifier_ids(
+                session, nodes, states, equipment, by_code, section_mask
+            ),
+        }
         for role, eid in [("component", component_id), ("element", element_id)]:
             if not eid:
                 continue

@@ -58,7 +58,7 @@ class ProductPassportResponse(BaseModel):
 class PassportReplacementPreview(BaseModel):
     """Данные для расчёта состава замены по случаю"""
 
-    fault_date: date
+    fault_date: date | None = None
     section_mask: int
     component_equipment_id: int
     element_equipment_id: int | None = None

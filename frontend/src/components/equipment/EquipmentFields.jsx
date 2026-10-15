@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 
-import { usePassportEquipment } from "../../hooks/usePassportEquipment";
 import { PassportEquipmentSelector } from "./PassportEquipmentFields";
 import { EditableField } from "../inputs";
 import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
@@ -9,24 +8,18 @@ import {
   isValidManufactureDate,
 } from "../../utils/validators";
 
+/** Показывает паспортный выбор или ручные поля для оборудования без паспорта */
 export const EquipmentFields = ({
   mode,
   levels,
   currentData,
   updateField,
   isEditing,
+  passportQuery,
 }) => {
-  const passportQuery = usePassportEquipment(
-    mode === "old" ? currentData : null,
-  );
   const hasPassport =
     mode === "old" &&
-    !!(
-      currentData?.passport_id &&
-      currentData?.component_equipment_id &&
-      currentData?.fault_date &&
-      currentData?.section_mask
-    );
+    !!(currentData?.passport_id && currentData?.component_equipment_id);
   const managedRoles = hasPassport
     ? passportQuery.data?.required_roles || []
     : [];
@@ -71,13 +64,18 @@ export const EquipmentFields = ({
 
   return (
     <div className="space-y-3 pt-2">
-      {hasPassport && (
-        <PassportEquipmentSelector
-          data={currentData}
-          updateField={updateField}
-          query={passportQuery}
-        />
-      )}
+      {hasPassport &&
+        (currentData?.section_mask ? (
+          <PassportEquipmentSelector
+            data={currentData}
+            updateField={updateField}
+            query={passportQuery}
+          />
+        ) : (
+          <p className="text-xs text-slate-500">
+            Выберите секцию, чтобы увидеть оборудование из паспорта
+          </p>
+        ))}
       {/* Поля Component (Lvl 3) */}
       {showComponent &&
         !loadingPassport &&

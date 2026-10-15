@@ -119,18 +119,18 @@ async def export_product_passport(
 @router.get("/{passport_id}/equipment-options")
 async def passport_equipment_options(
     passport_id: int,
-    component_equipment_id: int,
     section_mask: int,
-    fault_date: date,
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_viewer_or_higher)],
+    component_equipment_id: int | None = None,
+    fault_date: date | None = None,
     element_equipment_id: int | None = None,
     case_id: int | None = None,
     component_node_ids: Annotated[
         str | None, Query(pattern=r"^[0-9]+(,[0-9]+)*$")
     ] = None,
 ):
-    """Возвращает паспортные экземпляры для выбора в случае"""
+    """Возвращает экземпляры на дату акта или текущий состав, пока дата не выбрана"""
     try:
         return await PassportPositionService.options(
             session,
