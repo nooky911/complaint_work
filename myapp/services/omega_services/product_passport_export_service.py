@@ -4,7 +4,6 @@ import math
 import re
 from collections import defaultdict
 from datetime import datetime
-
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +12,9 @@ from myapp.schemas.product_passports import (
     ProductPassportNodeResponse,
     ProductPassportResponse,
 )
-from myapp.services.product_passport_service import ProductPassportService
+from myapp.services.omega_services.product_passport_service import (
+    ProductPassportService,
+)
 
 
 class ProductPassportExportService:
@@ -35,6 +36,7 @@ class ProductPassportExportService:
 
     @staticmethod
     def _section_order(node: ProductPassportNodeResponse) -> int:
+        """Определяет порядок секций А, Б и Бустер"""
         for name in (node.tree_name, node.full_name):
             normalized = (name or "").strip().upper()
             if "БУСТЕР" in normalized:
@@ -48,6 +50,7 @@ class ProductPassportExportService:
 
     @classmethod
     def _ordered_nodes(cls, passport: ProductPassportResponse):
+        """Собирает дерево паспорта в порядке строк для Excel"""
         children = defaultdict(list)
         for node in passport.nodes:
             children[node.parent_id].append(node)
@@ -81,13 +84,15 @@ class ProductPassportExportService:
 
     @staticmethod
     def _text(cell, value):
+        """Записывает значение ячейки как текст"""
         cell.value = value
-        # Названия и номера из источника всегда являются текстом, включая строки с '='.
+        # Названия и номера из источника всегда являются текстом, включая строки с '='
         if isinstance(value, str):
             cell.data_type = "s"
 
     @classmethod
     def generate_excel(cls, passport: ProductPassportResponse) -> io.BytesIO:
+        """Создаёт файл Excel с деревом и данными оборудования"""
         ordered = cls._ordered_nodes(passport)
         workbook = Workbook()
         sheet = workbook.active
@@ -198,6 +203,7 @@ class ProductPassportExportService:
 
     @classmethod
     async def export(cls, session: AsyncSession, passport_id: int):
+        """Загружает паспорт и готовит его выгрузку в отдельном потоке"""
         passport = await ProductPassportService.get_by_id(session, passport_id)
         if passport is None:
             return None

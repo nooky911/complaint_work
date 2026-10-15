@@ -1,5 +1,6 @@
 import React, { useMemo, useEffect, useCallback } from "react";
 
+import { PassportReplacementFields } from "./equipment/PassportEquipmentFields";
 import { SelectField } from "./inputs/index";
 import { EquipmentHierarchyEditor } from "./EquipmentHierarchyEditor";
 import { REPAIR_FIELDS_LABELS } from "../constants/labels";
@@ -18,6 +19,7 @@ export const RepairExecutionEditor = ({
     currentData?.repair_type?.id || currentData?.repair_type_id,
   );
 
+  const usesPassportReplacement = [1, 2, 3].includes(rId) && currentData?.passport_links?.some((x) => rId === 3 ? x.role === "element" : x.role === "component" || rId === 1);
   const hasLevel3 = Boolean(faultyHierarchy?.fullHierarchy?.lvl3);
   const isRepairTypeDisabled = !hasLevel3;
 
@@ -81,7 +83,7 @@ export const RepairExecutionEditor = ({
     const nextId = Number(val);
     if (nextId === rId) return;
 
-    updateField("repair_type_id", nextId);
+    updateField("repair_type_id", nextId, { replacement_items: [], _passport_replacement_invalid: true });
     resetAllRepairFields();
 
     const h = faultyHierarchy?.fullHierarchy || {};
@@ -133,7 +135,9 @@ export const RepairExecutionEditor = ({
         />
       </div>
 
-      {strategy !== "NONE" && (
+      {[5, 8].includes(rId) && !!currentData?.passport_links?.length && <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">Для этого типа ремонта состав паспорта автоматически не меняется.</p>}
+      {usesPassportReplacement && <PassportReplacementFields data={currentData} updateField={updateField} />}
+      {strategy !== "NONE" && !usesPassportReplacement && (
         <EquipmentHierarchyEditor
           isEditing={isEditing}
           mode="new"

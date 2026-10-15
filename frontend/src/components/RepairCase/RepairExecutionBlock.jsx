@@ -1,4 +1,5 @@
 import React from "react";
+import { PassportInstanceSummary } from "../equipment/PassportEquipmentFields";
 import { Settings } from "lucide-react";
 import { formatDate, formatEquipmentName } from "../../utils/formatters";
 import { DataField } from "../inputs/DataField.jsx";
@@ -70,6 +71,7 @@ export const RepairExecutionBlock = ({
         </div>
       ) : (
         <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-200/50 p-3 shadow-sm">
+          <PassportInstanceSummary items={currentData.replacement_items || []} installed />
           {/* Инфо о ремонте */}
           <div className="grid grid-cols-2 gap-4">
             <DataField
@@ -94,7 +96,7 @@ export const RepairExecutionBlock = ({
             />
           </div>
 
-          {showComponent && (
+          {showComponent && !currentData.replacement_items?.length && (
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <Tooltip
@@ -131,7 +133,7 @@ export const RepairExecutionBlock = ({
             </div>
           )}
 
-          {showElement && (
+          {showElement && !currentData.replacement_items?.length && (
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <Tooltip

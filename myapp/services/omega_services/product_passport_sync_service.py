@@ -1,7 +1,7 @@
 import asyncio
+from datetime import datetime, timezone
 import logging
 import re
-from datetime import datetime, timezone
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
@@ -12,19 +12,22 @@ from myapp.models.auxiliaries import LocomotiveModel, Supplier
 from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.product_passports import (
     ProductPassport,
-    ProductPassportNode,
     ProductPassportEquipmentMatch,
     ProductPassportEquipmentSerialMatch,
+    ProductPassportNode,
 )
 from myapp.omega.client import OmegaClient
 from myapp.schemas.omega import OmegaPassportRootData
-from myapp.ul_service.client import ULServiceClient
-from myapp.services.product_passport_service import ProductPassportService
-from myapp.services.product_passport_equipment_service import (
+from myapp.services.omega_services.product_passport_equipment_service import (
     NumberedPassportLinks,
     ProductPassportEquipmentService,
 )
+from myapp.services.omega_services.product_passport_service import (
+    ProductPassportService,
+)
+from myapp.ul_service.client import ULServiceClient
 from myapp.validators.product_passport_validator import ProductPassportValidator
+
 
 logger = logging.getLogger(__name__)
 _sync_lock = asyncio.Lock()
@@ -264,15 +267,22 @@ class ProductPassportSyncService:
                     async with async_session_maker() as session:
                         async with session.begin():
                             if existing:
-                                old_passport = await session.scalar(
-                                    select(ProductPassport)
-                                    .options(selectinload(ProductPassport.nodes))
-                                    .where(ProductPassport.id == existing.id)
+                                old_passport: ProductPassport | None = (
+                                    await session.scalar(
+                                        select(ProductPassport)
+                                        .options(selectinload(ProductPassport.nodes))
+                                        .where(
+                                            ProductPassport.__table__.c["id"]
+                                            == existing.id
+                                        )
+                                    )
                                 )
+                                if old_passport is None:
+                                    raise ValueError("Сохранённый паспорт не найден")
                                 ProductPassportSyncService._merge_passport(
                                     old_passport, passport
                                 )
-                                saved_passport = old_passport
+                                saved_passport: ProductPassport = old_passport
                             else:
                                 session.add(passport)
                                 saved_passport = passport
@@ -385,6 +395,7 @@ class ProductPassportSyncService:
                         .where(
                             ProductPassport.commissioned_at.is_not(None),
                             ProductPassportNode.equipment_id.is_(None),
+                            ProductPassportNode.baseline_state.is_(None),
                             or_(
                                 ProductPassportNode.serial_number.is_(None),
                                 func.btrim(ProductPassportNode.serial_number) == "",

@@ -1,5 +1,6 @@
 from sqlalchemy import select, func, String
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.selectable import CTE
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.schemas.cases import CaseList
@@ -13,18 +14,35 @@ class CaseFilterService:
     """Сервис для фильтрации случаев и получения опций фильтров"""
 
     @staticmethod
-    def _numbered_cases():
+    def _numbered_cases() -> CTE:
+        """Добавляет порядковый номер каждому случаю по его ID"""
         return select(
             RepairCaseEquipment.id,
-            func.row_number().over(order_by=RepairCaseEquipment.id).label("display_number"),
+            func.row_number()
+            .over(order_by=RepairCaseEquipment.id)
+            .label("display_number"),
         ).cte("numbered_cases")
 
     @staticmethod
-    async def get_display_numbers(session: AsyncSession, search: str = "", limit: int = 50) -> list[int]:
+    async def get_display_number(session: AsyncSession, case_id: int) -> int | None:
+        """Возвращает порядковый номер случая в общем списке"""
+        numbered = CaseFilterService._numbered_cases()
+        return await session.scalar(
+            select(numbered.c.display_number).where(numbered.c.id == case_id)
+        )
+
+    @staticmethod
+    async def get_display_numbers(
+        session: AsyncSession, search: str = "", limit: int = 50
+    ) -> list[int]:
         numbered = CaseFilterService._numbered_cases()
         statement = select(numbered.c.display_number)
         if search:
-            statement = statement.where(numbered.c.display_number.cast(String).startswith(search, autoescape=True))
+            statement = statement.where(
+                numbered.c.display_number.cast(String).startswith(
+                    search, autoescape=True
+                )
+            )
             statement = statement.order_by(numbered.c.display_number.asc())
         else:
             statement = statement.order_by(numbered.c.display_number.desc())
@@ -46,7 +64,7 @@ class CaseFilterService:
         numbered_cte = CaseFilterService._numbered_cases()
 
         stmt = base_stmt.outerjoin(
-            numbered_cte, RepairCaseEquipment.id == numbered_cte.c.id
+            numbered_cte, numbered_cte.c["id"] == RepairCaseEquipment.id
         )
         stmt = stmt.add_columns(numbered_cte.c.display_number)
 

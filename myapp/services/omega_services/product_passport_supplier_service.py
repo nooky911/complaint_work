@@ -1,9 +1,9 @@
 import re
 
 from myapp.constants.product_passport_supplier_constants import (
-    SUPPLIER_NAMES,
     MANUFACTURER_IF_NO_SUPPLIER,
     MANUFACTURER_OVERRIDES,
+    SUPPLIER_NAMES,
 )
 from myapp.models.product_passports import ProductPassportNode
 
@@ -13,14 +13,14 @@ class ProductPassportSupplierService:
 
     @staticmethod
     def _key(value: str | None) -> str:
+        """Приводит название к одному регистру и убирает лишние пробелы"""
         return " ".join((value or "").upper().split())
 
     @staticmethod
     def _entity_key(value: str | None) -> str:
+        """Убирает оформление названия для сравнения поставщиков"""
         return "".join(
-            char
-            for char in (value or "").upper().replace("Ё", "Е")
-            if char.isalnum()
+            char for char in (value or "").upper().replace("Ё", "Е") if char.isalnum()
         )
 
     @classmethod
@@ -205,9 +205,7 @@ class ProductPassportSupplierService:
             supplier_id = supplier_ids.get(target)
             if supplier_id is not None:
                 return supplier_id
-        manufacturer_supplier_id = cls._manufacturer_id(
-            node.manufacturer, supplier_ids
-        )
+        manufacturer_supplier_id = cls._manufacturer_id(node.manufacturer, supplier_ids)
         if manufacturer_supplier_id is not None and manufacturer_supplier_id in {
             supplier_ids.get("ООО «НПО САУТ»"),
             supplier_ids.get("ООО «Горизонт»"),

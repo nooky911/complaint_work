@@ -10,6 +10,7 @@ import {
   LoaderCircle,
 } from "lucide-react";
 
+import { PassportPositionHistory } from "./PassportPositionHistory";
 import { formatDate } from "../../utils/formatters";
 import { exportProductPassport } from "../../api/productPassports";
 
@@ -82,7 +83,8 @@ export function PassportTree({ passport }) {
   const [expanded, setExpanded] = useState(
     () => new Set(root ? [root.id] : []),
   );
-  const [selectedNode, setSelectedNode] = useState(root);
+  const [selectedNodeId, setSelectedNodeId] = useState(root?.id);
+  const selectedNode = passport.nodes.find((node) => node.id === selectedNodeId) || root;
 
   const toggleNode = (nodeId) => {
     setExpanded((current) => {
@@ -108,7 +110,7 @@ export function PassportTree({ passport }) {
               : "text-slate-700 hover:bg-slate-50"
           }`}
           style={{ paddingLeft: `${Math.min(depth, 12) * 18 + 8}px` }}
-          onClick={() => setSelectedNode(node)}
+          onClick={() => setSelectedNodeId(node.id)}
         >
           <button
             type="button"
@@ -131,7 +133,7 @@ export function PassportTree({ passport }) {
           </button>
           <Box className="h-4 w-4 shrink-0 text-slate-400" />
           <span className="min-w-0 flex-1 truncate text-xs font-bold">
-            {node.tree_name}
+            {node.tree_name}{node.has_history ? " *" : ""}
           </span>
           {node.serial_number && (
             <span className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-500 shadow-sm">
@@ -227,6 +229,7 @@ export function PassportTree({ passport }) {
                 );
               })}
             </dl>
+            <PassportPositionHistory key={`${selectedNode.id}-${selectedNode.version}`} passportId={passport.id} node={selectedNode} />
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-slate-400">

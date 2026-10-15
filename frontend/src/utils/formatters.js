@@ -151,6 +151,10 @@ export const convertCaseToFormData = (caseData) => {
   if (!caseData) return null;
 
   return {
+    id: caseData.id,
+    expected_revision: caseData.revision,
+    passport_links: caseData.passport_links || [],
+    replacement_items: caseData.replacement_items || [],
     // Основные поля
     fault_date: caseData.fault_date,
     section_mask: caseData.section_mask,
@@ -200,7 +204,7 @@ export const convertCaseToFormData = (caseData) => {
     // Владелец случая
     user_id: caseData.user_id,
 
-    // Warranty work
+    // Рекламационная работа
     warranty_work: caseData.warranty_work
       ? {
           notification_number: caseData.warranty_work.notification_number,
@@ -226,7 +230,7 @@ export const convertCaseToFormData = (caseData) => {
         }
       : null,
 
-    // Waybill document
+    // Накладная
     waybill_doc: caseData.waybill_doc
       ? {
           ttn_replacement: caseData.waybill_doc.ttn_replacement,

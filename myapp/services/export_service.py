@@ -1,20 +1,22 @@
 import io
-import urllib.parse
-import openpyxl
 import asyncio
-from pathlib import Path
-from typing import Sequence, Callable
+import openpyxl
+import urllib.parse
 from datetime import date, datetime
+from pathlib import Path
+from typing import Callable, Sequence
+
+from openpyxl.styles import Alignment, Border, Font, Side
 from sqlalchemy.ext.asyncio import AsyncSession
-from openpyxl.styles import Font, Alignment, Border, Side
 
 from myapp.database.query_builders.query_case_filters import build_filtered_case_stmt
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.schemas import CaseFilterParams
+from myapp.services.omega_services.passport_case_service import PassportCaseService
 from myapp.utils.export_utils import (
-    format_serial_and_date,
     format_doc_number_and_date,
     format_section_mask,
+    format_serial_and_date,
 )
 
 
@@ -96,6 +98,17 @@ class ExportService:
                 case.component_manufacture_date_new
                 or case.element_manufacture_date_new,
             )
+
+            if getattr(case, "replacement_items", None):
+                new_eq_name = "\n".join(
+                    f"{item['context'].get('section_name', '')} · {item['context'].get('caption', '')} · "
+                    f"{(item.get('equipment_name') or item.get('tree_name') or '').replace('_', ' ')}"
+                    for item in case.replacement_items
+                )
+                new_eq_info = "\n".join(
+                    f"№ {item.get('serial_number') or '—'}; {item.get('manufacture_date_text') or '—'}"
+                    for item in case.replacement_items
+                )
 
             # Список значений согласно колонкам в таблице
             return [
@@ -272,6 +285,7 @@ class ExportService:
         if not cases:
             raise ValueError("Нет данных для экспорта")
 
+        await PassportCaseService.attach_replacements(session, cases)
         file_stream = await asyncio.to_thread(ExportService.generate_cases_excel, cases)
 
         date_str = datetime.now().strftime("%d_%m_%Y")

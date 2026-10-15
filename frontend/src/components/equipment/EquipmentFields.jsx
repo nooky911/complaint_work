@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 
+import { usePassportEquipment } from "../../hooks/usePassportEquipment";
+import { PassportEquipmentSelector } from "./PassportEquipmentFields";
 import { EditableField } from "../inputs";
 import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
 import {
@@ -14,6 +16,22 @@ export const EquipmentFields = ({
   updateField,
   isEditing,
 }) => {
+  const passportQuery = usePassportEquipment(
+    mode === "old" ? currentData : null,
+  );
+  const hasPassport =
+    mode === "old" &&
+    !!(
+      currentData?.passport_id &&
+      currentData?.component_equipment_id &&
+      currentData?.fault_date &&
+      currentData?.section_mask
+    );
+  const managedRoles = hasPassport
+    ? passportQuery.data?.required_roles || []
+    : [];
+  const loadingPassport =
+    hasPassport && (!passportQuery.data || passportQuery.isError);
   const sfx = mode === "old" ? "_old" : "_new";
   const [rejectedDates, setRejectedDates] = useState({});
 
@@ -53,67 +71,79 @@ export const EquipmentFields = ({
 
   return (
     <div className="space-y-3 pt-2">
-      {/* Поля Component (Lvl 3) */}
-      {showComponent && (
-        <div className="flex gap-3">
-          <div className="w-24 shrink-0">
-            <EditableField
-              label={REPAIR_FIELDS_LABELS.quantity}
-              value={
-                mode === "old"
-                  ? (currentData?.component_quantity ?? "")
-                  : (currentData?.new_component_quantity ?? "")
-              }
-              onChange={(val) =>
-                handleQuantityChange(
-                  mode === "old"
-                    ? "component_quantity"
-                    : "new_component_quantity",
-                  val,
-                )
-              }
-              isEditing={isEditing}
-              type="number"
-              isDisabled={disableComponent}
-            />
-          </div>
-          <div className="flex-1">
-            <EditableField
-              label={REPAIR_FIELDS_LABELS.component_serial_number}
-              value={
-                mode === "old"
-                  ? currentData?.component_serial_number_old
-                  : currentData?.component_serial_number_new
-              }
-              onChange={(val) =>
-                updateField(`component_serial_number${sfx}`, val)
-              }
-              isEditing={isEditing}
-              isDisabled={disableComponent}
-            />
-          </div>
-          <div className="flex-1">
-            <EditableField
-              label={REPAIR_FIELDS_LABELS.manufacture_date}
-              value={
-                mode === "old"
-                  ? currentData?.component_manufacture_date_old
-                  : currentData?.component_manufacture_date_new
-              }
-              onChange={(val) =>
-                handleManufactureDateChange(`component_manufacture_date${sfx}`, val)
-              }
-              error={manufactureDateError(`component_manufacture_date${sfx}`)}
-              isEditing={isEditing}
-              type="text"
-              isDisabled={disableComponent}
-            />
-          </div>
-        </div>
+      {hasPassport && (
+        <PassportEquipmentSelector
+          data={currentData}
+          updateField={updateField}
+          query={passportQuery}
+        />
       )}
+      {/* Поля Component (Lvl 3) */}
+      {showComponent &&
+        !loadingPassport &&
+        !managedRoles.includes("component") && (
+          <div className="flex gap-3">
+            <div className="w-24 shrink-0">
+              <EditableField
+                label={REPAIR_FIELDS_LABELS.quantity}
+                value={
+                  mode === "old"
+                    ? (currentData?.component_quantity ?? "")
+                    : (currentData?.new_component_quantity ?? "")
+                }
+                onChange={(val) =>
+                  handleQuantityChange(
+                    mode === "old"
+                      ? "component_quantity"
+                      : "new_component_quantity",
+                    val,
+                  )
+                }
+                isEditing={isEditing}
+                type="number"
+                isDisabled={disableComponent}
+              />
+            </div>
+            <div className="flex-1">
+              <EditableField
+                label={REPAIR_FIELDS_LABELS.component_serial_number}
+                value={
+                  mode === "old"
+                    ? currentData?.component_serial_number_old
+                    : currentData?.component_serial_number_new
+                }
+                onChange={(val) =>
+                  updateField(`component_serial_number${sfx}`, val)
+                }
+                isEditing={isEditing}
+                isDisabled={disableComponent}
+              />
+            </div>
+            <div className="flex-1">
+              <EditableField
+                label={REPAIR_FIELDS_LABELS.manufacture_date}
+                value={
+                  mode === "old"
+                    ? currentData?.component_manufacture_date_old
+                    : currentData?.component_manufacture_date_new
+                }
+                onChange={(val) =>
+                  handleManufactureDateChange(
+                    `component_manufacture_date${sfx}`,
+                    val,
+                  )
+                }
+                error={manufactureDateError(`component_manufacture_date${sfx}`)}
+                isEditing={isEditing}
+                type="text"
+                isDisabled={disableComponent}
+              />
+            </div>
+          </div>
+        )}
 
       {/* Поля Element (Lvl 4) */}
-      {showElement && (
+      {showElement && !loadingPassport && !managedRoles.includes("element") && (
         <div className="flex gap-3">
           <div className="w-24 shrink-0">
             <EditableField
@@ -158,7 +188,10 @@ export const EquipmentFields = ({
                   : currentData?.element_manufacture_date_new
               }
               onChange={(val) =>
-                handleManufactureDateChange(`element_manufacture_date${sfx}`, val)
+                handleManufactureDateChange(
+                  `element_manufacture_date${sfx}`,
+                  val,
+                )
               }
               error={manufactureDateError(`element_manufacture_date${sfx}`)}
               isEditing={isEditing}

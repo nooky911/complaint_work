@@ -1,5 +1,7 @@
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from myapp.schemas.cases import PassportLinkInput
 
 
 class ProductPassportModelResponse(BaseModel):
@@ -27,12 +29,14 @@ class ProductPassportNodeResponse(BaseModel):
     article: str | None
     designation: str | None
     serial_number: str | None
-    manufacture_date: date | None
+    manufacture_date: date | str | None
     install_date: date | None
     manufacturer: str | None
     supplier: str | None
     supplier_id: int | None
     equipment_id: int | None
+    version: int = 1
+    has_history: bool = False
 
 
 class ProductPassportResponse(BaseModel):
@@ -49,3 +53,25 @@ class ProductPassportResponse(BaseModel):
     nodes: list[ProductPassportNodeResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PassportReplacementPreview(BaseModel):
+    """Данные для расчёта состава замены по случаю"""
+
+    fault_date: date
+    section_mask: int
+    component_equipment_id: int
+    element_equipment_id: int | None = None
+    repair_type_id: int
+    case_id: int | None = None
+    passport_links: list[PassportLinkInput]
+
+
+class PassportCorrection(BaseModel):
+    """Данные ручного исправления позиции паспорта"""
+
+    expected_version: int
+    reason: str = Field(min_length=1, max_length=2000)
+    equipment_id: int | None = None
+    serial_number: str | None = Field(default=None, max_length=255)
+    manufacture_date_text: str | None = Field(default=None, max_length=100)

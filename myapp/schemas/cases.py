@@ -1,13 +1,37 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import date, datetime
+from typing import Literal
+from pydantic import BaseModel, ConfigDict, Field
 
-from .waybill import WaybillDocUpdate, WaybillDocResponse
 from .references import AuxiliaryItem, EquipmentItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
+from .waybill import WaybillDocResponse, WaybillDocUpdate
+
+
+class PassportLinkInput(BaseModel):
+    """Выбранный неисправный экземпляр паспорта"""
+
+    node_id: int = Field(gt=0)
+    role: Literal["component", "element"]
+    parent_node_id: int | None = None
+    version: int | None = None
+
+
+class PassportReplacementInput(BaseModel):
+    """Данные установленного экземпляра оборудования"""
+
+    node_id: int = Field(gt=0)
+    version: int | None = None
+    equipment_id: int | None = None
+    serial_number: str | None = Field(default=None, max_length=255)
+    manufacture_date_text: str | None = Field(default=None, max_length=100)
 
 
 class CaseBase(BaseModel):
     """Основная схема для общих полей, используемых для создания/обновления"""
+
+    passport_links: list[PassportLinkInput] | None = None
+    replacement_items: list[PassportReplacementInput] | None = None
+    expected_revision: int | None = None
 
     # Основные поля данных
     fault_date: date | None = None
@@ -84,6 +108,13 @@ class UserPreview(BaseModel):
 
 class CaseOutputData(CaseBase):
     """Схема для вывода"""
+
+    passport_links: list[dict] = Field(default_factory=list)
+    replacement_items: list[dict] = Field(default_factory=list)
+    revision: int = 1
+    created_by_id: int | None = None
+    created_by_name: str | None = None
+    creator_source: str | None = None
 
     id: int
     locomotive_identity_locked: bool = False

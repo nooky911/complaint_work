@@ -3,20 +3,21 @@ import json
 import re
 
 from myapp.constants.product_passport_equipment_constants import (
+    AMORTIZER_NAMES,
     CLASSIFIER_NAME_ALIASES,
+    CODE_RULES,
     CONTACTOR_NAMES,
-    PKD_NAME,
+    DESIGNATION_ALIASES,
     FIRE_SYSTEM_NAME,
     GEARBOX_COVER_NAME,
-    AMORTIZER_NAMES,
-    RELAY_NAMES,
     NAME_ALIASES,
-    DESIGNATION_ALIASES,
     NAME_CONTAINS_ALIASES,
-    CODE_RULES,
+    PKD_NAME,
+    RELAY_NAMES,
     _key,
 )
 from myapp.models.product_passports import ProductPassportNode
+
 
 NumberedPassportLinks = dict[tuple[int, str], tuple[int, int | None] | None]
 
@@ -102,6 +103,7 @@ class ProductPassportEquipmentService:
 
     @staticmethod
     def _matches(value: str, pattern: str, mode: str) -> bool:
+        """Проверяет совпадение названия по выбранному правилу"""
         if mode == "exact":
             return value == pattern
         if mode == "prefix":
@@ -113,6 +115,7 @@ class ProductPassportEquipmentService:
     @classmethod
     def _resolve_primary(cls, name: str, code: str) -> str | None:
         # В противоречивых строках Omega название контактора подтверждается соседними позициями
+        """Определяет тип оборудования по названию и обозначению"""
         contactor = re.search(r"АМ-3[,.]0-(400|800)-(01|02)(?!\d)", name)
         if contactor and "КОНТАКТОР" in name:
             return CONTACTOR_NAMES[contactor.groups()]
@@ -134,6 +137,7 @@ class ProductPassportEquipmentService:
 
     @staticmethod
     def _resolve_special(name: str) -> str | None:
+        """Уточняет тип оборудования для отдельных обозначений"""
         if "ПНКВ-1-1А" in name and "-03" not in name:
             return "ПНКВ_1_1А"
         if re.search(r"РЕАКТОР\s+Р-1,5/1000\s*П\s*У2", name):
@@ -155,6 +159,7 @@ class ProductPassportEquipmentService:
 
     @staticmethod
     def _resolve_ek_motor(name: str, code: str) -> str | None:
+        """Определяет тип тягового двигателя по модели и номеру"""
         if "ЭДТ" in name:
             return None
         if "ТЯГОВЫЙ ДВИГАТЕЛЬ ЭК-810Ч" in name and code == "ДИЖЦ.652451.003":
@@ -167,6 +172,7 @@ class ProductPassportEquipmentService:
 
     @classmethod
     def _resolve_relay(cls, name: str, supplier_name: str | None) -> str | None:
+        """Определяет тип реле по названию и обозначению"""
         if "РЕЛЕ ДИФФЕРЕНЦИАЛЬНОЙ ЗАЩИТЫ" not in name:
             return None
         variant = re.search(r"РДЗ-068(?:-(01|02))?(?!\d)", name)
@@ -317,9 +323,11 @@ class ProductPassportEquipmentService:
         )
         if not name:
             return None
-        # После миграции берём новое обозначение; до неё поддерживаем старое.
+        # После миграции берём новое обозначение; до неё поддерживаем старое
         target_name = CLASSIFIER_NAME_ALIASES.get(name, name)
-        candidates = equipment_index.get(target_name, []) or equipment_index.get(name, [])
+        candidates = equipment_index.get(target_name, []) or equipment_index.get(
+            name, []
+        )
         if parent_equipment_id is not None:
             children = [
                 equipment_id

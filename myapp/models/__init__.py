@@ -31,5 +31,6 @@ from .product_passports import (
     ProductPassportNode,
     ProductPassportEquipmentMatch,
     ProductPassportEquipmentSerialMatch,
+    CasePassportLink, ProductPassportEvent, ProductPassportEventItem,
 )
 from .user import User

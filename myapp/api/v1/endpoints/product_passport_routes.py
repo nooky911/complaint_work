@@ -1,20 +1,39 @@
 import logging
+from datetime import date
 from typing import Annotated
 from urllib.parse import quote
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.auth.dependencies import require_viewer_or_higher
+from myapp.auth.dependencies import (
+    require_editor_or_superadmin,
+    require_superadmin,
+    require_viewer_or_higher,
+)
 from myapp.database.base import get_db
 from myapp.models.user import User
 from myapp.schemas.product_passports import (
+    PassportCorrection,
+    PassportReplacementPreview,
     ProductPassportModelResponse,
     ProductPassportResponse,
     ProductPassportSearchItem,
 )
-from myapp.services.product_passport_service import ProductPassportService
-from myapp.services.product_passport_export_service import ProductPassportExportService
+from myapp.services import CaseValidationError
+from myapp.services.omega_services.passport_history_service import (
+    PassportHistoryService,
+)
+from myapp.services.omega_services.passport_position_service import (
+    PassportPositionService,
+)
+from myapp.services.omega_services.product_passport_export_service import (
+    ProductPassportExportService,
+)
+from myapp.services.omega_services.product_passport_service import (
+    ProductPassportService,
+)
+
 
 router = APIRouter(prefix="/product-passports", tags=["Паспорта изделий"])
 logger = logging.getLogger(__name__)
@@ -95,3 +114,103 @@ async def export_product_passport(
             "Content-Disposition": f"attachment; filename*=utf-8''{quote(filename)}"
         },
     )
+
+
+@router.get("/{passport_id}/equipment-options")
+async def passport_equipment_options(
+    passport_id: int,
+    component_equipment_id: int,
+    section_mask: int,
+    fault_date: date,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    element_equipment_id: int | None = None,
+    case_id: int | None = None,
+    component_node_ids: Annotated[
+        str | None, Query(pattern=r"^[0-9]+(,[0-9]+)*$")
+    ] = None,
+):
+    """Возвращает паспортные экземпляры для выбора в случае"""
+    try:
+        return await PassportPositionService.options(
+            session,
+            passport_id,
+            component_equipment_id,
+            element_equipment_id,
+            section_mask,
+            fault_date,
+            case_id,
+            (
+                [int(n) for n in component_node_ids.split(",")]
+                if component_node_ids
+                else None
+            ),
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post("/{passport_id}/replacement-preview")
+async def passport_replacement_preview(
+    passport_id: int,
+    data: PassportReplacementPreview,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_editor_or_superadmin)],
+):
+    """Возвращает состав установленного оборудования для заполнения"""
+    try:
+        return await PassportPositionService.preview(
+            session, passport_id, data.model_dump()
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/{passport_id}/nodes/{node_id}/history")
+async def passport_position_history(
+    passport_id: int,
+    node_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Возвращает историю выбранной позиции паспорта"""
+    try:
+        return await PassportHistoryService.history(session, passport_id, node_id)
+    except CaseValidationError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/{passport_id}/nodes/{node_id}/types")
+async def passport_position_types(
+    passport_id: int,
+    node_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_superadmin)],
+):
+    """Возвращает допустимые типы для ручного исправления позиции"""
+    _, nodes, states, equipment, _ = await PassportPositionService.load(
+        session, passport_id
+    )
+    if node_id not in nodes:
+        raise HTTPException(404, "Позиция не найдена")
+    return PassportPositionService.allowed_types(
+        states[node_id].get("equipment_id"), equipment
+    )
+
+
+@router.patch("/{passport_id}/nodes/{node_id}")
+async def correct_passport_position(
+    passport_id: int,
+    node_id: int,
+    data: PassportCorrection,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[User, Depends(require_superadmin)],
+):
+    """Исправляет данные позиции паспорта с сохранением истории"""
+    try:
+        await PassportHistoryService.correct(
+            session, passport_id, node_id, data.model_dump(exclude_unset=True), actor
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(409 if exc.field == "revision" else 422, str(exc)) from exc
+    return {"status": "ok"}

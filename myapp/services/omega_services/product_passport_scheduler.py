@@ -3,7 +3,10 @@ import logging
 from datetime import datetime, timedelta
 
 from myapp.config import settings
-from myapp.services.product_passport_sync_service import ProductPassportSyncService
+from myapp.services.omega_services.product_passport_sync_service import (
+    ProductPassportSyncService,
+)
+
 
 logger = logging.getLogger(__name__)
 

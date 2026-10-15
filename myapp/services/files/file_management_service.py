@@ -1,10 +1,12 @@
 import asyncio
+from functools import partial
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, func
 
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from myapp.database.base import async_session_maker
 from myapp.database.transactional import transactional
-from myapp.services.storage_service import StorageService
 from myapp.models.case_files import (
     CaseFile,
     FileCategory,
@@ -12,6 +14,7 @@ from myapp.models.case_files import (
     WaybillDocumentField,
 )
 from myapp.schemas.files import FileInfo
+from myapp.services.storage_service import StorageService
 
 
 class FileManagementService:
@@ -48,12 +51,25 @@ class FileManagementService:
 
         if result.rowcount and count <= 1:
             full_path = StorageService.get_full_path(case_file)
-            try:
-                await asyncio.to_thread(full_path.unlink, missing_ok=True)
-            except FileNotFoundError:
-                pass
+            file_path = case_file.file_path
+
+            session.info.setdefault("after_commit", []).append(
+                partial(FileManagementService._delete_unused_file, file_path, full_path)
+            )
 
         return result.rowcount  # type: ignore
+
+    @staticmethod
+    async def _delete_unused_file(file_path: str, full_path: Path) -> None:
+        """Удаляет файл с диска после сохранения, если на него больше нет ссылок"""
+        async with async_session_maker() as session:
+            remaining = await session.scalar(
+                select(func.count())
+                .select_from(CaseFile)
+                .where(CaseFile.file_path == file_path)
+            )
+            if not remaining:
+                await asyncio.to_thread(full_path.unlink, missing_ok=True)
 
     @staticmethod
     async def search_unique_files(

@@ -7,6 +7,7 @@ import {
   isValidManufactureDate,
 } from "../utils/validators";
 
+/** Определяет глубину оборудования в классификаторе */
 const getDepth = (id, equipmentMap) => {
   if (!id || !equipmentMap) return -1;
 
@@ -33,6 +34,7 @@ const getDepth = (id, equipmentMap) => {
   return calculatedDepth;
 };
 
+/** Проверяет заполнение полей случая и выбранных паспортных экземпляров */
 export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomotiveSelection) => {
   const equipmentMap = useMemo(() => {
     if (!allEquipment || allEquipment.length === 0) return null;
@@ -137,9 +139,15 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomo
       else if (rId === 8) isNewComponentMissing = !newCompId;
     }
 
-    const isNewElementMissing = rId === 3 && !newElemId;
+    const linkedReplacement = [1, 2, 3].includes(rId) && d?.passport_links?.some((x) => rId === 3 ? x.role === "element" : x.role === "component" || rId === 1);
+    if (linkedReplacement) isNewComponentMissing = false;
+    const isNewElementMissing = rId === 3 && !newElemId && !linkedReplacement;
+    const isPassportInvalid = !!d?.passport_id && (d?._passport_status === "loading" || d?._passport_status === "error" || (d?._passport_required_roles || []).some((role) => !d?.passport_links?.some((x) => x.role === role)));
+    const isPassportReplacementInvalid = !!linkedReplacement && d?._passport_replacement_invalid !== false;
 
     const errors = {
+      isPassportInvalid,
+      isPassportReplacementInvalid,
       dateError,
       isFaultDateInvalid,
       areOtherDatesInvalid,

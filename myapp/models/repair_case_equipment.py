@@ -24,16 +24,25 @@ class RepairCaseEquipment(Base):
         Index("idx_repair_case_equipment_supplier_id", "supplier_id"),
         Index("idx_repair_case_equipment_new_supplier_id", "new_supplier_id"),
         Index(
-            "idx_unique_repair_case_core",
+            "idx_repair_case_legacy_lookup",
             "fault_date",
             "locomotive_number",
             "mileage",
             "component_equipment_id",
             "malfunction_id",
-            unique=True,
-            postgresql_nulls_not_distinct=True,
+            postgresql_where=text("passport_selection_key IS NULL"),
         ),
+        Index("idx_unique_repair_case_positions", "fault_date", "passport_id", "mileage",
+              "malfunction_id", "passport_selection_key", unique=True,
+              postgresql_nulls_not_distinct=True,
+              postgresql_where=text("passport_selection_key IS NOT NULL")),
     )
+
+    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by_name: Mapped[str | None] = mapped_column(Text)
+    creator_source: Mapped[str | None] = mapped_column(String(20))
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    passport_selection_key: Mapped[str | None] = mapped_column(String(64))
 
     # Основные поля
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -54,15 +63,15 @@ class RepairCaseEquipment(Base):
     element_quantity: Mapped[int | None] = mapped_column(Integer)
     new_component_quantity: Mapped[int | None] = mapped_column(Integer)
     new_element_quantity: Mapped[int | None] = mapped_column(Integer)
-    component_serial_number_old: Mapped[str | None] = mapped_column(String(100))
-    component_manufacture_date_old: Mapped[str | None] = mapped_column(String(100))
-    element_serial_number_old: Mapped[str | None] = mapped_column(String(100))
-    element_manufacture_date_old: Mapped[str | None] = mapped_column(String(100))
+    component_serial_number_old: Mapped[str | None] = mapped_column(Text)
+    component_manufacture_date_old: Mapped[str | None] = mapped_column(Text)
+    element_serial_number_old: Mapped[str | None] = mapped_column(Text)
+    element_manufacture_date_old: Mapped[str | None] = mapped_column(Text)
     notes: Mapped[str | None] = mapped_column(Text)
-    component_serial_number_new: Mapped[str | None] = mapped_column(String(100))
-    component_manufacture_date_new: Mapped[str | None] = mapped_column(String(100))
-    element_serial_number_new: Mapped[str | None] = mapped_column(String(100))
-    element_manufacture_date_new: Mapped[str | None] = mapped_column(String(100))
+    component_serial_number_new: Mapped[str | None] = mapped_column(Text)
+    component_manufacture_date_new: Mapped[str | None] = mapped_column(Text)
+    element_serial_number_new: Mapped[str | None] = mapped_column(Text)
+    element_manufacture_date_new: Mapped[str | None] = mapped_column(Text)
 
     # Внешние ключи
     regional_center_id: Mapped[int] = mapped_column(

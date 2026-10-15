@@ -1,10 +1,7 @@
-"""Маршруты для просмотра складских документов Omega"""
-
 import logging
+import oracledb
 from datetime import date
 from typing import Annotated, Awaitable, Literal, TypeVar
-
-import oracledb
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
 
 from myapp.auth.dependencies import require_viewer_or_higher
@@ -18,7 +15,8 @@ from myapp.schemas.omega_stock import (
     OmegaStockItem,
     OmegaStockWarehouse,
 )
-from myapp.services.omega_stock_service import OmegaStockService
+from myapp.services.omega_services.omega_stock_service import OmegaStockService
+
 
 router = APIRouter(prefix="/omega-stock", tags=["Склад Omega"])
 logger = logging.getLogger(__name__)
@@ -36,9 +34,7 @@ async def _read(operation: Awaitable[T]) -> T:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except oracledb.Error as exc:
         logger.exception("Не удалось прочитать складские документы Omega")
-        raise HTTPException(
-            status_code=503, detail="Omega сейчас недоступна"
-        ) from exc
+        raise HTTPException(status_code=503, detail="Omega сейчас недоступна") from exc
 
 
 @router.get(
@@ -76,8 +72,15 @@ async def get_documents(
     response.headers["Cache-Control"] = "no-store"
     return await _read(
         service.list_documents(
-            kind, warehouse_ids, number, date_from, date_to, offset, limit,
-            sort_column=sort_column, sort_direction=sort_direction,
+            kind,
+            warehouse_ids,
+            number,
+            date_from,
+            date_to,
+            offset,
+            limit,
+            sort_column=sort_column,
+            sort_direction=sort_direction,
         )
     )
 
@@ -100,8 +103,16 @@ async def search_documents(
     response.headers["Cache-Control"] = "no-store"
     return await _read(
         service.list_documents(
-            kind, None, None, None, None, offset, limit, request.filters,
-            sort_column, sort_direction,
+            kind,
+            None,
+            None,
+            None,
+            None,
+            offset,
+            limit,
+            request.filters,
+            sort_column,
+            sort_direction,
         )
     )
 
@@ -172,7 +183,9 @@ async def get_document_file(
     if file is None:
         raise HTTPException(status_code=404, detail="Вложение не найдено")
     content = file
-    media_type = "application/pdf" if content.startswith(b"%PDF") else "application/octet-stream"
+    media_type = (
+        "application/pdf" if content.startswith(b"%PDF") else "application/octet-stream"
+    )
     extension = ".pdf" if media_type == "application/pdf" else ""
     return Response(
         content=content,

@@ -5,7 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from myapp.models.auxiliaries import LocomotiveModel
-from myapp.models.product_passports import ProductPassport, ProductPassportNode
+from myapp.models.product_passports import (
+    ProductPassport,
+    ProductPassportEvent,
+    ProductPassportEventItem,
+    ProductPassportNode,
+)
 from myapp.schemas.omega import OmegaPassportData
 from myapp.schemas.product_passports import (
     ProductPassportModelResponse,
@@ -13,12 +18,12 @@ from myapp.schemas.product_passports import (
     ProductPassportResponse,
     ProductPassportSearchItem,
 )
-from myapp.services.product_passport_supplier_service import (
-    ProductPassportSupplierService,
-)
-from myapp.services.product_passport_equipment_service import (
+from myapp.services.omega_services.product_passport_equipment_service import (
     NumberedPassportLinks,
     ProductPassportEquipmentService,
+)
+from myapp.services.omega_services.product_passport_supplier_service import (
+    ProductPassportSupplierService,
 )
 
 
@@ -27,6 +32,7 @@ class ProductPassportService:
 
     @staticmethod
     def section_bit(tree_name: str | None, full_name: str | None = None) -> int:
+        """Определяет бит секции по её названию"""
         for name in (tree_name, full_name):
             normalized = (name or "").strip().upper()
             if "БУСТЕР" in normalized:
@@ -55,10 +61,13 @@ class ProductPassportService:
                     nodes.c.full_name,
                 )
                 .select_from(
-                    nodes.join(root, and_(
-                        nodes.c.passport_id == root.c.passport_id,
-                        nodes.c.parent_omega_code == root.c.omega_code,
-                    ))
+                    nodes.join(
+                        root,
+                        and_(
+                            nodes.c.passport_id == root.c.passport_id,
+                            nodes.c.parent_omega_code == root.c.omega_code,
+                        ),
+                    )
                 )
                 .where(
                     root.c.parent_omega_code.is_(None),
@@ -146,7 +155,22 @@ class ProductPassportService:
         )
         passport = await session.scalar(statement)
         if passport:
-            passport.nodes.sort(key=lambda node: (node.level, node.omega_code))
+            changed = set(
+                (
+                    await session.scalars(
+                        select(ProductPassportEventItem.node_id)
+                        .join(ProductPassportEvent)
+                        .where(
+                            ProductPassportEvent.passport_id == passport_id,
+                            ProductPassportEvent.status == "active",
+                        )
+                        .distinct()
+                    )
+                ).all()
+            )
+            for node in passport.nodes:
+                node.has_history = node.id in changed
+            passport.nodes.sort(key=lambda item: (item.level, item.omega_code))
         return passport
 
     @staticmethod
@@ -288,7 +312,9 @@ class ProductPassportService:
                 article=node.article,
                 designation=node.designation,
                 serial_number=node.serial_number,
-                manufacture_date=node.manufacture_date,
+                manufacture_date=node.manufacture_date_text or node.manufacture_date,
+                version=node.version,
+                has_history=getattr(node, "has_history", False),
                 install_date=node.install_date,
                 manufacturer=node.manufacturer,
                 supplier=(
@@ -307,6 +333,7 @@ class ProductPassportService:
                 equipment_id=node.equipment_id,
             )
             for node in passport.nodes
+            if node.is_present
         ]
         return ProductPassportResponse(
             id=passport.id,

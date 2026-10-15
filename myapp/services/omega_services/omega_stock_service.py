@@ -1,8 +1,6 @@
-"""Сервис просмотра складских документов Omega"""
-
 import asyncio
-import re
 from datetime import date
+import re
 
 from sqlalchemy import select
 
@@ -18,10 +16,14 @@ class OmegaStockService:
     """Проверяет область просмотра и читает актуальные данные из Omega"""
 
     def __init__(self) -> None:
+        """Подготавливает клиент для чтения складских документов Omega"""
+
         self.client = OmegaStockClient()
 
     @staticmethod
     def _check_connection() -> None:
+        """Проверяет настройки подключения к Omega"""
+
         if not all(
             (
                 settings.ORACLE_HOST,
@@ -34,12 +36,15 @@ class OmegaStockService:
             raise RuntimeError("Подключение к Omega не настроено")
 
     async def list_warehouses(self, kind: str) -> list[dict]:
+        """Возвращает склады выбранного вида документов"""
+
         self._check_connection()
         return await asyncio.to_thread(self.client.list_warehouses, kind)
 
     @staticmethod
     async def _display_names() -> tuple[dict[str, str], dict[int, str]]:
-        """Читает соответствия одним запросом к каждому своему справочнику."""
+        """Читает соответствия одним запросом к каждому своему справочнику"""
+
         async with async_session_maker() as session:
             suppliers = await session.execute(
                 select(
@@ -48,9 +53,7 @@ class OmegaStockService:
                     OmegaStockSupplierName.display_name,
                 ).join(Supplier, Supplier.id == OmegaStockSupplierName.supplier_id)
             )
-            centers = await session.execute(
-                select(RegionalCenter.regional_center_name)
-            )
+            centers = await session.execute(select(RegionalCenter.regional_center_name))
         supplier_names = {
             omega: override or name for omega, name, override in suppliers
         }
@@ -65,13 +68,16 @@ class OmegaStockService:
     def _warehouse_names(
         warehouses: list[dict], centers: dict[int, str], kind: str
     ) -> dict[int, str]:
+        """Подставляет короткие названия складов из наших справочников"""
+
         result = {}
         for warehouse in warehouses:
             sign = re.sub(r"\s+", "", warehouse["sign"].upper())
             if "УСОЭ" in sign:
                 result[warehouse["id"]] = (
                     "ГР_УСОЭ - Склад годного оборуд-ия"
-                    if kind == "receipts" else "РЕК_УСОЭ - Склад рекл. оборуд-ия"
+                    if kind == "receipts"
+                    else "РЕК_УСОЭ - Склад рекл. оборуд-ия"
                 )
                 continue
             match = re.search(r"РЦ\D*(\d+)$", sign)
@@ -81,6 +87,8 @@ class OmegaStockService:
 
     @staticmethod
     def _center_by_sign(sign: str, centers: dict[int, str]) -> str | None:
+        """Находит название РЦ по обозначению склада"""
+
         normalized = re.sub(r"\s+", "", sign.upper())
         match = re.search(r"РЦ\D*(\d+)$", normalized)
         return centers.get(int(match.group(1))) if match else None
@@ -88,11 +96,17 @@ class OmegaStockService:
     async def _warehouse_ids(
         self, kind: str, selected_ids: list[int] | None = None
     ) -> list[int]:
+        """Проверяет выбранные склады и возвращает их номера"""
+
         warehouses = await self.list_warehouses(kind)
         allowed_ids = {warehouse["id"] for warehouse in warehouses}
         if selected_ids is not None and not set(selected_ids) <= allowed_ids:
             raise ValueError("Выбранный склад не относится к этому виду документов")
-        return sorted(set(selected_ids)) if selected_ids is not None else sorted(allowed_ids)
+        return (
+            sorted(set(selected_ids))
+            if selected_ids is not None
+            else sorted(allowed_ids)
+        )
 
     async def list_documents(
         self,
@@ -107,6 +121,7 @@ class OmegaStockService:
         sort_column: str | None = None,
         sort_direction: str = "desc",
     ) -> list[dict]:
+        """Возвращает документы с учётом поиска, фильтров и сортировки"""
         if date_from and date_to and date_from > date_to:
             raise ValueError("Начальная дата не может быть позже конечной")
         if sort_column is not None and sort_column not in DOCUMENT_FILTER_COLUMNS[kind]:
@@ -117,7 +132,9 @@ class OmegaStockService:
         allowed = {warehouse["id"] for warehouse in warehouses}
         if warehouse_ids is not None and not set(warehouse_ids) <= allowed:
             raise ValueError("Выбранный склад не относится к этому виду документов")
-        allowed_ids = sorted(set(warehouse_ids)) if warehouse_ids is not None else sorted(allowed)
+        allowed_ids = (
+            sorted(set(warehouse_ids)) if warehouse_ids is not None else sorted(allowed)
+        )
         supplier_names, centers = await self._display_names()
         display_warehouses = self._warehouse_names(warehouses, centers, kind)
         filters = self._validated_filters(kind, column_filters)
@@ -141,6 +158,8 @@ class OmegaStockService:
     def _validated_filters(
         kind: str, filters: dict[str, OmegaStockColumnFilter] | None
     ) -> dict[str, dict]:
+        """Проверяет колонки и значения складских фильтров"""
+
         result = {}
         for column, selection in (filters or {}).items():
             if column not in DOCUMENT_FILTER_COLUMNS[kind]:
@@ -161,6 +180,8 @@ class OmegaStockService:
         column: str,
         column_filters: dict[str, OmegaStockColumnFilter],
     ) -> list[str | None]:
+        """Возвращает доступные значения фильтра колонки"""
+
         if column not in DOCUMENT_FILTER_COLUMNS[kind]:
             raise ValueError(f"Неизвестная колонка фильтра: {column}")
         filters = self._validated_filters(kind, column_filters)
@@ -168,17 +189,26 @@ class OmegaStockService:
         allowed_ids = sorted({warehouse["id"] for warehouse in warehouses})
         supplier_names, centers = await self._display_names()
         return await asyncio.to_thread(
-            self.client.list_filter_options, kind, allowed_ids, column, filters,
-            self._warehouse_names(warehouses, centers, kind), supplier_names,
+            self.client.list_filter_options,
+            kind,
+            allowed_ids,
+            column,
+            filters,
+            self._warehouse_names(warehouses, centers, kind),
+            supplier_names,
         )
 
     async def _document_available(self, kind: str, document_id: int) -> bool:
+        """Проверяет доступность документа среди выбранных складов"""
+
         warehouse_ids = await self._warehouse_ids(kind)
         return await asyncio.to_thread(
             self.client.document_exists, kind, document_id, warehouse_ids
         )
 
     async def list_items(self, kind: str, document_id: int) -> list[dict] | None:
+        """Возвращает состав складского документа"""
+
         if not await self._document_available(kind, document_id):
             return None
         items = await asyncio.to_thread(self.client.list_items, kind, document_id)
@@ -188,19 +218,20 @@ class OmegaStockService:
                 sign = item.get("sender_sign")
                 if sign:
                     item["sender_warehouse"] = (
-                        self._center_by_sign(sign, centers)
-                        or item["sender_warehouse"]
+                        self._center_by_sign(sign, centers) or item["sender_warehouse"]
                     )
         return items
 
     async def list_files(self, kind: str, document_id: int) -> list[dict] | None:
+        """Возвращает вложения складского документа"""
+
         if not await self._document_available(kind, document_id):
             return None
         return await asyncio.to_thread(self.client.list_files, document_id)
 
-    async def get_file(
-        self, kind: str, document_id: int, file_id: int
-    ) -> bytes | None:
+    async def get_file(self, kind: str, document_id: int, file_id: int) -> bytes | None:
+        """Читает содержимое выбранного вложения"""
+
         if not await self._document_available(kind, document_id):
             return None
         return await asyncio.to_thread(self.client.get_file, document_id, file_id)

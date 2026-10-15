@@ -1,16 +1,21 @@
 from datetime import date, datetime
 from sqlalchemy import (
     BigInteger,
+    Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
     func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from myapp.database.base import Base
@@ -98,6 +103,14 @@ class ProductPassportNode(Base):
     )
     stockobj_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    baseline_state: Mapped[dict | None] = mapped_column(JSONB)
+    baseline_source: Mapped[str | None] = mapped_column(String(30))
+    version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    is_present: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true"
+    )
+    manufacture_date_text: Mapped[str | None] = mapped_column(String(100))
+
     passport: Mapped["ProductPassport"] = relationship(back_populates="nodes")
     supplier_record: Mapped["Supplier | None"] = relationship()
     equipment_record: Mapped["Equipment | None"] = relationship()
@@ -138,3 +151,106 @@ class ProductPassportEquipmentSerialMatch(Base):
     supplier_id: Mapped[int | None] = mapped_column(
         ForeignKey("suppliers.id"), nullable=True
     )
+
+
+class CasePassportLink(Base):
+    """Выбранный неисправный экземпляр внутри уже связанного паспорта"""
+
+    __tablename__ = "case_passport_links"
+    __table_args__ = (
+        UniqueConstraint("case_id", "node_id", "role"),
+        UniqueConstraint("case_id", "id"),
+        CheckConstraint("role IN ('component', 'element')"),
+        ForeignKeyConstraint(
+            ["case_id", "parent_link_id"],
+            ["case_passport_links.case_id", "case_passport_links.id"],
+        ),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    case_id: Mapped[int] = mapped_column(
+        ForeignKey("repair_case_equipment.id", ondelete="CASCADE"), index=True
+    )
+    node_id: Mapped[int] = mapped_column(
+        ForeignKey("product_passport_nodes.id", ondelete="RESTRICT"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(12))
+    parent_link_id: Mapped[int | None] = mapped_column(BigInteger)
+    selected_state: Mapped[dict] = mapped_column(JSONB)
+    position_context: Mapped[dict] = mapped_column(JSONB)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class ProductPassportEvent(Base):
+    """Редакция замены или ручного исправления"""
+
+    __tablename__ = "product_passport_events"
+    __table_args__ = (
+        CheckConstraint("kind IN ('case_replacement', 'manual_correction')"),
+        CheckConstraint("status IN ('active', 'superseded', 'voided')"),
+        CheckConstraint("kind != 'manual_correction' OR length(trim(reason)) > 0"),
+        UniqueConstraint("source_case_id", "revision"),
+        Index(
+            "ux_passport_active_case_event",
+            "case_id",
+            unique=True,
+            postgresql_where=text("kind='case_replacement' AND status='active'"),
+        ),
+        Index(
+            "ix_passport_events_order",
+            "passport_id",
+            "effective_date",
+            "day_order",
+            "id",
+        ),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    passport_id: Mapped[int] = mapped_column(
+        ForeignKey("product_passports.id", ondelete="RESTRICT")
+    )
+    case_id: Mapped[int | None] = mapped_column(
+        ForeignKey("repair_case_equipment.id", ondelete="SET NULL"), index=True
+    )
+    source_case_id: Mapped[int | None] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(25))
+    case_snapshot: Mapped[dict | None] = mapped_column(JSONB)
+    effective_date: Mapped[date] = mapped_column(Date)
+    day_order: Mapped[int] = mapped_column(Integer)
+    recorded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    actor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    actor_name: Mapped[str] = mapped_column(Text)
+    reason: Mapped[str | None] = mapped_column(Text)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    supersedes_id: Mapped[int | None] = mapped_column(
+        ForeignKey("product_passport_events.id", ondelete="RESTRICT")
+    )
+    status: Mapped[str] = mapped_column(String(15), default="active")
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    closed_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    closed_by_name: Mapped[str | None] = mapped_column(Text)
+    close_reason: Mapped[str | None] = mapped_column(Text)
+
+
+class ProductPassportEventItem(Base):
+    """Изменение конкретной позиции паспорта в записи истории"""
+
+    __tablename__ = "product_passport_event_items"
+    __table_args__ = (UniqueConstraint("event_id", "node_id"),)
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    event_id: Mapped[int] = mapped_column(
+        ForeignKey("product_passport_events.id", ondelete="RESTRICT"), index=True
+    )
+    node_id: Mapped[int] = mapped_column(
+        ForeignKey("product_passport_nodes.id", ondelete="RESTRICT"), index=True
+    )
+    scope: Mapped[str] = mapped_column(String(15))
+    group_key: Mapped[str | None] = mapped_column(Text)
+    position_context: Mapped[dict] = mapped_column(JSONB)
+    before_state: Mapped[dict] = mapped_column(JSONB)
+    after_state: Mapped[dict] = mapped_column(JSONB)
+    changed_fields: Mapped[list[str]] = mapped_column(ARRAY(Text))

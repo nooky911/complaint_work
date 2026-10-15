@@ -1,35 +1,34 @@
 import asyncio
 from typing import Any
-from sqlalchemy import select, asc
+from sqlalchemy import asc, select
 
-from myapp.database.base import async_session_maker
-from myapp.services.cache_service import cached
 from myapp.constants.filter_constants import DB_SEMAPHORE_LIMIT
+from myapp.database.base import async_session_maker
 from myapp.models.auxiliaries import (
-    RegionalCenter,
+    DestinationType,
+    EquipmentOwner,
+    FaultDiscoveryPlace,
     LocomotiveModel,
     LocomotiveNumberException,
-    Supplier,
-    RepairType,
-    FaultDiscoveryPlace,
-    EquipmentOwner,
+    RegionalCenter,
     RepairPerformer,
-    DestinationType,
+    RepairType,
+    Supplier,
 )
-from myapp.models.equipment_malfunctions import (
-    Malfunction,
-    EquipmentMalfunction,
-)
+from myapp.models.equipment_malfunctions import EquipmentMalfunction, Malfunction
+from myapp.models.product_passports import ProductPassport
 from myapp.models.warranty_work import (
-    NotificationSummary,
-    ResponseSummary,
     DecisionSummary,
-    ResearchStatus,
     InvestigationReason,
+    NotificationSummary,
+    ResearchStatus,
+    ResponseSummary,
 )
 from myapp.models.waybill_docs import ShippingProvider
-from myapp.models.product_passports import ProductPassport
-from myapp.services.product_passport_service import ProductPassportService
+from myapp.services.cache_service import cached
+from myapp.services.omega_services.product_passport_service import (
+    ProductPassportService,
+)
 
 
 class ReferenceService:

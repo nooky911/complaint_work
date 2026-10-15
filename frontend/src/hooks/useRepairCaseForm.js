@@ -19,6 +19,7 @@ const getDepth = (item, allMap) => {
   return depth;
 };
 
+/** Управляет редактированием и сохранением случая */
 export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const lockMutation = useLockCase();
   const unlockMutation = useUnlockCase();
@@ -190,7 +191,8 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         };
       }
 
-      return { ...prev, ...relatedFields, [field]: value };
+      const scopeChanged = ["passport_id", "locomotive_model_id", "locomotive_number", "section_mask", "fault_date", "component_equipment_id", "element_equipment_id"].includes(field) && prev?.[field] !== value;
+      return { ...prev, ...(scopeChanged ? { passport_links: [], replacement_items: [], _passport_status: "loading" } : {}), ...relatedFields, [field]: value };
     });
   };
 
@@ -208,6 +210,9 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       component_equipment_id: data.component,
       element_equipment_id: data.element,
       malfunction_id: null,
+      passport_links: [],
+      replacement_items: [],
+      _passport_status: "loading",
     }));
   };
 
@@ -342,6 +347,9 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       const initialData = convertCaseToFormData(repairCase);
       const payload = getDirtyValues(initialData, cleanedData);
       delete payload.locomotive_identity_locked;
+      delete payload.id;
+      Object.keys(payload).filter((k) => k.startsWith("_")).forEach((k) => delete payload[k]);
+
 
       if (Object.keys(payload).length === 0) {
         setIsEditing(false);
@@ -353,6 +361,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         payload.user_id = cleanedData.user_id;
       }
 
+      payload.expected_revision = repairCase.revision;
       await onUpdate(payload);
 
       setIsEditing(false);
@@ -365,13 +374,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       if (error.response?.status === 409) {
         showToastError(
           "Конфликт",
-          "Этот случай уже имеется в базе. Проверьте список записей",
+          error.response?.data?.detail || "Случай изменён. Обновите данные",
         );
       } else {
-        const message =
-          error.response?.data?.detail && error.response.data.detail.length > 3
-            ? `Случай сейчас редактирует ${formatFullName(error.response.data.detail)}`
-            : error.response?.data?.detail || "Не удалось сохранить данные";
+        const message = error.response?.data?.detail || "Не удалось сохранить данные";
 
         showToastError("Ошибка сохранения", message);
       }
@@ -400,7 +406,13 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       const curVal = current[key];
       const initVal = initial[key];
 
-      if (curVal && typeof curVal === "object" && !Array.isArray(curVal)) {
+      if (Array.isArray(curVal)) {
+        /** Приводит выбранные экземпляры к виду для сравнения изменений */
+        const canonical = (rows) => (rows || []).map((row) => key === "passport_links"
+          ? { node_id: row.node_id, role: row.role, parent_node_id: row.parent_node_id || null }
+          : key === "replacement_items" ? { node_id: row.node_id, equipment_id: row.equipment_id, serial_number: row.serial_number || null, manufacture_date_text: row.manufacture_date_text || null } : row);
+        if (JSON.stringify(canonical(curVal)) !== JSON.stringify(canonical(initVal))) dirty[key] = curVal;
+      } else if (curVal && typeof curVal === "object") {
         const diff = getDirtyValues(initVal || {}, curVal);
         if (Object.keys(diff).length > 0) {
           dirty[key] = diff;

@@ -25,6 +25,8 @@ export const CaseValidationToast = ({ show, onClose, validation }) => {
           Не все поля заполнены:
         </p>
         <ul className="mt-1 list-disc pl-4 text-[11px] leading-tight font-medium text-slate-500">
+          {validation.isPassportInvalid && <li>Выберите экземпляры паспорта или дождитесь загрузки</li>}
+          {validation.isPassportReplacementInvalid && <li>Проверьте установленный состав и обязательные номера КП/ТЭД</li>}
           {validation.isFaultDateMissing && <li>Укажите дату неисправности</li>}
           {validation.isFaultDateInvalid && <li>Некорректная дата неисправности</li>}
           {validation.areOtherDatesInvalid && <li>Некорректная дата в рекламационной работе</li>}

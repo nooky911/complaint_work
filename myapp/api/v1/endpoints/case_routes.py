@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Path, status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from typing import Annotated
 
 from myapp.models.repair_case_equipment import RepairCaseEquipment
@@ -13,7 +14,8 @@ from myapp.schemas.cases import (
 )
 from myapp.schemas.filters import CaseFilterParams
 from myapp.services.equipment_service import EquipmentService
-from myapp.services.case_service import CaseService, CaseValidationError
+from myapp.services import CaseValidationError
+from myapp.services.case_service import CaseService
 from myapp.services.case_filter_service import CaseFilterService
 from myapp.database.base import get_db
 from .warranty_routes import router as warranty_router
@@ -65,10 +67,23 @@ async def create_case(
         target_user_id = case_data.user_id
 
     try:
-        return await CaseService.create_case(session, case_data, target_user_id)
+        return await CaseService.create_case(
+            session, case_data, target_user_id, current_user.id
+        )
+    except IntegrityError as exc:
+        code = getattr(exc.orig, "sqlstate", None)
+        raise HTTPException(
+            409 if code == "23505" else 422,
+            (
+                "Такой случай уже существует"
+                if code == "23505"
+                else "Проверьте связанные записи и обязательные поля"
+            ),
+        ) from exc
     except CaseValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+            status_code=409 if exc.field in ("revision", "duplicate") else 422,
+            detail=str(exc),
         ) from exc
     except ValueError:
         raise HTTPException(
@@ -146,9 +161,20 @@ async def update_case(
         updated_case = await CaseService.update_case(
             session, case_id, case_data, current_user.id
         )
+    except IntegrityError as exc:
+        code = getattr(exc.orig, "sqlstate", None)
+        raise HTTPException(
+            409 if code == "23505" else 422,
+            (
+                "Такой случай уже существует"
+                if code == "23505"
+                else "Проверьте связанные записи и обязательные поля"
+            ),
+        ) from exc
     except CaseValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+            status_code=409 if exc.field in ("revision", "duplicate") else 422,
+            detail=str(exc),
         ) from exc
 
     if not updated_case:
@@ -212,7 +238,7 @@ async def delete_case(
     if case is None:
         return None
 
-    await CaseService.delete_case(session, case_id)
+    await CaseService.delete_case(session, case_id, current_user.id)
     return None
 
 

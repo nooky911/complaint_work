@@ -8,6 +8,7 @@ import { useFormReferences } from "./api/index";
 import { useLocomotiveNumbers } from "./api/useReferencesApi";
 import { logger } from "../utils/logger";
 
+/** Управляет заполнением и сохранением нового случая */
 export const useCreateRepairCase = (onSuccess, currentUser) => {
   const queryClient = useQueryClient();
   const [saving, setSaving] = useState(false);
@@ -95,7 +96,10 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
   }, [currentUser, formData.user_id]);
 
   const updateField = (field, value, relatedFields = {}) => {
-    setFormData((prev) => ({ ...prev, ...relatedFields, [field]: value }));
+    setFormData((prev) => {
+      const scopeChanged = ["passport_id", "locomotive_model_id", "locomotive_number", "section_mask", "fault_date", "component_equipment_id", "element_equipment_id"].includes(field) && prev?.[field] !== value;
+      return { ...prev, ...(scopeChanged ? { passport_links: [], replacement_items: [], _passport_status: "loading" } : {}), ...relatedFields, [field]: value };
+    });
   };
 
   const updateTtnField = (field, value) => {
@@ -168,6 +172,9 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
       component_equipment_id: data.component,
       element_equipment_id: data.element,
       malfunction_id: null,
+      passport_links: [],
+      replacement_items: [],
+      _passport_status: "loading",
     }));
   };
 
@@ -181,6 +188,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
     try {
       const payload = { ...formData };
       delete payload.locomotive_identity_locked;
+      Object.keys(payload).filter((k) => k.startsWith("_")).forEach((k) => delete payload[k]);
       const response = await api.post("/cases/", payload);
       const newCaseId = response.data.id;
 
@@ -221,7 +229,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
       if (error.response?.status === 409) {
         setServerError({
           show: true,
-          message: "Этот случай уже имеется в базе. Проверьте список записей",
+          message: error.response?.data?.detail || "Этот случай уже имеется в базе. Проверьте список записей",
         });
       } else {
         setServerError({

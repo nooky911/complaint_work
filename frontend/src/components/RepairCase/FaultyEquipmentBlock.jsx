@@ -1,4 +1,5 @@
 import React from "react";
+import { PassportInstanceSummary } from "../equipment/PassportEquipmentFields";
 import { Package } from "lucide-react";
 import {
   formatDate,
@@ -57,6 +58,8 @@ export const FaultyEquipmentBlock = ({
         </div>
       ) : (
         <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-200/50 p-3 shadow-sm">
+          <PassportInstanceSummary items={repairCase.passport_links || []} />
+          {!repairCase.passport_links?.some((x) => x.role === "component") && (
           <div className="grid grid-cols-3 gap-4">
             <Tooltip
               text={formatEquipmentName(
@@ -82,10 +85,11 @@ export const FaultyEquipmentBlock = ({
               value={formatDate(repairCase.component_manufacture_date_old)}
             />
           </div>
+          )}
 
-          {repairCase.element_equipment?.id ||
+          {!repairCase.passport_links?.some((x) => x.role === "element") && (repairCase.element_equipment?.id ||
           repairCase.element_serial_number_old ||
-          repairCase.element_manufacture_date_old ? (
+          repairCase.element_manufacture_date_old) ? (
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <Tooltip
