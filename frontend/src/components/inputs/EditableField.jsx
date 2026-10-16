@@ -11,8 +11,13 @@ export const EditableField = ({
   className = "",
   isDisabled = false,
   error,
+  maxLength,
 }) => {
-  const { handleChange, displayValue } = useEditableField(value, onChange, type);
+  const { handleChange, displayValue } = useEditableField(
+    value,
+    onChange,
+    type,
+  );
 
   if (!isEditing) return null;
 
@@ -20,7 +25,7 @@ export const EditableField = ({
     isDisabled
       ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
       : error
-        ? "bg-red-50 text-red-900 border-red-500 focus:border-red-600 shadow-sm"
+        ? "bg-white text-slate-900 border-red-500 focus:border-red-600 shadow-sm"
         : "bg-white text-slate-900 border-gray-200 focus:border-indigo-500 shadow-sm"
   }`;
 
@@ -33,16 +38,18 @@ export const EditableField = ({
       )}
       {type === "textarea" ? (
         <textarea
+          maxLength={maxLength}
           value={displayValue}
           disabled={isDisabled}
           onChange={handleChange}
           aria-invalid={Boolean(error)}
           placeholder={placeholder}
-          className={`min-h-[80px] resize-y ${baseStyles}`}
+          className={`min-h-[80px] resize-y pt-2 ${baseStyles}`}
         />
       ) : (
         <input
           type={type === "number" ? "number" : "text"}
+          maxLength={maxLength}
           value={displayValue}
           disabled={isDisabled}
           onChange={handleChange}

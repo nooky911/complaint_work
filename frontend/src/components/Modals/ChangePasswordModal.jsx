@@ -70,7 +70,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
               <input
                 required
                 type={showOld ? "text" : "password"}
-                className="w-full rounded-lg border border-gray-300 p-2.5 pr-10 transition-all outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 pr-10 text-sm font-bold text-slate-900 transition-all outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 value={form.old_password}
                 onChange={(e) =>
                   setForm({ ...form, old_password: e.target.value })
@@ -95,7 +95,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
               <input
                 required
                 type={showNew ? "text" : "password"}
-                className="w-full rounded-lg border border-gray-300 p-2.5 pr-10 transition-all outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 pr-10 text-sm font-bold text-slate-900 transition-all outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                 value={form.new_password}
                 onChange={(e) =>
                   setForm({ ...form, new_password: e.target.value })

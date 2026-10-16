@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     PARTNER_ACCESS_NAMES: str = ""
 
-    FILE_STORAGE_PATH: str = "/app/storage"
+    FILE_STORAGE_PATH: str = "./storage"
 
     CORS_ORIGINS: str = "http://localhost:5173,http://91.184.246.250:3333"
 
@@ -48,8 +48,7 @@ class Settings(BaseSettings):
             missing = [name for name in required if not getattr(self, name)]
             if missing:
                 raise ValueError(
-                    "Для синхронизации Omega не заданы параметры: "
-                    + ", ".join(missing)
+                    "Для синхронизации Omega не заданы параметры: " + ", ".join(missing)
                 )
         if self.UL_SYNC_ENABLED:
             missing = [
@@ -62,7 +61,9 @@ class Settings(BaseSettings):
                 if not getattr(self, name)
             ]
             if missing:
-                raise ValueError("Не заданы параметры UL-сервиса: " + ", ".join(missing))
+                raise ValueError(
+                    "Не заданы параметры UL-сервиса: " + ", ".join(missing)
+                )
         return self
 
     @property

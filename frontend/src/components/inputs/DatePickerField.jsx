@@ -37,7 +37,7 @@ export const DatePickerField = ({
     isDisabled
       ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
       : hasError
-        ? "bg-red-50 text-red-900 border-red-500 focus:border-red-600 shadow-sm"
+        ? "bg-white text-slate-900 border-red-500 focus:border-red-600 shadow-sm"
         : "bg-white text-slate-900 border-gray-200 focus:border-indigo-500 shadow-sm"
   }`;
 

@@ -31,7 +31,7 @@ export const SelectField = ({
           onChange={handleChange}
           className={`w-full cursor-pointer appearance-none rounded-lg border px-3 py-2 pr-10 text-sm font-bold shadow-sm transition-all outline-none ${
             error
-              ? "border-red-500 bg-red-50 text-red-900 focus:border-red-600"
+              ? "border-red-500 bg-white text-slate-900 focus:border-red-600"
               : "border-gray-200 bg-white text-slate-900 focus:border-indigo-500"
           } disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400`}
         >

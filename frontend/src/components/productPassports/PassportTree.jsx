@@ -8,10 +8,14 @@ import {
   Wrench,
   Download,
   LoaderCircle,
+  Search,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 import { PassportPositionHistory } from "./PassportPositionHistory";
-import { formatDate } from "../../utils/formatters";
+import { MultiSelectField } from "../inputs/MultiSelectField";
+import { formatDate, sortOptionsByName } from "../../utils/formatters";
 import { exportProductPassport } from "../../api/productPassports";
 
 const DETAIL_FIELDS = [
@@ -44,9 +48,33 @@ function sectionOrder(node) {
   return 3;
 }
 
+/** Собирает найденные ветки с детьми и цепочками родителей */
+function matchingBranches(matches, nodesById, childrenByParent) {
+  const ids = new Set();
+  const pending = [...matches];
+  while (pending.length) {
+    const node = pending.pop();
+    if (ids.has(node.id)) continue;
+    ids.add(node.id);
+    pending.push(...(childrenByParent.get(String(node.id)) || []));
+  }
+  for (const match of matches) {
+    let node = nodesById.get(match.parent_id);
+    while (node && !ids.has(node.id)) {
+      ids.add(node.id);
+      node = nodesById.get(node.parent_id);
+    }
+  }
+  return ids;
+}
+
 export function PassportTree({ passport }) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [equipmentNames, setEquipmentNames] = useState([]);
+  const [numberIds, setNumberIds] = useState([]);
+  const [visibleNodeIds, setVisibleNodeIds] = useState(null);
   const downloadPassport = async () => {
     if (exporting) return;
     setExporting(true);
@@ -59,7 +87,7 @@ export function PassportTree({ passport }) {
       setExporting(false);
     }
   };
-  const { root, childrenByParent } = useMemo(() => {
+  const { root, childrenByParent, nodesById } = useMemo(() => {
     const children = new Map();
     let rootNode = null;
 
@@ -77,14 +105,119 @@ export function PassportTree({ passport }) {
         ?.sort((left, right) => sectionOrder(left) - sectionOrder(right));
     }
 
-    return { root: rootNode, childrenByParent: children };
+    return {
+      root: rootNode,
+      childrenByParent: children,
+      nodesById: new Map(passport.nodes.map((node) => [node.id, node])),
+    };
   }, [passport.nodes]);
+
+  const numberedEquipment = useMemo(
+    () =>
+      passport.nodes.filter(
+        (node) =>
+          node.id !== root?.id &&
+          sectionOrder(node) === 3 &&
+          String(node.serial_number ?? "").trim(),
+      ),
+    [passport.nodes, root],
+  );
+  const equipmentOptions = useMemo(
+    () =>
+      sortOptionsByName(
+        [
+          ...new Set(
+            numberedEquipment.map((node) =>
+              (node.tree_name || node.full_name || "Без наименования").trim(),
+            ),
+          ),
+        ].map((name) => ({ id: name, name })),
+      ),
+    [numberedEquipment],
+  );
+  const matchingEquipment = numberedEquipment.filter(
+    (node) =>
+      !equipmentNames.length ||
+      equipmentNames.includes(
+        (node.tree_name || node.full_name || "Без наименования").trim(),
+      ),
+  );
+  const numberOptions = sortOptionsByName(
+    matchingEquipment.map((node) => {
+      let section = node;
+      while (section.parent_id != null && section.parent_id !== root?.id) {
+        section = nodesById.get(section.parent_id);
+        if (!section) break;
+      }
+      return {
+        id: node.id,
+        name: `${section && section.id !== root?.id ? `${section.tree_name || section.full_name} · ` : ""}№ ${node.serial_number} · ${node.tree_name || node.full_name}`,
+      };
+    }),
+  );
 
   const [expanded, setExpanded] = useState(
     () => new Set(root ? [root.id] : []),
   );
   const [selectedNodeId, setSelectedNodeId] = useState(root?.id);
-  const selectedNode = passport.nodes.find((node) => node.id === selectedNodeId) || root;
+  const selectedNode =
+    passport.nodes.find((node) => node.id === selectedNodeId) || root;
+  const expandableNodes = passport.nodes.filter(
+    (node) =>
+      (!visibleNodeIds || visibleNodeIds.has(node.id)) &&
+      (childrenByParent.get(String(node.id)) || []).some(
+        (child) => !visibleNodeIds || visibleNodeIds.has(child.id),
+      ),
+  );
+  const allExpanded =
+    expandableNodes.length > 0 &&
+    expandableNodes.every((node) => expanded.has(node.id));
+
+  /** Раскрывает все ветки паспорта или сворачивает их */
+  const toggleAllNodes = () => {
+    setExpanded(
+      allExpanded ? new Set() : new Set(passport.nodes.map((node) => node.id)),
+    );
+  };
+
+  /** Убирает выбранные номера, которые не относятся к выбранному оборудованию */
+  const changeEquipment = (names) => {
+    setEquipmentNames(names);
+    const availableIds = new Set(
+      numberedEquipment
+        .filter(
+          (node) =>
+            !names.length ||
+            names.includes(
+              (node.tree_name || node.full_name || "Без наименования").trim(),
+            ),
+        )
+        .map((node) => node.id),
+    );
+    setNumberIds((current) => current.filter((id) => availableIds.has(id)));
+  };
+
+  /** Применяет поиск и раскрывает найденные ветки паспорта */
+  const applySearch = () => {
+    if (!equipmentNames.length && !numberIds.length) {
+      setVisibleNodeIds(null);
+      return;
+    }
+    const matches = matchingEquipment.filter(
+      (node) => !numberIds.length || numberIds.includes(node.id),
+    );
+    const ids = matchingBranches(matches, nodesById, childrenByParent);
+    setVisibleNodeIds(ids);
+    setExpanded(new Set(ids));
+    if (!ids.has(selectedNodeId)) setSelectedNodeId(matches[0]?.id ?? root?.id);
+  };
+
+  /** Возвращает полный состав паспорта и очищает условия поиска */
+  const resetSearch = () => {
+    setEquipmentNames([]);
+    setNumberIds([]);
+    setVisibleNodeIds(null);
+  };
 
   const toggleNode = (nodeId) => {
     setExpanded((current) => {
@@ -96,7 +229,9 @@ export function PassportTree({ passport }) {
   };
 
   const renderNode = (node, depth = 0) => {
-    const children = childrenByParent.get(String(node.id)) || [];
+    const children = (childrenByParent.get(String(node.id)) || []).filter(
+      (child) => !visibleNodeIds || visibleNodeIds.has(child.id),
+    );
     const hasChildren = children.length > 0;
     const isExpanded = expanded.has(node.id);
     const isSelected = selectedNode?.id === node.id;
@@ -133,10 +268,11 @@ export function PassportTree({ passport }) {
           </button>
           <Box className="h-4 w-4 shrink-0 text-slate-400" />
           <span className="min-w-0 flex-1 truncate text-xs font-bold">
-            {node.tree_name}{node.has_history ? " *" : ""}
+            {node.tree_name}
+            {node.has_history ? " *" : ""}
           </span>
           {node.serial_number && (
-            <span className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-slate-500 shadow-sm">
+            <span className="shrink-0 rounded-md bg-white px-2 py-0.5 text-[10px] font-black text-black shadow-sm">
               № {node.serial_number}
             </span>
           )}
@@ -152,25 +288,108 @@ export function PassportTree({ passport }) {
     <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.6fr)]">
       <section className="flex min-h-[420px] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
-          <h2 className="text-base font-black text-slate-900">
-            Состав паспорта
-          </h2>
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-black text-slate-900">
+              Состав паспорта
+            </h2>
             <button
               type="button"
-              onClick={downloadPassport}
-              disabled={exporting}
-              className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-700 disabled:cursor-wait disabled:opacity-60"
+              onClick={toggleAllNodes}
+              aria-label={
+                allExpanded ? "Свернуть весь паспорт" : "Раскрыть весь паспорт"
+              }
+              title={
+                allExpanded ? "Свернуть весь паспорт" : "Раскрыть весь паспорт"
+              }
+              aria-expanded={allExpanded}
+              className={`flex h-[27px] w-[27px] shrink-0 items-center justify-center rounded-lg border shadow-sm transition-colors ${allExpanded ? "border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-200" : "border-indigo-200 bg-indigo-50 text-indigo-600 hover:bg-indigo-100"}`}
             >
-              {exporting ? (
-                <LoaderCircle className="h-4 w-4 animate-spin" />
+              {allExpanded ? (
+                <Minus className="h-[17px] w-[17px]" />
               ) : (
-                <Download className="h-4 w-4" />
+                <Plus className="h-[17px] w-[17px]" />
               )}
-              {exporting ? "Создание файла…" : "Скачать Excel"}
             </button>
-            <div className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-600">
-              {passport.locomotive_model_name} №{passport.product_number}
+          </div>
+          <div className="flex min-w-0 flex-1 flex-wrap items-end justify-end gap-3">
+            {searchOpen ? (
+              <>
+                <div className="w-64 max-w-full">
+                  <MultiSelectField
+                    label="Оборудование"
+                    placeholder="Выберите оборудование"
+                    options={equipmentOptions}
+                    selectedValues={equipmentNames}
+                    onChange={changeEquipment}
+                    allowClear
+                  />
+                </div>
+                <div className="w-64 max-w-full">
+                  <MultiSelectField
+                    label="Заводские номера"
+                    placeholder="Все номера"
+                    options={numberOptions}
+                    selectedValues={numberIds}
+                    onChange={setNumberIds}
+                    allowClear
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={applySearch}
+                  className="h-[38px] rounded-lg bg-indigo-600 px-3 text-xs font-bold text-white hover:bg-indigo-700"
+                >
+                  Применить
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSearchOpen(true)}
+                className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 hover:bg-blue-100"
+              >
+                <Search className="h-4 w-4" />
+                Поиск
+              </button>
+            )}
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              {searchOpen && (
+                <>
+                  <button
+                    type="button"
+                    onClick={resetSearch}
+                    className="flex items-center rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Сбросить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      resetSearch();
+                      setSearchOpen(false);
+                    }}
+                    className="flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100"
+                  >
+                    Выйти из поиска
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={downloadPassport}
+                disabled={exporting}
+                className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-bold text-green-700 transition-colors hover:bg-green-100 disabled:cursor-wait disabled:opacity-60"
+              >
+                {exporting ? (
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="h-4 w-4" />
+                )}
+                {exporting ? "Создание файла…" : "Скачать Excel"}
+              </button>
+              <div className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-600">
+                {passport.locomotive_model_name} №{passport.product_number}
+              </div>
             </div>
           </div>
         </div>
@@ -180,7 +399,14 @@ export function PassportTree({ passport }) {
           </p>
         )}
         <div className="flex-1 overflow-auto p-2">
-          {root && renderNode(root)}
+          {root &&
+            (!visibleNodeIds || visibleNodeIds.has(root.id)) &&
+            renderNode(root)}
+          {visibleNodeIds?.size === 0 && (
+            <p className="p-4 text-center text-sm text-slate-500">
+              Оборудование не найдено
+            </p>
+          )}
         </div>
       </section>
 
@@ -229,7 +455,11 @@ export function PassportTree({ passport }) {
                 );
               })}
             </dl>
-            <PassportPositionHistory key={`${selectedNode.id}-${selectedNode.version}`} passportId={passport.id} node={selectedNode} />
+            <PassportPositionHistory
+              key={`${selectedNode.id}-${selectedNode.version}`}
+              passportId={passport.id}
+              node={selectedNode}
+            />
           </>
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-slate-400">

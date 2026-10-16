@@ -313,7 +313,7 @@ export default React.memo(function DashboardPage() {
                     onKeyDown={(event) => {
                       if (event.key === "Escape") setNumberSearchOpen(false);
                     }}
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-indigo-500"
                   />
                   <div className="mt-2 max-h-48 overflow-y-auto">
                     {numberChoices.isFetching || numberSearchPending ? (
@@ -497,7 +497,7 @@ export default React.memo(function DashboardPage() {
                         type="number"
                         autoFocus
                         placeholder="№"
-                        className="h-8 w-12 rounded-lg border-2 border-indigo-400 bg-white px-1 text-center text-xs font-bold text-indigo-700 shadow-sm outline-none focus:ring-0"
+                        className="h-8 w-12 rounded-lg border-2 border-indigo-400 bg-white px-1 text-center text-sm font-bold text-slate-900 shadow-sm outline-none focus:ring-0"
                         value={pageInput}
                         onChange={(e) => setPageInput(e.target.value)}
                         onBlur={() => setIsEditingPage(false)}

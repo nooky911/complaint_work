@@ -48,7 +48,7 @@ export const SearchableSelect = ({
             isDisabled
               ? "cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400"
               : error
-                ? "border-red-500 bg-red-50 text-red-900 shadow-sm ring-1 ring-red-100 focus:border-red-600"
+                ? "border-red-500 bg-white text-slate-900 shadow-sm ring-1 ring-red-100 focus:border-red-600"
                 : "cursor-pointer border-gray-200 bg-white text-slate-900 shadow-sm focus:border-indigo-500"
           }`}
           placeholder={placeholder}
@@ -96,11 +96,21 @@ export const SearchableSelect = ({
               — Сбросить выбор —
             </div>
             {isLoading ? (
-              <div className="px-3 py-3 text-center text-xs text-slate-500">Загрузка…</div>
+              <div className="px-3 py-3 text-center text-xs text-slate-500">
+                Загрузка…
+              </div>
             ) : loadError ? (
               <div className="px-3 py-3 text-center text-xs text-red-700">
                 Не удалось загрузить номера
-                {onRetry && <button type="button" onClick={onRetry} className="ml-2 underline">Повторить</button>}
+                {onRetry && (
+                  <button
+                    type="button"
+                    onClick={onRetry}
+                    className="ml-2 underline"
+                  >
+                    Повторить
+                  </button>
+                )}
               </div>
             ) : filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => (
@@ -124,7 +134,11 @@ export const SearchableSelect = ({
           </div>
         )}
       </div>
-      {typeof error === "string" && <p role="alert" className="text-xs text-red-700">{error}</p>}
+      {typeof error === "string" && (
+        <p role="alert" className="text-xs text-red-700">
+          {error}
+        </p>
+      )}
     </div>
   );
 };

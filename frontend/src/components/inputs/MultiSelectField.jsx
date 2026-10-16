@@ -85,7 +85,7 @@ export const MultiSelectField = ({
                 placeholder="Поиск..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg bg-slate-50 py-2 pr-3 pl-9 text-xs font-bold text-slate-700 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
+                className="w-full rounded-lg bg-white py-2 pr-3 pl-9 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-100"
               />
             </div>
           </div>

@@ -82,7 +82,7 @@ export const MultiAttachInlineControl = ({
             type="text"
             value={tempName}
             onChange={(e) => setTempName(e.target.value)}
-            className="flex-1 rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+            className="flex-1 rounded-lg border border-indigo-300 bg-white px-3 py-2 text-sm font-bold text-slate-900 shadow-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
             placeholder={
               mode === "editing"
                 ? "Изменить название..."

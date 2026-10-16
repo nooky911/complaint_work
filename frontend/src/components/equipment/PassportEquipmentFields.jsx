@@ -1,6 +1,9 @@
 import { useEffect, useMemo } from "react";
-import { MultiSelectField } from "../inputs/index.jsx";
-import { SearchableSelect } from "../inputs/index.jsx";
+import {
+  EditableField,
+  MultiSelectField,
+  SearchableSelect,
+} from "../inputs/index.jsx";
 import { usePassportEquipment } from "../../hooks/usePassportEquipment";
 import { isValidManufactureDate } from "../../utils/validators";
 import { formatApiError, sortOptionsByName } from "../../utils/formatters";
@@ -137,90 +140,96 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
 
   return (
     <div className="space-y-3">
-      {required.map((role) => (
-        <div
-          key={role}
-          className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3"
-        >
-          <p className="text-xs font-bold text-indigo-900">
-            {role === "component"
-              ? "Неисправные компоненты"
-              : "Неисправные элементы"}{" "}
-            согласно паспорту
-          </p>
-          {[1, 2, 4, 0].map((section) => {
-            const options = sortOptionsByName(
-              (query.data?.[role] || []).filter(
-                (x) =>
-                  x.context.section === section &&
-                  (role !== "element" ||
-                    !required.includes("component") ||
-                    links.some(
-                      (l) =>
-                        l.role === "component" &&
-                        x.ancestor_ids?.includes(l.node_id),
-                    )),
-              ),
-            );
-            if (!options.length) return null;
-            const selected = options
-              .map((option) =>
-                links.find((x) => x.role === role && x.node_id === option.id),
-              )
-              .filter(Boolean);
-            return (
-              <div key={section} className="space-y-2">
-                <MultiSelectField
-                  label={
-                    section
-                      ? `Секция ${options[0].context.section_name}`
-                      : "Общее оборудование"
-                  }
-                  options={options.map((o) => ({
-                    ...o,
-                    name: passportOptionName(o),
-                  }))}
-                  selectedValues={selected.map((x) => x.node_id)}
-                  onChange={(values) =>
-                    changeSelection(role, [
-                      ...links
-                        .filter(
-                          (x) =>
-                            x.role === role &&
-                            !options.some((o) => o.id === x.node_id),
-                        )
-                        .map((x) => x.node_id),
-                      ...values,
-                    ])
-                  }
-                  allowClear
-                  placeholder="Выберите заводские номера"
-                />
-                {selected.map((x) => (
-                  <div
-                    key={x.node_id}
-                    className="text-xs font-bold text-slate-900"
-                  >
-                    {passportOptionName(
-                      options.find((o) => o.id === x.node_id),
-                      x.state,
-                    )}
-                  </div>
-                ))}
-              </div>
-            );
-          })}
-          <p className="text-xs font-semibold text-slate-800">
-            Количество: {links.filter((x) => x.role === role).length}. Номер и
-            дата изменяются на странице паспорта.
-          </p>
-          {!(query.data?.[role] || []).length && (
-            <p className="text-xs text-amber-800">
-              В выбранной секции нет экземпляров этого типа.
-            </p>
-          )}
-        </div>
-      ))}
+      {required
+        .filter((role) => role !== "element" || data.element_equipment_id)
+        .map((role) => (
+          <div
+            key={role}
+            className="space-y-2 rounded-lg border border-indigo-200 bg-indigo-50/40 p-3"
+          >
+            <div className="flex items-baseline justify-between gap-4">
+              <p className="min-w-0 text-sm font-bold text-indigo-900">
+                {role === "component"
+                  ? "Неисправные компоненты"
+                  : "Неисправные элементы"}{" "}
+                согласно паспорту
+              </p>
+              <p className="flex shrink-0 items-baseline gap-2 text-sm font-bold text-indigo-900">
+                Количество:
+                <span className="rounded-md bg-indigo-100 px-2 text-base font-black text-indigo-700">
+                  {links.filter((x) => x.role === role).length}
+                </span>
+              </p>
+            </div>
+            {[1, 2, 4, 0].map((section) => {
+              const options = sortOptionsByName(
+                (query.data?.[role] || []).filter(
+                  (x) =>
+                    x.context.section === section &&
+                    (role !== "element" ||
+                      !required.includes("component") ||
+                      links.some(
+                        (l) =>
+                          l.role === "component" &&
+                          x.ancestor_ids?.includes(l.node_id),
+                      )),
+                ),
+              );
+              if (!options.length) return null;
+              const selected = options
+                .map((option) =>
+                  links.find((x) => x.role === role && x.node_id === option.id),
+                )
+                .filter(Boolean);
+              return (
+                <div key={section} className="space-y-2">
+                  <MultiSelectField
+                    label={
+                      section
+                        ? `Секция ${options[0].context.section_name}`
+                        : "Общее оборудование"
+                    }
+                    options={options.map((o) => ({
+                      ...o,
+                      name: passportOptionName(o),
+                    }))}
+                    selectedValues={selected.map((x) => x.node_id)}
+                    onChange={(values) =>
+                      changeSelection(role, [
+                        ...links
+                          .filter(
+                            (x) =>
+                              x.role === role &&
+                              !options.some((o) => o.id === x.node_id),
+                          )
+                          .map((x) => x.node_id),
+                        ...values,
+                      ])
+                    }
+                    allowClear
+                    placeholder="Выберите заводские номера"
+                  />
+                  {selected.map((x) => (
+                    <div
+                      key={x.node_id}
+                      className="text-xs font-bold text-slate-900"
+                    >
+                      {passportOptionName(
+                        options.find((o) => o.id === x.node_id),
+                        x.state,
+                      )}
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
+            {!(query.data?.[role] || []).length && (
+              <p className="text-xs text-amber-800">
+                В выбранной секции нет экземпляров этого типа.
+              </p>
+            )}
+          </div>
+        ))}
     </div>
   );
 }
@@ -317,14 +326,14 @@ export function PassportReplacementFields({ data, updateField }) {
             className={`space-y-2 rounded-lg border border-emerald-200 bg-white p-3 ${parentInPlan ? "border-l-4" : ""}`}
           >
             {(index === 0 || plan[index - 1].group_key !== row.group_key) && (
-              <p className="text-xs font-black text-emerald-800">
+              <p className="text-sm font-bold text-emerald-800">
                 Секция {row.context.section_name} ·{" "}
                 {row.scope === "kmb"
                   ? `КМБ, КП${row.context.kp}`
                   : row.position}
               </p>
             )}
-            <p className="text-xs font-bold text-slate-700">
+            <p className="text-sm font-bold text-slate-900">
               {row.label}
               {row.required_serial ? " *" : ""}
             </p>
@@ -337,31 +346,25 @@ export function PassportReplacementFields({ data, updateField }) {
               />
             )}
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-xs text-slate-600">
-                Заводской номер
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm text-slate-900"
-                  maxLength={255}
-                  value={value.serial_number || ""}
-                  onChange={(e) => change(row, "serial_number", e.target.value)}
-                  placeholder={
-                    row.required_serial ? "Обязательно" : "Неизвестен"
-                  }
-                />
-              </label>
-              <label className="text-xs text-slate-600">
-                Дата изготовления
-                <input
-                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-sm text-slate-900"
-                  maxLength={100}
-                  value={value.manufacture_date_text || ""}
-                  onChange={(e) => {
-                    if (isValidManufactureDate(e.target.value))
-                      change(row, "manufacture_date_text", e.target.value);
-                  }}
-                  placeholder="мм.гггг"
-                />
-              </label>
+              <EditableField
+                label="Заводской номер"
+                isEditing
+                maxLength={255}
+                value={value.serial_number || ""}
+                onChange={(serial) => change(row, "serial_number", serial)}
+                placeholder={row.required_serial ? "Обязательно" : "Неизвестен"}
+              />
+              <EditableField
+                label="Дата изготовления"
+                isEditing
+                maxLength={100}
+                value={value.manufacture_date_text || ""}
+                onChange={(date) => {
+                  if (isValidManufactureDate(date))
+                    change(row, "manufacture_date_text", date);
+                }}
+                placeholder="мм.гггг"
+              />
             </div>
           </div>
         );

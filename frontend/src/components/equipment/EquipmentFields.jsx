@@ -49,7 +49,9 @@ export const EquipmentFields = ({
       : [1, 2].includes(rId) || (rId === 8 && !levels?.lvl4);
 
   const showElement =
-    mode === "old" ? true : rId === 3 || (rId === 8 && !!levels?.lvl4);
+    mode === "old"
+      ? !!levels?.lvl4
+      : rId === 3 || (rId === 8 && !!levels?.lvl4);
 
   const disableComponent = mode === "old" ? !levels?.lvl3 : false;
   const disableElement = mode === "old" ? !levels?.lvl4 : false;

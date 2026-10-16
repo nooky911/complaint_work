@@ -129,7 +129,7 @@ export const LinkFileModal = ({
                 placeholder="Поиск по названию файла..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 py-2 pr-4 pl-9 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-9 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
           </div>

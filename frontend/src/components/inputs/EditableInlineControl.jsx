@@ -75,7 +75,7 @@ export const EditableInlineControl = ({
         <div className="flex items-center gap-2">
           <input
             autoFocus
-            className="h-[38px] flex-1 rounded-lg border border-blue-400 px-3 text-sm shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
+            className="h-[38px] flex-1 rounded-lg border border-blue-400 bg-white px-3 text-sm font-bold text-slate-900 shadow-sm focus:ring-2 focus:ring-blue-500/20 focus:outline-none"
             value={tempName}
             onChange={(e) => setTempName(e.target.value)}
             onKeyDown={(e) => {

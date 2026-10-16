@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Loader2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../api/api";
-import { SearchableSelect } from "../inputs/index.jsx";
+import { EditableField, SearchableSelect } from "../inputs/index.jsx";
 import { isValidManufactureDate } from "../../utils/validators";
-import { formatDate, formatApiError } from "../../utils/formatters";
+import {
+  formatDate,
+  formatApiError,
+  formatFullName,
+} from "../../utils/formatters";
 
 /** Показывает историю позиции и форму исправления паспорта */
 export function PassportPositionHistory({ passportId, node }) {
@@ -12,12 +18,27 @@ export function PassportPositionHistory({ passportId, node }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const dialogRef = useRef(null);
+  const historyTitleId = useId();
+
+  // Открываем отдельное окно с удержанием фокуса внутри и закрытием по Escape
+  useEffect(() => {
+    if (!open) return;
+    const dialog = dialogRef.current;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [open]);
   const [form, setForm] = useState({
     equipment_id: node.equipment_id,
     serial_number: node.serial_number || "",
     manufacture_date_text: node.manufacture_date || "",
     reason: "",
   });
+  /** Закрывает историю и возвращает фокус к кнопке */
+  const closeHistory = () => {
+    dialogRef.current?.close();
+    setOpen(false);
+  };
   const history = useQuery({
     queryKey: ["product-passports", passportId, node.id, "history"],
     queryFn: async () =>
@@ -51,10 +72,10 @@ export function PassportPositionHistory({ passportId, node }) {
       <div className="flex flex-wrap gap-3 text-xs font-bold text-indigo-700">
         <button
           type="button"
-          onClick={() => setOpen(!open)}
+          onClick={() => setOpen(true)}
           className="rounded-lg border border-indigo-200 px-3 py-2"
         >
-          {open ? "Скрыть историю" : "История"}
+          История
         </button>
         {user?.role === "superadmin" && (
           <button
@@ -76,38 +97,31 @@ export function PassportPositionHistory({ passportId, node }) {
               onChange={(equipment_id) => setForm({ ...form, equipment_id })}
             />
           )}
-          <label className="block text-xs text-slate-600">
-            Заводской номер
-            <input
-              maxLength={255}
-              className="mt-1 w-full rounded border border-slate-200 p-2"
-              value={form.serial_number}
-              onChange={(e) =>
-                setForm({ ...form, serial_number: e.target.value })
-              }
-            />
-          </label>
-          <label className="block text-xs text-slate-600">
-            Дата изготовления
-            <input
-              maxLength={100}
-              className="mt-1 w-full rounded border border-slate-200 p-2"
-              value={form.manufacture_date_text}
-              onChange={(e) => {
-                if (isValidManufactureDate(e.target.value))
-                  setForm({ ...form, manufacture_date_text: e.target.value });
-              }}
-            />
-          </label>
-          <label className="block text-xs text-slate-600">
-            Причина исправления
-            <textarea
-              maxLength={2000}
-              className="mt-1 w-full rounded border border-slate-200 p-2"
-              value={form.reason}
-              onChange={(e) => setForm({ ...form, reason: e.target.value })}
-            />
-          </label>
+          <EditableField
+            label="Заводской номер"
+            maxLength={255}
+            value={form.serial_number}
+            isEditing
+            onChange={(serial_number) => setForm({ ...form, serial_number })}
+          />
+          <EditableField
+            label="Дата изготовления"
+            maxLength={100}
+            value={form.manufacture_date_text}
+            isEditing
+            onChange={(manufacture_date_text) => {
+              if (isValidManufactureDate(manufacture_date_text))
+                setForm({ ...form, manufacture_date_text });
+            }}
+          />
+          <EditableField
+            label="Причина исправления"
+            maxLength={2000}
+            type="textarea"
+            value={form.reason}
+            isEditing
+            onChange={(reason) => setForm({ ...form, reason })}
+          />
           {save.isError && (
             <p role="alert" className="text-xs text-red-700">
               {formatApiError(save.error, "Не удалось сохранить исправление")}
@@ -117,80 +131,177 @@ export function PassportPositionHistory({ passportId, node }) {
             type="button"
             disabled={!form.reason.trim() || save.isPending}
             onClick={() => save.mutate()}
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-bold text-white disabled:cursor-wait disabled:opacity-70"
           >
-            Сохранить исправление
+            {save.isPending && (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            )}
+            {save.isPending ? "Сохранение…" : "Сохранить исправление"}
           </button>
         </div>
       )}
-      {open && (
-        <div className="space-y-3">
-          {history.isLoading ? (
-            <p className="text-xs text-slate-500">Загрузка истории…</p>
-          ) : history.isError ? (
-            <p role="alert" className="text-xs text-red-700">
-              Не удалось загрузить историю{" "}
-              <button
-                type="button"
-                className="underline"
-                onClick={() => history.refetch()}
-              >
-                Повторить
-              </button>
-            </p>
-          ) : !history.data?.length ? (
-            <p className="text-xs text-slate-500">Изменений не было</p>
-          ) : (
-            history.data.map((event) => (
-              <article
-                key={event.id}
-                className="space-y-1 rounded-lg border border-slate-200 p-3 text-xs text-slate-700"
-              >
-                <p className="font-bold">
-                  {event.kind === "historical_replacement"
-                    ? event.case_snapshot?.date_label || "Дата неизвестна"
-                    : formatDate(event.date)}{" "}
-                  ·{" "}
-                  {event.kind === "manual_correction"
-                    ? "Ручное исправление"
-                    : event.kind === "historical_replacement"
-                      ? "Восстановленная замена"
-                      : `Случай №${event.display_number ?? event.case_snapshot?.display_number ?? "—"}`}
-                </p>
-                <p>
-                  {event.before.equipment_name?.replaceAll("_", " ")} · №{" "}
-                  {event.before.serial_number || "—"} →{" "}
-                  {event.after.equipment_name?.replaceAll("_", " ")} · №{" "}
-                  {event.after.serial_number || "—"}
-                </p>
-                {(event.before.manufacture_date_text ||
-                  event.after.manufacture_date_text) && (
-                  <p>
-                    Дата изготовления:{" "}
-                    {event.before.manufacture_date_text || "—"} →{" "}
-                    {event.after.manufacture_date_text || "—"}
+      {open &&
+        createPortal(
+          <dialog
+            ref={dialogRef}
+            aria-labelledby={historyTitleId}
+            onCancel={(event) => {
+              event.preventDefault();
+              closeHistory();
+            }}
+            onClick={(event) => {
+              if (event.target === event.currentTarget) closeHistory();
+            }}
+            className="m-auto w-[calc(100%-2rem)] max-w-6xl overflow-hidden rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/60 backdrop:backdrop-blur-sm"
+          >
+            <div className="flex max-h-[85dvh] flex-col">
+              <div className="flex shrink-0 items-start justify-between gap-4 border-b border-slate-200 bg-slate-50 px-5 py-4">
+                <div className="min-w-0">
+                  <h2 id={historyTitleId} className="text-lg font-bold">
+                    История изменений
+                  </h2>
+                  <p className="mt-1 text-sm text-black">
+                    {node.tree_name || node.full_name} · №{" "}
+                    {node.serial_number || "—"}
                   </p>
-                )}
-                <p>
-                  {event.kind === "manual_correction"
-                    ? event.actor_name
-                    : event.kind === "historical_replacement"
-                      ? "Восстановлено по комментариям к сверке"
-                      : event.case_snapshot?.creator_name}
-                </p>
-                {event.case_snapshot?.malfunction && (
-                  <p>{event.case_snapshot.malfunction}</p>
-                )}
-                {event.reason && <p>{event.reason}</p>}
-                {event.kind === "manual_correction" && (
-                  <p className="text-slate-400">
-                    {new Date(event.recorded_at).toLocaleString("ru-RU")}
+                </div>
+                <button
+                  type="button"
+                  autoFocus
+                  aria-label="Закрыть историю"
+                  onClick={closeHistory}
+                  className="shrink-0 rounded-lg p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-indigo-500"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="min-h-0 overflow-auto overscroll-contain">
+                {history.isLoading ? (
+                  <p role="status" className="p-6 text-sm text-slate-600">
+                    Загрузка истории…
                   </p>
+                ) : history.isError ? (
+                  <p role="alert" className="p-6 text-sm text-red-700">
+                    Не удалось загрузить историю{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => history.refetch()}
+                    >
+                      Повторить
+                    </button>
+                  </p>
+                ) : !history.data?.length ? (
+                  <p className="p-6 text-sm text-slate-600">
+                    Изменений не было
+                  </p>
+                ) : (
+                  <table className="w-full min-w-[920px] table-fixed text-center text-sm [&_td]:align-middle [&_th]:align-middle">
+                    <thead className="sticky top-0 z-10 bg-slate-100 text-xs font-bold text-slate-600">
+                      <tr>
+                        <th scope="col" className="w-[13%] px-4 py-3">
+                          Дата изменения
+                        </th>
+                        <th scope="col" className="w-[15%] px-4 py-3">
+                          Основание
+                        </th>
+                        <th scope="col" className="w-[18%] px-4 py-3">
+                          До изменения
+                        </th>
+                        <th scope="col" className="w-[18%] px-4 py-3">
+                          После изменения
+                        </th>
+                        <th scope="col" className="w-[21%] px-4 py-3">
+                          Неисправность / причина
+                        </th>
+                        <th scope="col" className="w-[15%] px-4 py-3">
+                          Автор
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {history.data.map((event) => (
+                        <HistoryRow key={event.id} event={event} />
+                      ))}
+                    </tbody>
+                  </table>
                 )}
-              </article>
-            ))
-          )}
-        </div>
+              </div>
+            </div>
+          </dialog>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
+/** Показывает одно изменение позиции отдельной строкой истории */
+function HistoryRow({ event }) {
+  const restored = event.kind === "historical_replacement";
+  const manual = event.kind === "manual_correction";
+  const dateLabel = restored
+    ? event.case_snapshot?.date_label || "Дата неизвестна"
+    : manual
+      ? new Date(event.recorded_at).toLocaleString("ru-RU")
+      : formatDate(event.date);
+  const reason = manual
+    ? "Ручное исправление"
+    : restored
+      ? "Восстановленная замена"
+      : `Случай №${event.display_number ?? event.case_snapshot?.display_number ?? "—"}`;
+  const author = manual
+    ? event.actor_name
+    : restored
+      ? "Восстановлено по комментариям к сверке"
+      : event.case_snapshot?.creator_name;
+
+  return (
+    <tr className="even:bg-slate-100/70">
+      <td className="px-4 py-4 font-semibold">{dateLabel}</td>
+      <td className="px-4 py-4 font-semibold text-indigo-700">{reason}</td>
+      <td className="relative px-10 py-4">
+        <HistoryEquipment state={event.before} />
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 32 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.75"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+    className="absolute top-1/2 right-0 h-5 w-8 translate-x-1/2 -translate-y-1/2 text-black"
+        >
+          <path d="M3 10h26m-6-6 6 6-6 6" />
+        </svg>
+      </td>
+      <td className="px-4 py-4">
+        <HistoryEquipment state={event.after} />
+      </td>
+      <td className="space-y-1 px-4 py-4 break-words whitespace-pre-wrap">
+        {event.case_snapshot?.malfunction && (
+          <p>{event.case_snapshot.malfunction}</p>
+        )}
+        {event.reason && <p>{event.reason}</p>}
+        {!event.reason && !event.case_snapshot?.malfunction && "—"}
+      </td>
+      <td
+        className="px-4 py-4 break-words"
+        title={restored ? undefined : author}
+      >
+        {restored ? author : author ? formatFullName(author) : "Не указан"}
+      </td>
+    </tr>
+  );
+}
+
+/** Показывает номер и дату экземпляра до или после изменения */
+function HistoryEquipment({ state }) {
+  return (
+    <div className="space-y-1 break-words">
+      <p>{state.equipment_name?.replaceAll("_", " ") || "—"}</p>
+      <p className="font-bold">№ {state.serial_number || "—"}</p>
+      {state.manufacture_date_text && (
+        <p className="text-slate-600">({state.manufacture_date_text})</p>
       )}
     </div>
   );
