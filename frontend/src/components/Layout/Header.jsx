@@ -32,7 +32,14 @@ export default function Header({ onChangePassword }) {
         </div>
 
         <div className="flex justify-center">
-          <img src={String(ulLogo)} alt="Logo" className="h-10" />
+          <img
+            src={String(ulLogo)}
+            alt="Уральские локомотивы"
+            width={180}
+            height={32}
+            fetchPriority="high"
+            className="h-10 w-auto"
+          />
         </div>
 
         <div className="relative flex justify-end" ref={dropdownRef}>

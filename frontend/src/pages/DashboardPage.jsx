@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import {
   Filter,
   Plus,
@@ -12,9 +12,6 @@ import {
 
 // Компоненты
 import { RepairCaseList } from "../components/RepairCaseList";
-import { RepairCaseDetails } from "../components/RepairCaseDetails";
-import { FilterSidebar } from "../components/FilterSidebar";
-import { CreateRepairCase } from "../components/CreateRepairCase";
 import { SectionsMenu } from "../components/Layout/SectionsMenu";
 
 // Утилиты и Константы
@@ -33,6 +30,41 @@ import {
 import { useDebouncedValue } from "../hooks/useDebounce";
 import { exportCasesToExcel } from "../api/export";
 import { useDropdown } from "../hooks/useDropdown";
+
+// Загружаем формы и фильтры при первом открытии
+const RepairCaseDetails = lazy(() =>
+  import("../components/RepairCaseDetails").then((module) => ({
+    default: module.RepairCaseDetails,
+  })),
+);
+const CreateRepairCase = lazy(() =>
+  import("../components/CreateRepairCase").then((module) => ({
+    default: module.CreateRepairCase,
+  })),
+);
+const FilterSidebar = lazy(() =>
+  import("../components/FilterSidebar").then((module) => ({
+    default: module.FilterSidebar,
+  })),
+);
+
+/** Показывает загрузку окна, пока браузер получает его код */
+function WindowLoading() {
+  return (
+    <div
+      role="status"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/10 backdrop-blur-sm"
+    >
+      <div className="flex items-center gap-3 rounded-xl bg-white p-6 text-sm font-bold text-slate-900 shadow-lg">
+        <div
+          aria-hidden="true"
+          className="h-6 w-6 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent"
+        />
+        Загрузка окна…
+      </div>
+    </div>
+  );
+}
 
 export default React.memo(function DashboardPage() {
   // --- ПАГИНАЦИЯ ---
@@ -71,6 +103,7 @@ export default React.memo(function DashboardPage() {
 
   // --- СОСТОЯНИЯ ФИЛЬТРОВ ---
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filterLoaded, setFilterLoaded] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(() => {
     const saved = localStorage.getItem("appliedFilters");
     return saved ? JSON.parse(saved) : INITIAL_FILTERS;
@@ -200,7 +233,10 @@ export default React.memo(function DashboardPage() {
           <div className="flex flex-wrap items-center gap-3">
             {/* Кнопка фильтров */}
             <button
-              onClick={() => setIsFilterOpen(true)}
+              onClick={() => {
+                setFilterLoaded(true);
+                setIsFilterOpen(true);
+              }}
               className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
                 activeCount > 0
                   ? "border-indigo-600 bg-indigo-600 text-white shadow-indigo-200"
@@ -571,40 +607,44 @@ export default React.memo(function DashboardPage() {
         </div>
       )}
 
-      {isCreateModalOpen && (
-        <CreateRepairCase
-          currentUser={currentUser}
-          onClose={() => setIsCreateModalOpen(false)}
-          onCreated={() => {
-            setIsCreateModalOpen(false);
-          }}
-        />
-      )}
+      <Suspense fallback={<WindowLoading />}>
+        {isCreateModalOpen && (
+          <CreateRepairCase
+            currentUser={currentUser}
+            onClose={() => setIsCreateModalOpen(false)}
+            onCreated={() => {
+              setIsCreateModalOpen(false);
+            }}
+          />
+        )}
 
-      {/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ */}
-      {selectedCase && (
-        <RepairCaseDetails
-          currentUser={currentUser}
-          repairCase={selectedCaseDetail || selectedCase}
-          onClose={() => {
-            setSelectedCase(null);
-          }}
-          caseIndex={selectedCase?.display_number || selectedCaseIndex}
-          onUpdate={handleCaseUpdate}
-          onDelete={handleCaseDelete}
-          setLoadingDetail={setLoadingDetail}
-          setLoadingText={setLoadingText}
-        />
-      )}
+        {/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ */}
+        {selectedCase && (
+          <RepairCaseDetails
+            currentUser={currentUser}
+            repairCase={selectedCaseDetail || selectedCase}
+            onClose={() => {
+              setSelectedCase(null);
+            }}
+            caseIndex={selectedCase?.display_number || selectedCaseIndex}
+            onUpdate={handleCaseUpdate}
+            onDelete={handleCaseDelete}
+            setLoadingDetail={setLoadingDetail}
+            setLoadingText={setLoadingText}
+          />
+        )}
 
-      {/* САЙДБАР ФИЛЬТРОВ */}
-      <FilterSidebar
-        isOpen={isFilterOpen}
-        onClose={() => setIsFilterOpen(false)}
-        appliedFilters={appliedFilters}
-        onApply={handleApplyFilters}
-        options={enhancedFilterOptions}
-      />
+        {/* САЙДБАР ФИЛЬТРОВ */}
+        {filterLoaded && (
+          <FilterSidebar
+            isOpen={isFilterOpen}
+            onClose={() => setIsFilterOpen(false)}
+            appliedFilters={appliedFilters}
+            onApply={handleApplyFilters}
+            options={enhancedFilterOptions}
+          />
+        )}
+      </Suspense>
     </div>
   );
 });
