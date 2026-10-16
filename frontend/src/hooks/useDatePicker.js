@@ -78,7 +78,7 @@ export const useDatePicker = (value, onChange, allowFuture = false) => {
       const year = parseInt(res.substring(6, 10), 10);
 
       if (year >= 2000) {
-        onChange(formatToDB(res));
+        onChange(formatToDB(res) || res);
       } else {
         onChange(res);
       }
@@ -90,7 +90,8 @@ export const useDatePicker = (value, onChange, allowFuture = false) => {
   const displayValue = normalizeDateForInput(value);
   const hasAnyDigits = /\d/.test(displayValue);
   const hasError =
-    hasAnyDigits && (displayValue.includes("_") || !isValidDate(displayValue, !allowFuture));
+    hasAnyDigits &&
+    (displayValue.includes("_") || !isValidDate(displayValue, !allowFuture));
 
   return {
     inputRef,

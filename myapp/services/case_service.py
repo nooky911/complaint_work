@@ -131,6 +131,19 @@ class CaseService:
                 raise CaseValidationError(field)
 
     @staticmethod
+    def _normalize_installed_serials(
+        data: dict, case: RepairCaseEquipment | None = None
+    ) -> None:
+        """Подставляет б/н вместо пустого номера выбранного установленного оборудования"""
+        for role in ("component", "element"):
+            field = role + "_serial_number_new"
+            id_field = "new_" + role + "_equipment_id"
+            equipment_id = data.get(id_field, getattr(case, id_field, None))
+            if equipment_id and (field in data or id_field in data):
+                value = data.get(field, getattr(case, field, None))
+                data[field] = (value or "").strip() or "б/н"
+
+    @staticmethod
     async def _get_case_with_relations(
         session: AsyncSession, case_id: int
     ) -> RepairCaseEquipment | None:
@@ -168,6 +181,7 @@ class CaseService:
                 "expected_revision",
             }
         )
+        CaseService._normalize_installed_serials(case_creation_data)
         await CaseService._prepare_locomotive(session, case_creation_data)
 
         # Разделение данных
@@ -342,6 +356,7 @@ class CaseService:
             )
 
         # Обновляем поля
+        CaseService._normalize_installed_serials(update_data, case)
         for field, value in update_data.items():
             setattr(case, field, value)
 

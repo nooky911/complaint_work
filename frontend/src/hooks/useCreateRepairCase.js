@@ -2,7 +2,12 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import api from "../api/api";
-import { getInitialCaseData } from "../utils/formatters";
+import {
+  getInitialCaseData,
+  formatApiError,
+  hasPassportScopeChanged,
+  normalizeInstalledSerials,
+} from "../utils/formatters";
 import { useCaseValidation } from "./useCaseValidation";
 import { useFormReferences } from "./api/index";
 import { useLocomotiveNumbers } from "./api/useReferencesApi";
@@ -97,8 +102,19 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
 
   const updateField = (field, value, relatedFields = {}) => {
     setFormData((prev) => {
-      const scopeChanged = ["passport_id", "locomotive_model_id", "locomotive_number", "section_mask", "fault_date", "component_equipment_id", "element_equipment_id"].includes(field) && prev?.[field] !== value;
-      return { ...prev, ...(scopeChanged ? { passport_links: [], replacement_items: [], _passport_status: "loading" } : {}), ...relatedFields, [field]: value };
+      const scopeChanged = hasPassportScopeChanged(prev, field, value);
+      return {
+        ...prev,
+        ...(scopeChanged
+          ? {
+              passport_links: [],
+              replacement_items: [],
+              _passport_status: "loading",
+            }
+          : {}),
+        ...relatedFields,
+        [field]: value,
+      };
     });
   };
 
@@ -186,9 +202,11 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
 
     setSaving(true);
     try {
-      const payload = { ...formData };
+      const payload = normalizeInstalledSerials(formData);
       delete payload.locomotive_identity_locked;
-      Object.keys(payload).filter((k) => k.startsWith("_")).forEach((k) => delete payload[k]);
+      Object.keys(payload)
+        .filter((k) => k.startsWith("_"))
+        .forEach((k) => delete payload[k]);
       const response = await api.post("/cases/", payload);
       const newCaseId = response.data.id;
 
@@ -229,13 +247,15 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
       if (error.response?.status === 409) {
         setServerError({
           show: true,
-          message: error.response?.data?.detail || "Этот случай уже имеется в базе. Проверьте список записей",
+          message: formatApiError(
+            error,
+            "Этот случай уже имеется в базе. Проверьте список записей",
+          ),
         });
       } else {
         setServerError({
           show: true,
-          message:
-            error.response?.data?.detail || "Не удалось сохранить данные",
+          message: formatApiError(error, "Не удалось сохранить данные"),
         });
       }
     } finally {

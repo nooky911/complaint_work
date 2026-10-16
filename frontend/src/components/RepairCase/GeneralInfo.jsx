@@ -3,7 +3,6 @@ import { Train } from "lucide-react";
 import {
   formatDate,
   formatSectionMask,
-  formatToDB,
   getText,
   sortRegionalCenterOptions,
 } from "../../utils/formatters";
@@ -31,26 +30,44 @@ export const GeneralInfo = ({
   const [numberSearch, setNumberSearch] = useState("");
   const debouncedSearch = useDebouncedValue(numberSearch, 300);
   const identityLocked = !!currentData?.locomotive_identity_locked;
-  const numbers = useLocomotiveNumbers(currentData?.locomotive_model_id, debouncedSearch,
-    isEditing && !identityLocked);
+  const numbers = useLocomotiveNumbers(
+    currentData?.locomotive_model_id,
+    debouncedSearch,
+    isEditing && !identityLocked,
+  );
   const searchPending = numberSearch !== debouncedSearch;
-  const numberOptions = (searchPending ? [] : numbers.data || []).map((item) => ({
-    ...item, id: item.locomotive_number, name: item.locomotive_number,
-  }));
-  if (currentData?.locomotive_number && !numberOptions.some((item) => item.id === currentData.locomotive_number)) {
-    numberOptions.push({ id: currentData.locomotive_number, name: currentData.locomotive_number,
-      passport_id: currentData.passport_id ?? null, section_mask: validation?.availableSectionMask || 0 });
+  const numberOptions = (searchPending ? [] : numbers.data || []).map(
+    (item) => ({
+      ...item,
+      id: item.locomotive_number,
+      name: item.locomotive_number,
+    }),
+  );
+  if (
+    currentData?.locomotive_number &&
+    !numberOptions.some((item) => item.id === currentData.locomotive_number)
+  ) {
+    numberOptions.push({
+      id: currentData.locomotive_number,
+      name: currentData.locomotive_number,
+      passport_id: currentData.passport_id ?? null,
+      section_mask: validation?.availableSectionMask || 0,
+    });
   }
   const clearNumber = (search) => {
     setNumberSearch(search);
-    updateField("locomotive_number", "", { passport_id: null, section_mask: null });
+    updateField("locomotive_number", "", {
+      passport_id: null,
+      section_mask: null,
+    });
   };
   const selectNumber = (value) => {
     const choice = numberOptions.find((item) => item.id === value);
     setNumberSearch("");
     updateField("locomotive_number", value || "", {
       passport_id: choice?.passport_id ?? null,
-      section_mask: ((currentData?.section_mask || 0) & (choice?.section_mask || 0)) || null,
+      section_mask:
+        (currentData?.section_mask || 0) & (choice?.section_mask || 0) || null,
     });
   };
   return (
@@ -71,7 +88,7 @@ export const GeneralInfo = ({
               label={REPAIR_FIELDS_LABELS.fault_date}
               value={currentData?.fault_date}
               isEditing={true}
-              onChange={(value) => updateField("fault_date", formatToDB(value))}
+              onChange={(value) => updateField("fault_date", value)}
               error={showError && validation?.isFaultDateMissing}
             />
           ) : (
@@ -95,7 +112,9 @@ export const GeneralInfo = ({
                 onChange={(value) => {
                   setNumberSearch("");
                   updateField("locomotive_model_id", value, {
-                    locomotive_number: "", passport_id: null, section_mask: null,
+                    locomotive_number: "",
+                    passport_id: null,
+                    section_mask: null,
                   });
                 }}
                 disabled={identityLocked}
@@ -110,11 +129,19 @@ export const GeneralInfo = ({
                 onSearchChange={clearNumber}
                 onOpen={() => setNumberSearch("")}
                 isDisabled={identityLocked || !currentData?.locomotive_model_id}
-                placeholder={currentData?.locomotive_model_id ? "Выберите номер или найдите его" : "Сначала выберите модель"}
+                placeholder={
+                  currentData?.locomotive_model_id
+                    ? "Выберите номер или найдите его"
+                    : "Сначала выберите модель"
+                }
                 isLoading={numbers.isFetching || searchPending}
                 loadError={numbers.isError}
                 onRetry={numbers.refetch}
-                error={showError && (validation?.isLocoNumberMissing || validation?.isLocoNumberInvalid)}
+                error={
+                  showError &&
+                  (validation?.isLocoNumberMissing ||
+                    validation?.isLocoNumberInvalid)
+                }
                 className="col-span-1"
               />
               <SectionSelect
@@ -122,9 +149,16 @@ export const GeneralInfo = ({
                 isEditing={true}
                 mask={currentData?.section_mask}
                 onChange={(value) => updateField("section_mask", value)}
-                isDisabled={identityLocked || !currentData?.locomotive_number || !validation?.availableSectionMask}
+                isDisabled={
+                  identityLocked ||
+                  !currentData?.locomotive_number ||
+                  !validation?.availableSectionMask
+                }
                 availableMask={validation?.availableSectionMask || 0}
-                error={showError && (validation?.isSectionMissing || validation?.isSectionInvalid)}
+                error={
+                  showError &&
+                  (validation?.isSectionMissing || validation?.isSectionInvalid)
+                }
                 className="col-span-1"
               />
             </>
@@ -153,7 +187,9 @@ export const GeneralInfo = ({
               <SelectField
                 label={REPAIR_FIELDS_LABELS.regional_center}
                 value={currentData?.regional_center_id}
-                options={sortRegionalCenterOptions(references?.regional_centers)}
+                options={sortRegionalCenterOptions(
+                  references?.regional_centers,
+                )}
                 isEditing={true}
                 onChange={(value) => updateField("regional_center_id", value)}
                 className="col-span-1"

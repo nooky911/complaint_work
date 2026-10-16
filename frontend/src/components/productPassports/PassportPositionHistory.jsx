@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 import api from "../../api/api";
 import { SearchableSelect } from "../inputs/index.jsx";
 import { isValidManufactureDate } from "../../utils/validators";
-import { formatDate } from "../../utils/formatters";
+import { formatDate, formatApiError } from "../../utils/formatters";
 
 /** Показывает историю позиции и форму исправления паспорта */
 export function PassportPositionHistory({ passportId, node }) {
@@ -110,8 +110,7 @@ export function PassportPositionHistory({ passportId, node }) {
           </label>
           {save.isError && (
             <p role="alert" className="text-xs text-red-700">
-              {save.error.response?.data?.detail ||
-                "Не удалось сохранить исправление"}
+              {formatApiError(save.error, "Не удалось сохранить исправление")}
             </p>
           )}
           <button
@@ -148,10 +147,15 @@ export function PassportPositionHistory({ passportId, node }) {
                 className="space-y-1 rounded-lg border border-slate-200 p-3 text-xs text-slate-700"
               >
                 <p className="font-bold">
-                  {formatDate(event.date)} ·{" "}
+                  {event.kind === "historical_replacement"
+                    ? event.case_snapshot?.date_label || "Дата неизвестна"
+                    : formatDate(event.date)}{" "}
+                  ·{" "}
                   {event.kind === "manual_correction"
                     ? "Ручное исправление"
-                    : `Случай №${event.display_number ?? event.case_snapshot?.display_number ?? "—"}`}
+                    : event.kind === "historical_replacement"
+                      ? "Восстановленная замена"
+                      : `Случай №${event.display_number ?? event.case_snapshot?.display_number ?? "—"}`}
                 </p>
                 <p>
                   {event.before.equipment_name?.replaceAll("_", " ")} · №{" "}
@@ -170,7 +174,9 @@ export function PassportPositionHistory({ passportId, node }) {
                 <p>
                   {event.kind === "manual_correction"
                     ? event.actor_name
-                    : event.case_snapshot?.creator_name}
+                    : event.kind === "historical_replacement"
+                      ? "Восстановлено по комментариям к сверке"
+                      : event.case_snapshot?.creator_name}
                 </p>
                 {event.case_snapshot?.malfunction && (
                   <p>{event.case_snapshot.malfunction}</p>

@@ -185,7 +185,7 @@ class ProductPassportEvent(Base):
 
     __tablename__ = "product_passport_events"
     __table_args__ = (
-        CheckConstraint("kind IN ('case_replacement', 'manual_correction')"),
+        CheckConstraint("kind IN ('case_replacement', 'manual_correction', 'historical_replacement')"),
         CheckConstraint("status IN ('active', 'superseded', 'voided')"),
         CheckConstraint("kind != 'manual_correction' OR length(trim(reason)) > 0"),
         UniqueConstraint("source_case_id", "revision"),

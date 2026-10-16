@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { DATE_MASK } from "../utils/formatters";
 
 import {
   isValidDate,
@@ -35,7 +36,12 @@ const getDepth = (id, equipmentMap) => {
 };
 
 /** Проверяет заполнение полей случая и выбранных паспортных экземпляров */
-export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomotiveSelection) => {
+export const useCaseValidation = (
+  formData,
+  hierarchy,
+  allEquipment = [],
+  locomotiveSelection,
+) => {
   const equipmentMap = useMemo(() => {
     if (!allEquipment || allEquipment.length === 0) return null;
     return new Map(allEquipment.map((item) => [Number(item.id), item]));
@@ -48,7 +54,7 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomo
     const rId = Number(d?.repair_type_id || d?.repair_type?.id);
 
     // Даты
-    const isFaultDateMissing = !d?.fault_date;
+    const isFaultDateMissing = !d?.fault_date || d.fault_date === DATE_MASK;
     const isFaultDateInvalid = d?.fault_date && !isValidDate(d?.fault_date);
     const otherDates = [
       w?.notification_date,
@@ -93,19 +99,35 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomo
     const identityLocked = !!d?.locomotive_identity_locked;
     const isLocoNumberMissing = !d?.locomotive_number;
     const selectedLocomotive = locomotiveSelection?.data?.find(
-      (item) => item.locomotive_number === d?.locomotive_number &&
+      (item) =>
+        item.locomotive_number === d?.locomotive_number &&
         (item.passport_id ?? null) === (d?.passport_id ?? null),
     );
-    const isLocomotiveLoading = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
+    const isLocomotiveLoading =
+      !identityLocked &&
+      !isLocoModelMissing &&
+      !isLocoNumberMissing &&
       !!locomotiveSelection?.isLoading;
-    const isLocomotiveLoadError = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
+    const isLocomotiveLoadError =
+      !identityLocked &&
+      !isLocoModelMissing &&
+      !isLocoNumberMissing &&
       !!locomotiveSelection?.isError;
-    const isLocoNumberInvalid = !identityLocked && !isLocoModelMissing && !isLocoNumberMissing &&
-      !isLocomotiveLoading && !isLocomotiveLoadError && !selectedLocomotive;
-    const availableSectionMask = identityLocked ? (d?.section_mask || 0) :
-      (selectedLocomotive?.section_mask || 0);
-    const isSectionInvalid = !identityLocked && !!d?.section_mask &&
-      !!selectedLocomotive && !!(d.section_mask & ~availableSectionMask);
+    const isLocoNumberInvalid =
+      !identityLocked &&
+      !isLocoModelMissing &&
+      !isLocoNumberMissing &&
+      !isLocomotiveLoading &&
+      !isLocomotiveLoadError &&
+      !selectedLocomotive;
+    const availableSectionMask = identityLocked
+      ? d?.section_mask || 0
+      : selectedLocomotive?.section_mask || 0;
+    const isSectionInvalid =
+      !identityLocked &&
+      !!d?.section_mask &&
+      !!selectedLocomotive &&
+      !!(d.section_mask & ~availableSectionMask);
     const isDiscoveredAtMissing = !d?.fault_discovered_at_id;
     const isQuantityInvalid =
       !d?.component_quantity || Number(d?.component_quantity) < 1;
@@ -139,11 +161,22 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomo
       else if (rId === 8) isNewComponentMissing = !newCompId;
     }
 
-    const linkedReplacement = [1, 2, 3].includes(rId) && d?.passport_links?.some((x) => rId === 3 ? x.role === "element" : x.role === "component" || rId === 1);
+    const linkedReplacement =
+      [1, 2, 3].includes(rId) &&
+      d?.passport_links?.some((x) =>
+        rId === 3 ? x.role === "element" : x.role === "component" || rId === 1,
+      );
     if (linkedReplacement) isNewComponentMissing = false;
     const isNewElementMissing = rId === 3 && !newElemId && !linkedReplacement;
-    const isPassportInvalid = !!d?.passport_id && (d?._passport_status === "loading" || d?._passport_status === "error" || (d?._passport_required_roles || []).some((role) => !d?.passport_links?.some((x) => x.role === role)));
-    const isPassportReplacementInvalid = !!linkedReplacement && d?._passport_replacement_invalid !== false;
+    const isPassportInvalid =
+      !!d?.passport_id &&
+      (d?._passport_status === "loading" ||
+        d?._passport_status === "error" ||
+        (d?._passport_required_roles || []).some(
+          (role) => !d?.passport_links?.some((x) => x.role === role),
+        ));
+    const isPassportReplacementInvalid =
+      !!linkedReplacement && d?._passport_replacement_invalid !== false;
 
     const errors = {
       isPassportInvalid,
@@ -179,6 +212,11 @@ export const useCaseValidation = (formData, hierarchy, allEquipment = [], locomo
       return value === true;
     });
 
-    return { ...errors, availableSectionMask, hasErrors, isSaveDisabled: hasErrors };
+    return {
+      ...errors,
+      availableSectionMask,
+      hasErrors,
+      isSaveDisabled: hasErrors,
+    };
   }, [formData, hierarchy, equipmentMap, locomotiveSelection]);
 };

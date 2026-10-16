@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import api from "../api/api";
+import { formatToDB } from "../utils/formatters";
 
 /** Загружает экземпляры паспорта или состав замены для создания и редактирования случая */
 export const usePassportEquipment = (data, preview = false) => {
@@ -17,7 +18,7 @@ export const usePassportEquipment = (data, preview = false) => {
     component_equipment_id: data?.component_equipment_id || undefined,
     element_equipment_id: data?.element_equipment_id || undefined,
     section_mask: data?.section_mask,
-    fault_date: data?.fault_date || undefined,
+    fault_date: formatToDB(data?.fault_date) || undefined,
     case_id: data?.id || undefined,
     component_node_ids: !preview
       ? links

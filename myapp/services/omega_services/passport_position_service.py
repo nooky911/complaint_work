@@ -662,7 +662,7 @@ class PassportPositionService:
             cls.fail(
                 "У смены типа есть дети. Сначала уточните соответствие состава нового типа в паспорте."
             )
-        serial = cls.clean(value.get("serial_number"))
+        serial = cls.clean(value.get("serial_number")) or "б/н"
         manufacture = cls.clean(value.get("manufacture_date_text"))
         if item["required_serial"] and (
             not serial or serial.casefold() in ("б/н", "-", "—")

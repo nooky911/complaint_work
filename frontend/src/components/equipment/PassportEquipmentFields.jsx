@@ -3,12 +3,17 @@ import { MultiSelectField } from "../inputs/index.jsx";
 import { SearchableSelect } from "../inputs/index.jsx";
 import { usePassportEquipment } from "../../hooks/usePassportEquipment";
 import { isValidManufactureDate } from "../../utils/validators";
+import { formatApiError, sortOptionsByName } from "../../utils/formatters";
 
 /** Возвращает сообщение об ошибке загрузки паспортных позиций */
 const errorText = (error) =>
-  error?.response?.data?.detail || "Не удалось загрузить паспортные позиции";
+  formatApiError(error, "Не удалось загрузить паспортные позиции");
 /** Сравнивает выбранные данные паспорта */
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/** Добавляет дату изготовления в скобках рядом с номером */
+const passportOptionName = (option, state = option.state) =>
+  `${option.name} (${state?.manufacture_date_text || "—"})`;
 
 /** Выбор неисправных экземпляров паспорта по секциям */
 export function PassportEquipmentSelector({ data, updateField, query }) {
@@ -112,7 +117,12 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
     const related = {};
     for (const r of ["component", "element"]) {
       const selected = next.filter((x) => x.role === r);
-      if (!selected.length) continue;
+      if (
+        !selected.length &&
+        !required.includes(r) &&
+        !links.some((x) => x.role === r)
+      )
+        continue;
       related[`${r}_quantity`] = selected.length;
       related[`${r}_serial_number_old`] = selected
         .map((x) => x.state?.serial_number || "б/н")
@@ -121,6 +131,7 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
         .map((x) => x.state?.manufacture_date_text || "—")
         .join(", ");
     }
+    if (!next.length) related.replacement_items = [];
     updateField("passport_links", next, related);
   };
 
@@ -135,24 +146,28 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
             {role === "component"
               ? "Неисправные компоненты"
               : "Неисправные элементы"}{" "}
-            · паспорт
+            согласно паспорту
           </p>
           {[1, 2, 4, 0].map((section) => {
-            const options = (query.data?.[role] || []).filter(
-              (x) =>
-                x.context.section === section &&
-                (role !== "element" ||
-                  !required.includes("component") ||
-                  links.some(
-                    (l) =>
-                      l.role === "component" &&
-                      x.ancestor_ids?.includes(l.node_id),
-                  )),
+            const options = sortOptionsByName(
+              (query.data?.[role] || []).filter(
+                (x) =>
+                  x.context.section === section &&
+                  (role !== "element" ||
+                    !required.includes("component") ||
+                    links.some(
+                      (l) =>
+                        l.role === "component" &&
+                        x.ancestor_ids?.includes(l.node_id),
+                    )),
+              ),
             );
             if (!options.length) return null;
-            const selected = links.filter(
-              (x) => x.role === role && options.some((o) => o.id === x.node_id),
-            );
+            const selected = options
+              .map((option) =>
+                links.find((x) => x.role === role && x.node_id === option.id),
+              )
+              .filter(Boolean);
             return (
               <div key={section} className="space-y-2">
                 <MultiSelectField
@@ -163,7 +178,7 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
                   }
                   options={options.map((o) => ({
                     ...o,
-                    name: `${o.name} · ${o.state.manufacture_date_text || "—"}`,
+                    name: passportOptionName(o),
                   }))}
                   selectedValues={selected.map((x) => x.node_id)}
                   onChange={(values) =>
@@ -178,21 +193,24 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
                       ...values,
                     ])
                   }
+                  allowClear
                   placeholder="Выберите заводские номера"
                 />
                 {selected.map((x) => (
                   <div
                     key={x.node_id}
-                    className="grid grid-cols-[1fr_1fr] gap-2 text-xs text-slate-700"
+                    className="text-xs font-bold text-slate-900"
                   >
-                    <span>{options.find((o) => o.id === x.node_id)?.name}</span>
-                    <span>{x.state?.manufacture_date_text || "—"}</span>
+                    {passportOptionName(
+                      options.find((o) => o.id === x.node_id),
+                      x.state,
+                    )}
                   </div>
                 ))}
               </div>
             );
           })}
-          <p className="text-xs text-slate-600">
+          <p className="text-xs font-semibold text-slate-800">
             Количество: {links.filter((x) => x.role === role).length}. Номер и
             дата изменяются на странице паспорта.
           </p>

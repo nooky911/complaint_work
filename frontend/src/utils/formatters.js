@@ -24,7 +24,7 @@ export const formatDate = (dateStr) => {
       return `${day}.${month}.${year}`;
     }
     return dateStr;
-  } catch (e) {
+  } catch {
     return dateStr;
   }
 };
@@ -40,18 +40,78 @@ export const normalizeDateForInput = (val) => {
   return val;
 };
 
+/** Приводит только полную календарную дату к формату БД */
 export const formatToDB = (dateStr) => {
-  if (!dateStr || dateStr === DATE_MASK || dateStr === "—") return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+  if (typeof dateStr !== "string") return null;
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const local = dateStr.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  if (!iso && !local) return null;
+  const [year, month, day] = iso
+    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
+    : [Number(local[3]), Number(local[2]), Number(local[1])];
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  )
+    return null;
+  return `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
 
-  const parts = dateStr.split(".");
-  if (parts.length === 3) {
-    const [d, m, y] = parts;
-    if (d && m && y && d.length === 2 && m.length === 2 && y.length === 4) {
-      return `${y}-${m}-${d}`;
+/** Возвращает текст серверной ошибки вместо массива или объекта FastAPI */
+export const formatApiError = (
+  error,
+  fallback = "Не удалось выполнить запрос",
+) => {
+  const detail = error?.response?.data?.detail;
+  if (typeof detail === "string") return detail || fallback;
+  const details = Array.isArray(detail) ? detail : [detail];
+  return (
+    details
+      .map((item) => (typeof item === "string" ? item : item?.msg))
+      .filter((message) => typeof message === "string" && message)
+      .join("; ") || fallback
+  );
+};
+
+/** Сбрасывает паспортный выбор при смене области или завершённой даты акта */
+export const hasPassportScopeChanged = (previous, field, value) => {
+  if (field === "fault_date") {
+    const nextDate = formatToDB(value);
+    return !!nextDate && nextDate !== formatToDB(previous?.fault_date);
+  }
+  return (
+    [
+      "passport_id",
+      "locomotive_model_id",
+      "locomotive_number",
+      "section_mask",
+      "component_equipment_id",
+      "element_equipment_id",
+    ].includes(field) && previous?.[field] !== value
+  );
+};
+
+/** Подставляет б/н в пустые номера установленного оборудования перед отправкой */
+export const normalizeInstalledSerials = (data, current = data) => {
+  const normalized = { ...data };
+  for (const role of ["component", "element"]) {
+    const field = `${role}_serial_number_new`;
+    const idField = `new_${role}_equipment_id`;
+    const equipmentId = idField in data ? data[idField] : current[idField];
+    if (equipmentId && (field in data || idField in data)) {
+      const value = field in data ? data[field] : current[field];
+      normalized[field] = String(value ?? "").trim() || "б/н";
     }
   }
-  return null;
+  if (Array.isArray(data.replacement_items)) {
+    normalized.replacement_items = data.replacement_items.map((item) => ({
+      ...item,
+      serial_number: String(item.serial_number ?? "").trim() || "б/н",
+    }));
+  }
+  return normalized;
 };
 
 export const getText = (field) => {
@@ -102,6 +162,12 @@ const centerNumber = (name) => {
   const match = name.match(/Р\s*Ц[\s_№-]*(\d+)/i);
   return match ? Number(match[1]) : null;
 };
+
+/** Сортирует подписи с числами в естественном порядке */
+export const sortOptionsByName = (options = []) =>
+  [...options].sort((a, b) =>
+    nameCollator.compare(optionName(a), optionName(b)),
+  );
 
 // Учитывает номер РЦ даже внутри полного названия склада
 export const sortRegionalCenterOptions = (options = []) =>

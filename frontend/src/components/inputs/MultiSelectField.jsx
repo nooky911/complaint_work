@@ -10,6 +10,7 @@ export const MultiSelectField = ({
   options = [],
   onChange,
   placeholder,
+  allowClear = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef(null);
@@ -34,6 +35,13 @@ export const MultiSelectField = ({
 
     onChange(newSelection);
     setSearchTerm("");
+  };
+
+  /** Сбрасывает выбранные значения и поиск в этом списке */
+  const clearSelection = () => {
+    onChange([]);
+    setSearchTerm("");
+    setIsOpen(false);
   };
 
   return (
@@ -81,6 +89,16 @@ export const MultiSelectField = ({
               />
             </div>
           </div>
+
+          {allowClear && (
+            <button
+              type="button"
+              onClick={clearSelection}
+              className="w-full border-b border-gray-100 px-3 py-2 text-left text-xs font-bold text-red-500 uppercase transition-colors hover:bg-red-50"
+            >
+              — Сбросить выбор —
+            </button>
+          )}
 
           <div className="flex-1 overflow-y-auto p-2">
             {sortedOptions.length > 0 ? (

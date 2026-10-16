@@ -113,7 +113,7 @@ class PassportHistoryService:
                     id=event.id,
                     kind=event.kind,
                     status=event.status,
-                    date=event.effective_date,
+                    date=(None if event.kind == "historical_replacement" else event.effective_date),
                     recorded_at=event.recorded_at,
                     case_id=event.case_id,
                     source_case_id=event.source_case_id,
