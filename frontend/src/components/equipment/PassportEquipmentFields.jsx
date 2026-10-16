@@ -375,25 +375,68 @@ export function PassportReplacementFields({ data, updateField }) {
 
 /** Показывает выбранные или установленные экземпляры в случае */
 export function PassportInstanceSummary({ items = [], installed = false }) {
-  if (!items.length) return null;
+  // При просмотре замены КМБ оставляем только колёсную пару и тяговый двигатель
+  const visibleItems = items.filter((item) => {
+    if (!installed || item.scope !== "kmb") return true;
+    const name =
+      item.tree_name || item.context?.path?.split(" / ").at(-1) || "";
+    return /кол[её]сная\s+пара|тяговый\s+(?:электро)?двигатель|(?:электро)?двигатель\s+тяговый/i.test(
+      name,
+    );
+  });
+  if (!visibleItems.length) return null;
   return (
-    <div className="space-y-2 rounded-lg border border-indigo-200 bg-white p-3">
-      {items.map((item) => {
-        const state = installed ? item : item.state;
-        return (
-          <div
-            key={`${item.role || "installed"}-${item.node_id}`}
-            className="text-xs text-slate-700"
-          >
-            <span className="font-bold">
-              {item.context?.section_name} · {item.context?.caption}
-            </span>{" "}
-            — {state?.equipment_name?.replaceAll("_", " ")} · №{" "}
-            {state?.serial_number || "—"} ·{" "}
-            {state?.manufacture_date_text || "—"}
-          </div>
-        );
-      })}
+    <div className="overflow-hidden rounded-lg border border-gray-300 bg-gray-50 shadow-sm">
+      <div className="sm:table sm:w-full sm:table-auto sm:border-collapse">
+        {visibleItems.map((item) => {
+          const state = installed ? item : item.state;
+          const caption = item.context?.caption;
+          return (
+            <dl
+              key={`${item.role || "installed"}-${item.node_id}`}
+              className="grid grid-cols-2 items-start gap-x-5 gap-y-3 border-b border-gray-200 p-3 last:border-b-0 sm:table-row sm:p-0"
+            >
+              <div className="sm:table-cell sm:px-3 sm:py-3 sm:align-top">
+                <dt className="mb-1 text-xs font-bold text-slate-600">
+                  Секция
+                </dt>
+                <dd className="inline-flex min-w-10 items-center justify-center rounded-md bg-indigo-50 px-3 py-1 text-sm font-bold text-indigo-800">
+                  {item.context?.section_name || "—"}
+                </dd>
+              </div>
+              <div className="min-w-0 sm:table-cell sm:px-3 sm:py-3 sm:align-top">
+                <dt className="mb-1 text-xs font-bold text-slate-600">
+                  Оборудование
+                </dt>
+                <dd className="text-sm font-bold [overflow-wrap:anywhere] break-words text-black">
+                  {state?.equipment_name?.replaceAll("_", " ") || "—"}
+                  {caption && caption !== "Позиция" && (
+                    <span className="mt-1 block text-sm font-semibold">
+                      {caption}
+                    </span>
+                  )}
+                </dd>
+              </div>
+              <div className="min-w-0 text-center sm:table-cell sm:px-3 sm:py-3 sm:align-top">
+                <dt className="mb-1 text-xs font-bold text-slate-600">
+                  Заводской номер
+                </dt>
+                <dd className="text-sm font-bold break-words text-black">
+                  № {state?.serial_number || "—"}
+                </dd>
+              </div>
+              <div className="text-center sm:table-cell sm:px-3 sm:py-3 sm:align-top">
+                <dt className="mb-1 text-xs font-bold text-slate-600">
+                  Дата изготовления
+                </dt>
+                <dd className="text-sm font-bold text-black">
+                  {state?.manufacture_date_text || "—"}
+                </dd>
+              </div>
+            </dl>
+          );
+        })}
+      </div>
     </div>
   );
 }
