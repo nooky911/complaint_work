@@ -642,6 +642,50 @@ class PassportPositionService:
             data["repair_type_id"],
         )
 
+    @staticmethod
+    def equipment_tree_name(old, equipment_name, context):
+        """Сохраняет полное название контактора и его схемную позицию"""
+        previous = old.get("tree_name") or ""
+        name = (equipment_name or "").replace("_", " ").strip()
+        position = context.get("position")
+        match = re.match(r"^\s*([КK]\d+[А-ЯA-Z]?)\b", previous, re.I)
+        if not position and match:
+            position = match[1]
+        contactor = re.search(r"контактор", previous + " " + name, re.I) or (
+            position and re.match(r"^(?:АМ|AM|СТ|CT)[\s-]*\d", name, re.I)
+        )
+        if contactor:
+            name = re.sub(
+                r"^\s*(?:[КK]\d+[А-ЯA-Z]?\s+)?Контактор\s+(?:электромагнитный\s+)?",
+                "",
+                name,
+                flags=re.I,
+            )
+            am = re.fullmatch(
+                r"(?:АМ|AM)[\s-]*(\d+)[.,](\d+)[\s-]+(\d+)[\s-]+(\d+)", name, re.I
+            )
+            if am:
+                name = f"АМ-{am[1]},{am[2].rstrip('0') or '0'}-{am[3]}-{am[4]}"
+            return " ".join(
+                part for part in (position, "Контактор электромагнитный", name) if part
+            )
+        if equipment_name == old.get("equipment_name"):
+            return previous
+        updated = (
+            re.sub(
+                re.escape((old.get("equipment_name") or "").replace("_", " ")),
+                name,
+                previous,
+                flags=re.I,
+            )
+            if old.get("equipment_name")
+            else previous
+        )
+        if updated != previous:
+            return updated
+        caption = context.get("caption")
+        return ((caption + " ") if caption and caption != "Позиция" else "") + name
+
     @classmethod
     def replacement_state(cls, item, value, equipment, has_children=False):
         """Проверяет и собирает данные установленного оборудования"""
@@ -689,19 +733,8 @@ class PassportPositionService:
             manufacturer=None,
             install_date=None,
         )
+        new["tree_name"] = cls.equipment_tree_name(old, eq.get("name"), item["context"])
         if eid != old.get("equipment_id"):
-            new["tree_name"] = re.sub(
-                re.escape(old.get("equipment_name", "").replace("_", " ")),
-                eq.get("name", "").replace("_", " "),
-                old.get("tree_name") or "",
-                flags=re.I,
-            )
-            if new["tree_name"] == old.get("tree_name"):
-                new["tree_name"] = (
-                    item["context"].get("caption") + " "
-                    if item["context"].get("caption") != "Позиция"
-                    else ""
-                ) + eq.get("name", "").replace("_", " ")
             new["designation"] = None
             new["full_name"] = None
         return new

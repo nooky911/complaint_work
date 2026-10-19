@@ -113,7 +113,11 @@ class PassportHistoryService:
                     id=event.id,
                     kind=event.kind,
                     status=event.status,
-                    date=(None if event.kind == "historical_replacement" else event.effective_date),
+                    date=(
+                        None
+                        if event.kind == "historical_replacement"
+                        else event.effective_date
+                    ),
                     recorded_at=event.recorded_at,
                     case_id=event.case_id,
                     source_case_id=event.source_case_id,
@@ -190,9 +194,9 @@ class PassportHistoryService:
                 new["equipment_name"] = equipment[value]["name"]
                 new["supplier_id"] = equipment[value]["supplier_id"]
                 ctx = PassportPositionService.context(node, by_code)
-                new["tree_name"] = (
-                    ctx.get("position") + " " if ctx.get("position") else ""
-                ) + equipment[value]["name"].replace("_", " ")
+                new["tree_name"] = PassportPositionService.equipment_tree_name(
+                    old, equipment[value]["name"], ctx
+                )
                 new["designation"] = None
                 new["full_name"] = None
                 changed += [

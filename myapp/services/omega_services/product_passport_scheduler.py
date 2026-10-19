@@ -8,19 +8,28 @@ from myapp.services.omega_services.product_passport_sync_service import (
 )
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 
 
 async def run_product_passport_sync_scheduler() -> None:
-    """Запускает синхронизацию раз в сутки в назначенное время"""
+    """Проверяет новые паспорта при старте и затем раз в сутки"""
+    reason = "старт приложения"
     while True:
-        await asyncio.sleep(_seconds_until_next_run())
+        logger.info("Запуск синхронизации паспортов: %s", reason)
         try:
-            await ProductPassportSyncService.sync_new_passports()
+            result = await ProductPassportSyncService.sync_new_passports(
+                insert_only=True
+            )
+            logger.info("Результат синхронизации паспортов: %s", result)
         except asyncio.CancelledError:
             raise
         except Exception:
             logger.exception("Не удалось выполнить синхронизацию паспортов")
+        delay = _seconds_until_next_run()
+        next_run = datetime.now().astimezone() + timedelta(seconds=delay)
+        logger.info("Следующая синхронизация паспортов: %s", next_run.isoformat())
+        await asyncio.sleep(delay)
+        reason = "ежедневное расписание"
 
 
 def _seconds_until_next_run() -> float:

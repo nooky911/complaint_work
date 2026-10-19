@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import logging
 import re
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import selectinload
 
 from myapp.config import settings
@@ -29,7 +29,7 @@ from myapp.ul_service.client import ULServiceClient
 from myapp.validators.product_passport_validator import ProductPassportValidator
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("uvicorn.error")
 _sync_lock = asyncio.Lock()
 
 
@@ -37,17 +37,50 @@ class ProductPassportSyncService:
     """Однократная загрузка паспортов после ввода локомотива в эксплуатацию"""
 
     @staticmethod
-    async def sync_new_passports() -> dict[str, int]:
-        """Сначала проверяет UL-сервис, затем загружает подтверждённые паспорта"""
+    async def sync_new_passports(
+        *,
+        insert_only: bool = True,
+        identities: set[tuple[str, str]] | None = None,
+        apply: bool = True,
+    ) -> dict[str, int]:
+        """Проверяет UL-сервис и загружает паспорта с возможностью только добавления"""
+        if (identities is not None or not apply) and not insert_only:
+            raise ValueError(
+                "Адресный импорт и проверка допускаются только без обновления существующих паспортов"
+            )
         if _sync_lock.locked():
             logger.info("Синхронизация паспортов уже выполняется")
             return {}
 
         async with _sync_lock:
+            logger.info(
+                "Синхронизация паспортов начата: только новые=%s, запись=%s",
+                insert_only,
+                apply,
+            )
             commissioning_dates = await asyncio.to_thread(
                 ULServiceClient.get_commissioning_dates
             )
             roots = await asyncio.to_thread(OmegaClient().list_passport_roots)
+            if identities is not None:
+                selected = []
+                found = set()
+                for root in roots:
+                    _, model, number = ProductPassportSyncService._parse_identity(root)
+                    identity = model.casefold(), number
+                    if identity not in identities:
+                        continue
+                    if identity in found:
+                        raise ValueError(
+                            f"В Omega несколько корней для {model} №{number}, импорт отменён"
+                        )
+                    found.add(identity)
+                    selected.append(root)
+                if found != identities:
+                    raise ValueError(
+                        f"В Omega не найдены запрошенные паспорта: {sorted(identities - found)}"
+                    )
+                roots = selected
             result = {
                 "found": len(roots),
                 "imported": 0,
@@ -58,6 +91,7 @@ class ProductPassportSyncService:
                 "skipped_unknown_model": 0,
                 "failed": 0,
                 "linked_without_number": 0,
+                "would_import": 0,
             }
             tree_requests = 0
 
@@ -227,8 +261,25 @@ class ProductPassportSyncService:
                         existing = existing_by_identity.get(
                             (locomotive_model_id, product_number)
                         )
-                    if existing and existing.commissioned_at is not None:
+                    if existing and (
+                        insert_only or existing.commissioned_at is not None
+                    ):
                         result["skipped_existing"] += 1
+                        if identities is not None:
+                            logger.info(
+                                "Паспорт %s уже есть: ID%s, пропущен без изменений",
+                                root.omega_name,
+                                existing.id,
+                            )
+                        continue
+
+                    if not apply:
+                        result["would_import"] += 1
+                        logger.info(
+                            "Можно добавить паспорт %s, дата УЛ %s",
+                            root.omega_name,
+                            commissioned_at,
+                        )
                         continue
 
                     # Старые паспорта уже сохранены, им нужна только дата ввода
@@ -266,6 +317,34 @@ class ProductPassportSyncService:
                     passport.commissioned_at = commissioned_at
                     async with async_session_maker() as session:
                         async with session.begin():
+                            if insert_only:
+                                await session.execute(
+                                    text("SELECT pg_advisory_xact_lock(20261019, 2)")
+                                )
+                                concurrent = await session.scalar(
+                                    select(ProductPassport.id).where(
+                                        or_(
+                                            ProductPassport.omega_root_code
+                                            == root.omega_root_code,
+                                            (
+                                                ProductPassport.locomotive_model_id
+                                                == locomotive_model_id
+                                            )
+                                            & (
+                                                ProductPassport.product_number
+                                                == product_number
+                                            ),
+                                        )
+                                    )
+                                )
+                                if concurrent is not None:
+                                    result["skipped_existing"] += 1
+                                    logger.info(
+                                        "Паспорт %s уже добавлен другим запуском: ID%s",
+                                        root.omega_name,
+                                        concurrent,
+                                    )
+                                    continue
                             if existing:
                                 old_passport: ProductPassport | None = (
                                     await session.scalar(
@@ -295,15 +374,27 @@ class ProductPassportSyncService:
                             numbered_links, locomotive_model_id, node
                         )
                     existing_passports[root.omega_root_code] = saved_passport
+                    existing_by_identity[(locomotive_model_id, product_number)] = (
+                        saved_passport
+                    )
+                    logger.info(
+                        "Паспорт %s сохранён: ID%s, узлов %s",
+                        root.omega_name,
+                        saved_passport.id,
+                        len(saved_passport.nodes),
+                    )
                 except Exception:
                     result["failed"] += 1
                     logger.exception(
                         "Не удалось импортировать паспорт %s", root.omega_name
                     )
 
-            result["linked_without_number"] = (
-                await ProductPassportSyncService._link_unnumbered_nodes(numbered_links)
-            )
+            if apply and not insert_only:
+                result["linked_without_number"] = (
+                    await ProductPassportSyncService._link_unnumbered_nodes(
+                        numbered_links
+                    )
+                )
             logger.info(
                 "Синхронизация паспортов завершена: найдено %s, импортировано %s, "
                 "переимпортировано %s, уже было %s, вне правил %s, "
