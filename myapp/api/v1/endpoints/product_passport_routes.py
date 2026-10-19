@@ -1,14 +1,24 @@
 import logging
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Literal
 from urllib.parse import quote
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from fastapi.responses import StreamingResponse
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    status,
+    File,
+    Form,
+    UploadFile,
+    Response,
+)
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from myapp.auth.dependencies import (
     require_editor_or_superadmin,
-    require_superadmin,
     require_viewer_or_higher,
 )
 from myapp.database.base import get_db
@@ -24,6 +34,7 @@ from myapp.services import CaseValidationError
 from myapp.services.omega_services.passport_history_service import (
     PassportHistoryService,
 )
+from myapp.services.omega_services.passport_file_service import PassportFileService
 from myapp.services.omega_services.passport_position_service import (
     PassportPositionService,
 )
@@ -37,6 +48,20 @@ from myapp.services.omega_services.product_passport_service import (
 
 router = APIRouter(prefix="/product-passports", tags=["Паспорта изделий"])
 logger = logging.getLogger(__name__)
+
+
+async def _passport_file_result(operation):
+    """Преобразует ошибки работы со сканами в ответ API"""
+    try:
+        return await operation
+    except FileNotFoundError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except CaseValidationError as exc:
+        raise HTTPException(409 if exc.field == "revision" else 422, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except ConnectionError as exc:
+        raise HTTPException(502, str(exc)) from exc
 
 
 @router.get(
@@ -185,7 +210,7 @@ async def passport_position_types(
     passport_id: int,
     node_id: int,
     session: Annotated[AsyncSession, Depends(get_db)],
-    _user: Annotated[User, Depends(require_superadmin)],
+    _user: Annotated[User, Depends(require_editor_or_superadmin)],
 ):
     """Возвращает допустимые типы для ручного исправления позиции"""
     _, nodes, states, equipment, _ = await PassportPositionService.load(
@@ -204,7 +229,7 @@ async def correct_passport_position(
     node_id: int,
     data: PassportCorrection,
     session: Annotated[AsyncSession, Depends(get_db)],
-    actor: Annotated[User, Depends(require_superadmin)],
+    actor: Annotated[User, Depends(require_editor_or_superadmin)],
 ):
     """Исправляет данные позиции паспорта с сохранением истории"""
     try:
@@ -214,3 +239,120 @@ async def correct_passport_position(
     except CaseValidationError as exc:
         raise HTTPException(409 if exc.field == "revision" else 422, str(exc)) from exc
     return {"status": "ok"}
+
+
+@router.get("/{passport_id}/nodes/{node_id}/files")
+async def passport_node_files(
+    passport_id: int,
+    node_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    event_id: Annotated[int | None, Query(ge=1)] = None,
+    side: Literal["before", "after"] = "before",
+):
+    """Показывает файлы текущего или прежнего экземпляра оборудования"""
+    return await _passport_file_result(
+        PassportFileService.listing(session, passport_id, node_id, event_id, side)
+    )
+
+
+@router.get("/{passport_id}/nodes/{node_id}/file-history")
+async def passport_node_file_history(
+    passport_id: int,
+    node_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Возвращает привязки файлов ко всем строкам истории выбранной позиции"""
+    return await _passport_file_result(
+        PassportFileService.history_files(session, passport_id, node_id)
+    )
+
+
+@router.post("/{passport_id}/nodes/{node_id}/files", status_code=201)
+async def upload_passport_node_files(
+    passport_id: int,
+    node_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    actor: Annotated[User, Depends(require_editor_or_superadmin)],
+    files: Annotated[list[UploadFile], File()],
+    instance_key: Annotated[str, Form(min_length=1, max_length=80)],
+    event_id: Annotated[int | None, Query(ge=1)] = None,
+    side: Literal["before", "after"] = "before",
+):
+    """Прикрепляет сканы к экземпляру, показанному пользователю"""
+    return await _passport_file_result(
+        PassportFileService.upload(
+            session, passport_id, node_id, files, actor, instance_key, event_id, side
+        )
+    )
+
+
+@router.get("/{passport_id}/nodes/{node_id}/files/omega/{file_id}")
+async def download_omega_passport_file(
+    passport_id: int,
+    node_id: int,
+    file_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    instance_key: Annotated[str, Query(min_length=1, max_length=80)],
+    event_id: Annotated[int | None, Query(ge=1)] = None,
+    side: Literal["before", "after"] = "before",
+):
+    """Получает заводской файл из Omega при открытии ссылки"""
+    content, filename = await _passport_file_result(
+        PassportFileService.omega_content(
+            session, passport_id, node_id, file_id, instance_key, event_id, side
+        )
+    )
+    media_type = (
+        "application/pdf"
+        if content.startswith(b"%PDF-")
+        else (
+            "image/png"
+            if content.startswith(b"\x89PNG\r\n\x1a\n")
+            else (
+                "image/jpeg"
+                if content.startswith(b"\xff\xd8\xff")
+                else "application/octet-stream"
+            )
+        )
+    )
+    disposition = "attachment" if media_type == "application/octet-stream" else "inline"
+    return Response(
+        content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"{disposition}; filename*=utf-8''{quote(filename, safe='')}",
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
+@router.get("/{passport_id}/nodes/{node_id}/files/local/{file_id}")
+async def download_local_passport_file(
+    passport_id: int,
+    node_id: int,
+    file_id: int,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Открывает загруженный скан с проверкой принадлежности паспорту"""
+    file, path = await _passport_file_result(
+        PassportFileService.local_file(session, passport_id, node_id, file_id)
+    )
+    media_type = (
+        file.mime_type
+        if file.mime_type in ("application/pdf", "image/jpeg", "image/png")
+        else "application/octet-stream"
+    )
+    return FileResponse(
+        path,
+        media_type=media_type,
+        filename=file.original_name,
+        content_disposition_type=(
+            "inline" if media_type != "application/octet-stream" else "attachment"
+        ),
+        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
+    )

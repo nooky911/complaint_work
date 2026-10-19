@@ -185,7 +185,9 @@ class ProductPassportEvent(Base):
 
     __tablename__ = "product_passport_events"
     __table_args__ = (
-        CheckConstraint("kind IN ('case_replacement', 'manual_correction', 'historical_replacement')"),
+        CheckConstraint(
+            "kind IN ('case_replacement', 'manual_correction', 'historical_replacement')"
+        ),
         CheckConstraint("status IN ('active', 'superseded', 'voided')"),
         CheckConstraint("kind != 'manual_correction' OR length(trim(reason)) > 0"),
         UniqueConstraint("source_case_id", "revision"),
@@ -254,3 +256,27 @@ class ProductPassportEventItem(Base):
     before_state: Mapped[dict] = mapped_column(JSONB)
     after_state: Mapped[dict] = mapped_column(JSONB)
     changed_fields: Mapped[list[str]] = mapped_column(ARRAY(Text))
+
+
+class ProductPassportFile(Base):
+    """Пользовательский скан конкретного экземпляра на позиции паспорта"""
+
+    __tablename__ = "product_passport_files"
+    __table_args__ = (Index("ix_passport_files_instance", "node_id", "instance_key"),)
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    node_id: Mapped[int] = mapped_column(
+        ForeignKey("product_passport_nodes.id", ondelete="RESTRICT"), nullable=False
+    )
+    instance_key: Mapped[str] = mapped_column(String(80), nullable=False)
+    original_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    file_path: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    mime_type: Mapped[str] = mapped_column(String(150), nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    uploaded_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
+    uploaded_by_name: Mapped[str] = mapped_column(Text, nullable=False)
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )

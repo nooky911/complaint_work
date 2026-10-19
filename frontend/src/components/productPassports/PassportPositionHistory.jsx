@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PassportFiles } from "./PassportFiles";
 import { Loader2, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../../context/AuthContext";
@@ -49,6 +50,18 @@ export function PassportPositionHistory({ passportId, node }) {
       ).data,
     enabled: open,
   });
+  const historyFiles = useQuery({
+    queryKey: ["passport-files", passportId, node.id, "history"],
+    queryFn: async ({ signal }) =>
+      (
+        await api.get(
+          `/product-passports/${passportId}/nodes/${node.id}/file-history`,
+          { signal },
+        )
+      ).data,
+    enabled: open,
+    staleTime: 30000,
+  });
   const types = useQuery({
     queryKey: ["product-passports", passportId, node.id, "types"],
     queryFn: async () =>
@@ -77,7 +90,7 @@ export function PassportPositionHistory({ passportId, node }) {
         >
           История
         </button>
-        {user?.role === "superadmin" && (
+        {["editor", "superadmin"].includes(user?.role) && (
           <button
             type="button"
             onClick={() => setEditing(!editing)}
@@ -87,6 +100,7 @@ export function PassportPositionHistory({ passportId, node }) {
           </button>
         )}
       </div>
+      <PassportFiles passportId={passportId} nodeId={node.id} />
       {editing && (
         <div className="space-y-3 rounded-lg bg-slate-50 p-3">
           {!!types.data?.length && (
@@ -221,7 +235,16 @@ export function PassportPositionHistory({ passportId, node }) {
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {history.data.map((event) => (
-                        <HistoryRow key={event.id} event={event} />
+                        <HistoryRow
+                          key={event.id}
+                          event={event}
+                          passportId={passportId}
+                          nodeId={node.id}
+                          fileContexts={historyFiles.data?.[event.id]}
+                          historyLoading={historyFiles.isLoading}
+                          historyError={historyFiles.isError}
+                          retryHistory={() => historyFiles.refetch()}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -236,7 +259,15 @@ export function PassportPositionHistory({ passportId, node }) {
 }
 
 /** Показывает одно изменение позиции отдельной строкой истории */
-function HistoryRow({ event }) {
+function HistoryRow({
+  event,
+  passportId,
+  nodeId,
+  fileContexts,
+  historyLoading,
+  historyError,
+  retryHistory,
+}) {
   const restored = event.kind === "historical_replacement";
   const manual = event.kind === "manual_correction";
   const dateLabel = restored
@@ -261,6 +292,17 @@ function HistoryRow({ event }) {
       <td className="px-4 py-4 font-semibold text-indigo-700">{reason}</td>
       <td className="relative px-10 py-4">
         <HistoryEquipment state={event.before} />
+        <PassportFiles
+          passportId={passportId}
+          nodeId={nodeId}
+          eventId={event.id}
+          side="before"
+          context={fileContexts?.before}
+          compact
+          historyLoading={historyLoading}
+          historyError={historyError}
+          retryHistory={retryHistory}
+        />
         <svg
           aria-hidden="true"
           viewBox="0 0 32 20"
@@ -269,13 +311,24 @@ function HistoryRow({ event }) {
           strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
-    className="absolute top-1/2 right-0 h-5 w-8 translate-x-1/2 -translate-y-1/2 text-black"
+          className="absolute top-1/2 right-0 h-5 w-8 translate-x-1/2 -translate-y-1/2 text-black"
         >
           <path d="M3 10h26m-6-6 6 6-6 6" />
         </svg>
       </td>
       <td className="px-4 py-4">
         <HistoryEquipment state={event.after} />
+        <PassportFiles
+          passportId={passportId}
+          nodeId={nodeId}
+          eventId={event.id}
+          side="after"
+          context={fileContexts?.after}
+          compact
+          historyLoading={historyLoading}
+          historyError={historyError}
+          retryHistory={retryHistory}
+        />
       </td>
       <td className="space-y-1 px-4 py-4 break-words whitespace-pre-wrap">
         {event.case_snapshot?.malfunction && (

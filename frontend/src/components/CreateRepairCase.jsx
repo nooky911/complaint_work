@@ -121,52 +121,52 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
           </div>
         ) : (
           <div className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6">
-            {activeTab === "details" ? (
-              <div className="space-y-3">
-                <GeneralInfo
-                  isEditing={true}
-                  currentData={formData}
-                  repairCase={{}}
-                  updateField={updateField}
-                  references={references}
-                  validation={validation}
-                  showError={showError}
-                />
+            {/* Сохраняем загрузку и проверку оборудования при переключении вкладок */}
+            <div hidden={activeTab !== "details"} className="space-y-3">
+              <GeneralInfo
+                isEditing={true}
+                currentData={formData}
+                repairCase={{}}
+                updateField={updateField}
+                references={references}
+                validation={validation}
+                showError={showError}
+              />
 
-                <FaultyEquipmentBlock
-                  isEditing={true}
-                  repairCase={{}}
-                  currentData={formData}
-                  updateField={updateField}
-                  references={references}
-                  allEquipment={allEquipment}
-                  handleEquipmentSelect={handleEquipmentSelect}
-                  faultyValidation={validation.faultyValidation}
-                  validation={validation}
-                  showError={showError}
-                />
+              <FaultyEquipmentBlock
+                isEditing={true}
+                repairCase={{}}
+                currentData={formData}
+                updateField={updateField}
+                references={references}
+                allEquipment={allEquipment}
+                handleEquipmentSelect={handleEquipmentSelect}
+                faultyValidation={validation.faultyValidation}
+                validation={validation}
+                showError={showError}
+              />
 
-                <RepairExecutionBlock
-                  isEditing={true}
-                  repairCase={{}}
-                  currentData={formData}
-                  updateField={updateField}
-                  references={references}
-                  allEquipment={allEquipment}
-                  faultyHierarchy={faultyHierarchy}
-                  blockType={validation.blockType}
-                  validation={validation}
-                  showError={showError}
-                />
-                <CaseDocuments
-                  isEditing={true}
-                  pendingFiles={pendingFiles}
-                  onAddFiles={addPendingFiles}
-                  onRemoveFile={removePendingFile}
-                  onAddPendingLink={addPendingLink}
-                />
-              </div>
-            ) : activeTab === "reclamation" ? (
+              <RepairExecutionBlock
+                isEditing={true}
+                repairCase={{}}
+                currentData={formData}
+                updateField={updateField}
+                references={references}
+                allEquipment={allEquipment}
+                faultyHierarchy={faultyHierarchy}
+                blockType={validation.blockType}
+                validation={validation}
+                showError={showError}
+              />
+              <CaseDocuments
+                isEditing={true}
+                pendingFiles={pendingFiles}
+                onAddFiles={addPendingFiles}
+                onRemoveFile={removePendingFile}
+                onAddPendingLink={addPendingLink}
+              />
+            </div>
+            {activeTab === "reclamation" && (
               <WarrantyWork
                 isEditing={true}
                 currentData={formData}
@@ -174,7 +174,8 @@ export function CreateRepairCase({ onClose, onCreated, currentUser }) {
                 updateWarrantyField={updateWarrantyField}
                 references={references}
               />
-            ) : (
+            )}
+            {activeTab === "movement" && (
               <TtnBlocks
                 isEditing={true}
                 ttnData={formData}

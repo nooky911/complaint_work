@@ -227,49 +227,49 @@ export function RepairCaseDetails({
           className="custom-scrollbar flex-1 overflow-y-auto bg-white p-6"
           style={{ willChange: "transform" }}
         >
-          {activeTab === "details" ? (
-            <div className="space-y-3">
-              <GeneralInfo
-                isEditing={isEditing}
-                currentData={currentData}
-                repairCase={repairCase}
-                updateField={updateField}
-                references={references}
-                showError={showError}
-                validation={validation}
-              />
-              <FaultyEquipmentBlock
-                isEditing={isEditing}
-                repairCase={repairCase}
-                currentData={currentData}
-                updateField={updateField}
-                references={references}
-                allEquipment={allEquipment}
-                handleEquipmentSelect={handleEquipmentSelect}
-                isHardBlocked={validation.isRepairTypeBlocked}
-                showError={showError}
-                validation={validation}
-                faultyValidation={validation.faultyValidation}
-              />
-              <RepairExecutionBlock
-                isEditing={isEditing}
-                repairCase={repairCase}
-                currentData={currentData}
-                updateField={updateField}
-                references={references}
-                allEquipment={allEquipment}
-                faultyHierarchy={faultyHierarchy}
-                blockType={validation.blockType}
-                showError={showError}
-                validation={validation}
-              />
-              <CaseDocuments
-                caseId={repairCase.id}
-                isEditing={isEditing}
-                onFilesUploaded={onFilesUploadedDuringEdit}
-              />
-            </div>
-          ) : activeTab === "reclamation" ? (
+          {/* Сохраняем загрузку и проверку оборудования при переключении вкладок */}
+          <div hidden={activeTab !== "details"} className="space-y-3">
+            <GeneralInfo
+              isEditing={isEditing}
+              currentData={currentData}
+              repairCase={repairCase}
+              updateField={updateField}
+              references={references}
+              showError={showError}
+              validation={validation}
+            />
+            <FaultyEquipmentBlock
+              isEditing={isEditing}
+              repairCase={repairCase}
+              currentData={currentData}
+              updateField={updateField}
+              references={references}
+              allEquipment={allEquipment}
+              handleEquipmentSelect={handleEquipmentSelect}
+              isHardBlocked={validation.isRepairTypeBlocked}
+              showError={showError}
+              validation={validation}
+              faultyValidation={validation.faultyValidation}
+            />
+            <RepairExecutionBlock
+              isEditing={isEditing}
+              repairCase={repairCase}
+              currentData={currentData}
+              updateField={updateField}
+              references={references}
+              allEquipment={allEquipment}
+              faultyHierarchy={faultyHierarchy}
+              blockType={validation.blockType}
+              showError={showError}
+              validation={validation}
+            />
+            <CaseDocuments
+              caseId={repairCase.id}
+              isEditing={isEditing}
+              onFilesUploaded={onFilesUploadedDuringEdit}
+            />
+          </div>
+          {activeTab === "reclamation" && (
             <WarrantyWork
               isEditing={isEditing}
               currentData={currentData}
@@ -279,7 +279,8 @@ export function RepairCaseDetails({
               caseId={repairCase.id}
               onFilesUploaded={onFilesUploadedDuringEdit}
             />
-          ) : (
+          )}
+          {activeTab === "movement" && (
             <TtnBlocks
               isEditing={isEditing}
               ttnData={currentData}
