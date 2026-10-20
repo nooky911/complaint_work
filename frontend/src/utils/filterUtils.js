@@ -1,3 +1,5 @@
+import { EMPTY_FILTER_VALUE } from "../constants/filters";
+
 // Подсчет количества активных фильтров для бейджика
 export const countActiveFilters = (filters) => {
   return Object.entries(filters).reduce((acc, [key, val]) => {
@@ -22,7 +24,9 @@ export const buildFilterParams = (filters, skip = 0, limit = 50) => {
     if (Array.isArray(value)) {
       if (value.length > 0) {
         value.forEach((v) => {
-          if (v !== null && v !== undefined && v !== "") {
+          if (v === EMPTY_FILTER_VALUE) {
+            params.append("empty_fields", key);
+          } else if (v !== null && v !== undefined && v !== "") {
             params.append(key, String(v));
           }
         });

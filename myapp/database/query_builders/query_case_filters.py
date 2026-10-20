@@ -1,4 +1,4 @@
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, or_, func, String
 from sqlalchemy.sql import expression
 
 from myapp.database.query_builders.query_case_builders import load_detail_relations
@@ -9,19 +9,26 @@ from myapp.schemas.filters import CaseFilterParams
 from myapp.services.case_status_service import CaseStatusService
 
 
-def apply_filter_conditions(conditions: list, fields_mapping: list):
+def apply_filter_conditions(conditions: list, fields_mapping: list, empty_fields=()):
     for p_val, col in fields_mapping:
-        if p_val is None:
-            continue
+        alternatives = []
+        if col.key in empty_fields and col.nullable:
+            empty_condition = col.is_(None)
+            if isinstance(col.type, String):
+                empty_condition = or_(empty_condition, func.trim(col) == "")
+            alternatives.append(empty_condition)
 
         if isinstance(p_val, list):
             clean_list = [v for v in p_val if v is not None and str(v).strip() != ""]
             if clean_list:
-                conditions.append(col.in_(clean_list))
-        else:
+                alternatives.append(col.in_(clean_list))
+        elif p_val is not None:
             val_str = str(p_val).strip()
             if val_str != "" and val_str.lower() != "none":
-                conditions.append(col == p_val)
+                alternatives.append(col == p_val)
+
+        if alternatives:
+            conditions.append(or_(*alternatives))
 
 
 def build_repair_case_conditions(
@@ -89,7 +96,7 @@ def build_repair_case_conditions(
         (params.notes, RepairCaseEquipment.notes),
     ]
 
-    apply_filter_conditions(conditions, repair_fields)
+    apply_filter_conditions(conditions, repair_fields, params.empty_fields)
 
     # 3. Специфические поля
     if params.section_mask is not None and params.section_mask != 0:
@@ -129,7 +136,7 @@ def build_warranty_work_conditions(
         (params.investigation_reason_id, WarrantyWork.investigation_reason_id),
     ]
 
-    apply_filter_conditions(conditions, warranty_fields)
+    apply_filter_conditions(conditions, warranty_fields, params.empty_fields)
 
     return conditions
 
@@ -156,7 +163,7 @@ def build_waybill_doc_conditions(
         (params.from_supplier_provider_id, WaybillDoc.from_supplier_provider_id),
     ]
 
-    apply_filter_conditions(conditions, waybill_fields)
+    apply_filter_conditions(conditions, waybill_fields, params.empty_fields)
 
     return conditions
 

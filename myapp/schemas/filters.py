@@ -65,6 +65,9 @@ class CaseFilterParams(BaseModel):
     limit: int = 50
     display_number: int | None = Field(default=None, ge=1)
 
+    # Поля, для которых включён вариант «(Пустые)»
+    empty_fields: list[str] = Field(default_factory=list)
+
     # Даты неисправности
     date_from: date | None = None
     date_to: date | None = None

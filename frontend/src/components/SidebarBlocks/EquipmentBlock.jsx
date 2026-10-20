@@ -12,6 +12,7 @@ export const EquipmentBlock = ({ filters, options, updateFilter }) => {
         placeholder="Все"
       />
       <MultiSelectField
+        allowEmpty
         label={REPAIR_FIELDS_LABELS.serial_number}
         selectedValues={filters.component_serial_number_old}
         options={options?.component_serial_numbers}
@@ -19,6 +20,7 @@ export const EquipmentBlock = ({ filters, options, updateFilter }) => {
         placeholder="Все номера"
       />
       <MultiSelectField
+        allowEmpty
         label={REPAIR_FIELDS_LABELS.element}
         selectedValues={filters.element_equipment_id}
         options={options?.elements}
@@ -26,6 +28,7 @@ export const EquipmentBlock = ({ filters, options, updateFilter }) => {
         placeholder="Все"
       />
       <MultiSelectField
+        allowEmpty
         label={REPAIR_FIELDS_LABELS.serial_number}
         selectedValues={filters.element_serial_number_old}
         options={options?.element_serial_numbers}

@@ -1,31 +1,13 @@
 import api from "./api";
+import { buildFilterParams } from "../utils/filterUtils";
 import { message } from "antd";
 
 // Экспорт случаев в Excel
 export const exportCasesToExcel = async (filters = {}) => {
   try {
-    const queryParams = new URLSearchParams();
-
-    Object.entries(filters).forEach(([key, value]) => {
-      if (
-        value === null ||
-        value === undefined ||
-        value === "" ||
-        value === 0
-      ) {
-        return;
-      }
-
-      if (Array.isArray(value)) {
-        value.forEach((v) => {
-          if (v !== null && v !== undefined && v !== "" && v !== 0) {
-            queryParams.append(key, v.toString());
-          }
-        });
-      } else {
-        queryParams.append(key, value.toString());
-      }
-    });
+    const queryParams = buildFilterParams(filters);
+    queryParams.delete("skip");
+    queryParams.delete("limit");
 
     const response = await api.get(
       `/cases/export${queryParams.toString() ? "?" + queryParams : ""}`,

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
+import { EMPTY_FILTER_VALUE } from "../../constants/filters";
 import { useDropdown } from "../../hooks/useDropdown";
 import { useSearchFilter } from "../../hooks/useSearchFilter";
 import { sortOptionsBySelection } from "../../utils/formatters";
@@ -11,13 +12,21 @@ export const MultiSelectField = ({
   onChange,
   placeholder,
   allowClear = false,
+  allowEmpty = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef(null);
   const { isOpen, setIsOpen, containerRef } = useDropdown(false, () =>
     setSearchTerm(""),
   );
-  const filteredOptions = useSearchFilter(options, searchTerm);
+  const availableOptions = useMemo(
+    () =>
+      allowEmpty
+        ? [{ id: EMPTY_FILTER_VALUE, name: "(Пустые)" }, ...(options || [])]
+        : options,
+    [allowEmpty, options],
+  );
+  const filteredOptions = useSearchFilter(availableOptions, searchTerm);
 
   const sortedOptions = useMemo(() => {
     return sortOptionsBySelection(filteredOptions, selectedValues);

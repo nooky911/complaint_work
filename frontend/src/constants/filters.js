@@ -1,3 +1,5 @@
+export const EMPTY_FILTER_VALUE = "__empty__";
+
 // Константы для проверки дат на корректность ввода
 export const FILTER_DATE_FIELDS = [
   "date_from",
@@ -41,11 +43,11 @@ export const INITIAL_FILTERS = {
   claim_act_number: [],
   work_completion_act_number: [],
 
-  notification_date: "",
-  re_notification_date: "",
-  response_letter_date: "",
-  claim_act_date: "",
-  work_completion_act_date: "",
+  notification_date: [],
+  re_notification_date: [],
+  response_letter_date: [],
+  claim_act_date: [],
+  work_completion_act_date: [],
 
   notification_summary_id: [],
   response_summary_id: [],
@@ -94,12 +96,18 @@ export const SECTIONS_KEYS = {
   status: ["status", "creator_id"],
   documents: [
     "notification_number",
-    "notification_date_start",
-    "notification_date_end",
+    "notification_date",
+    "notification_summary_id",
     "re_notification_number",
+    "re_notification_date",
     "response_letter_number",
+    "response_letter_date",
+    "response_summary_id",
     "claim_act_number",
+    "claim_act_date",
     "work_completion_act_number",
+    "work_completion_act_date",
+    "decision_summary_id",
     "research_status_id",
     "investigation_reason_id",
     "research_document",

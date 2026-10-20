@@ -7,6 +7,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
       {/* Секция нового оборудования */}
       <div className="space-y-3">
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.new_component}
           selectedValues={filters.new_component_equipment_id}
           options={options?.new_components}
@@ -14,6 +15,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все компоненты"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.serial_number}
           selectedValues={filters.component_serial_number_new}
           options={options?.component_serial_numbers_new}
@@ -21,6 +23,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все номера"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.new_element}
           selectedValues={filters.new_element_equipment_id}
           options={options?.new_elements}
@@ -28,6 +31,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все элементы"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.serial_number}
           selectedValues={filters.element_serial_number_new}
           options={options?.element_serial_numbers_new}
@@ -49,6 +53,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все виды ремонта"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.performed_by}
           selectedValues={filters.performed_by_id}
           options={options?.performed_by}
@@ -56,6 +61,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Кем выполнен"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.destination}
           selectedValues={filters.destination_id}
           options={options?.destinations}
@@ -63,6 +69,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
           placeholder="Все"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.equipment_owner}
           selectedValues={filters.equipment_owner_id}
           options={options?.equipment_owners}

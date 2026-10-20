@@ -1,3 +1,4 @@
+import { EMPTY_FILTER_VALUE } from "../constants/filters";
 import { DATE_MASK, normalizeDateForInput } from "./formatters.js";
 
 export const MANUFACTURE_DATE_FIELDS = [
@@ -67,7 +68,10 @@ export const validateFilterDates = (filters, dateFields) => {
 
     if (Array.isArray(val)) {
       if (val.length === 0) return false;
-      return val.some((dateItem) => !isValidDate(dateItem, false));
+      return val.some(
+        (dateItem) =>
+          dateItem !== EMPTY_FILTER_VALUE && !isValidDate(dateItem, false),
+      );
     }
 
     return !isValidDate(val, false);
@@ -76,11 +80,11 @@ export const validateFilterDates = (filters, dateFields) => {
 
 export const isDateNotEarlierThan = (dateValue, baseDate) => {
   if (!dateValue || !baseDate) return true;
-  
+
   const date = new Date(dateValue);
   const base = new Date(baseDate);
-  
+
   if (isNaN(date.getTime()) || isNaN(base.getTime())) return true;
-  
+
   return date >= base;
 };

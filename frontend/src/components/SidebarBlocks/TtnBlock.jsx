@@ -16,6 +16,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
       {/* 1. ТТН замены */}
       <div className="grid grid-cols-2 gap-3">
         <MultiSelectField
+          allowEmpty
           label={"ТТН о замене"}
           selectedValues={filters.ttn_replacement}
           options={options?.ttn_replacement}
@@ -23,6 +24,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
           placeholder="№"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.ttn_replacement_date}
           selectedValues={filters.ttn_replacement_date}
           options={prepareDateOptions(options?.ttn_replacement_dates)}
@@ -36,6 +38,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
       {/* 2. ТТН с РЦ */}
       <div className="grid grid-cols-2 gap-3">
         <MultiSelectField
+          allowEmpty
           label={"ТТН из РЦ"}
           selectedValues={filters.ttn_from_rc}
           options={options?.ttn_from_rc}
@@ -43,6 +46,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
           placeholder="№"
         />
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.ttn_from_rc_date}
           selectedValues={filters.ttn_from_rc_date}
           options={prepareDateOptions(options?.ttn_from_rc_dates)}
@@ -57,6 +61,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <MultiSelectField
+            allowEmpty
             label={"ТТН поставщику"}
             selectedValues={filters.ttn_to_supplier}
             options={options?.ttn_to_supplier}
@@ -64,6 +69,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
             placeholder="№"
           />
           <MultiSelectField
+            allowEmpty
             label={"Дата отгрузки"}
             selectedValues={filters.ttn_to_supplier_date}
             options={prepareDateOptions(options?.ttn_to_supplier_dates)}
@@ -72,6 +78,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
           />
         </div>
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.ttn_to_supplier_provider}
           selectedValues={filters.to_supplier_provider_id}
           options={options?.shipping_providers?.slice(0, 5)}
@@ -86,6 +93,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <MultiSelectField
+            allowEmpty
             label={"ТТН от поставщика"}
             selectedValues={filters.ttn_from_supplier}
             options={options?.ttn_from_supplier}
@@ -93,6 +101,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
             placeholder="№"
           />
           <MultiSelectField
+            allowEmpty
             label={REPAIR_FIELDS_LABELS.ttn_from_supplier_date}
             selectedValues={filters.ttn_from_supplier_date}
             options={prepareDateOptions(options?.ttn_from_supplier_dates)}
@@ -101,6 +110,7 @@ export const TtnBlock = ({ filters, options, updateFilter }) => {
           />
         </div>
         <MultiSelectField
+          allowEmpty
           label={REPAIR_FIELDS_LABELS.ttn_from_supplier_provider}
           selectedValues={filters.from_supplier_provider_id}
           options={options?.from_shipping_providers?.slice(0, 5)}
