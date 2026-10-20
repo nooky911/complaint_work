@@ -14,6 +14,12 @@ class OmegaStockFilterRequest(BaseModel):
     filters: dict[str, OmegaStockColumnFilter] = Field(default_factory=dict)
 
 
+class OmegaStockCaseSearchRequest(OmegaStockFilterRequest):
+    """Фильтры случаев и выбранные строки для сортировки перед пагинацией"""
+
+    selected_ids: list[int] = Field(default_factory=list, max_length=10000)
+
+
 class OmegaStockWarehouse(BaseModel):
     id: int
     sign: str

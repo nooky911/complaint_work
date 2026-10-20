@@ -47,6 +47,7 @@ export function StockColumnFilter({
   const options = useMemo(
     () =>
       column.key === "warehouse" ||
+      column.key === "regional_center" ||
       (kind === "inplant" && column.key === "recipient")
         ? sortRegionalCenterOptions(rawOptions)
         : rawOptions,

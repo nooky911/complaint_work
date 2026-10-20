@@ -54,10 +54,15 @@ export const omegaStockFileUrl = (kind, documentId, fileId) =>
   `/api/v1/omega-stock/documents/${kind}/${documentId}/files/${fileId}`;
 
 /** Возвращает страницу случаев, доступных для привязки складского документа */
-export const getStockLinkCases = async (filters, offset, limit) => {
+export const getStockLinkCases = async (
+  filters,
+  offset,
+  limit,
+  selectedIds = [],
+) => {
   const response = await api.post(
     "/omega-stock/link-cases/search",
-    { filters },
+    { filters, selected_ids: selectedIds },
     { params: { offset, limit } },
   );
   return response.data;

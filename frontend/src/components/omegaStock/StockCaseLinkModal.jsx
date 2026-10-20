@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Link, LoaderCircle, X } from "lucide-react";
 
 import api from "../../api/api";
@@ -18,6 +23,7 @@ import { StockDocumentFiles } from "./StockDocumentFiles";
 const PAGE_SIZE = 25;
 const COLUMNS = [
   { key: "display_number", title: "№" },
+  { key: "regional_center", title: "РЦ" },
   { key: "locomotive", title: "Локомотив" },
   { key: "equipment", title: "Оборудование" },
   { key: "serial", title: "Зав. № (дата изг-ия)" },
@@ -65,10 +71,24 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
   const [preview, setPreview] = useState(null);
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
+  const selectedIds = [...selected].sort((a, b) => a - b);
   const { data, isPending, isError, refetch } = useQuery({
-    queryKey: ["omega-stock", "link-cases", user?.id, filters, page],
+    queryKey: [
+      "omega-stock",
+      "link-cases",
+      user?.id,
+      filters,
+      page,
+      selectedIds,
+    ],
     queryFn: () =>
-      getStockLinkCases(filters, (page - 1) * PAGE_SIZE, PAGE_SIZE),
+      getStockLinkCases(
+        filters,
+        (page - 1) * PAGE_SIZE,
+        PAGE_SIZE,
+        selectedIds,
+      ),
+    placeholderData: keepPreviousData,
     staleTime: 0,
   });
   const { data: references, isError: referencesError } = useQuery({
@@ -315,13 +335,19 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                     <tbody className="divide-y divide-slate-200">
                       {isPending ? (
                         <tr>
-                          <td colSpan={8} className="p-8 text-slate-600">
+                          <td
+                            colSpan={COLUMNS.length + 1}
+                            className="p-8 text-slate-600"
+                          >
                             Загрузка случаев...
                           </td>
                         </tr>
                       ) : isError ? (
                         <tr>
-                          <td colSpan={8} className="p-8 text-red-700">
+                          <td
+                            colSpan={COLUMNS.length + 1}
+                            className="p-8 text-red-700"
+                          >
                             Не удалось загрузить случаи{" "}
                             <button
                               type="button"
@@ -334,7 +360,10 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                         </tr>
                       ) : !data?.items.length ? (
                         <tr>
-                          <td colSpan={8} className="p-8 text-slate-600">
+                          <td
+                            colSpan={COLUMNS.length + 1}
+                            className="p-8 text-slate-600"
+                          >
                             Случаи не найдены
                           </td>
                         </tr>

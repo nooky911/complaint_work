@@ -20,6 +20,7 @@ from myapp.schemas.omega_stock import (
     OmegaStockItem,
     OmegaStockWarehouse,
     OmegaStockCaseLinkRequest,
+    OmegaStockCaseSearchRequest,
 )
 from myapp.services import CaseValidationError
 from myapp.services.omega_services.stock_case_link_service import StockCaseLinkService
@@ -55,7 +56,7 @@ async def _read(operation: Awaitable[T]) -> T:
     "/link-cases/search", summary="Выбрать доступные случаи для складского документа"
 )
 async def search_link_cases(
-    request: OmegaStockFilterRequest,
+    request: OmegaStockCaseSearchRequest,
     session: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(require_editor_or_superadmin)],
     response: Response,
@@ -65,7 +66,9 @@ async def search_link_cases(
     """Возвращает страницу случаев с учётом владельца и напарника"""
     response.headers["Cache-Control"] = "no-store"
     return await _read(
-        StockCaseLinkService.list_cases(session, user, request.filters, offset, limit)
+        StockCaseLinkService.list_cases(
+            session, user, request.filters, offset, limit, request.selected_ids
+        )
     )
 
 

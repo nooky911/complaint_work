@@ -24,7 +24,12 @@ from starlette.datastructures import Headers
 
 from myapp.config import settings
 from myapp.database.transactional import transactional
-from myapp.models.auxiliaries import LocomotiveModel, RepairType, Supplier
+from myapp.models.auxiliaries import (
+    LocomotiveModel,
+    RegionalCenter,
+    RepairType,
+    Supplier,
+)
 from myapp.models.case_files import CaseFile, FileCategory, WaybillDocumentField
 from myapp.models.equipment_malfunctions import Equipment
 from myapp.models.repair_case_equipment import RepairCaseEquipment
@@ -57,6 +62,7 @@ class StockCaseLinkService:
     }
     COLUMNS = (
         "display_number",
+        "regional_center",
         "locomotive",
         "equipment",
         "serial",
@@ -199,6 +205,7 @@ class StockCaseLinkService:
             select(
                 r.id,
                 numbered.c.display_number.cast(String).label("display_number"),
+                RegionalCenter.regional_center_name.label("regional_center"),
                 func.concat(
                     LocomotiveModel.locomotive_model_name, " ", r.locomotive_number
                 ).label("locomotive"),
@@ -221,6 +228,7 @@ class StockCaseLinkService:
             )
             .join(numbered, r.id == numbered.c.id)
             .join(LocomotiveModel)
+            .join(RegionalCenter, r.regional_center_id == RegionalCenter.id)
             .outerjoin(equipment, r.id == equipment.c.case_id)
             .outerjoin(Supplier, Supplier.id == r.supplier_id)
             .outerjoin(w, w.case_id == r.id)
@@ -262,10 +270,17 @@ class StockCaseLinkService:
         return conditions
 
     @classmethod
-    async def list_cases(cls, session, user, filters, offset, limit):
-        """Возвращает страницу только доступных для изменения случаев"""
+    async def list_cases(cls, session, user, filters, offset, limit, selected_ids=None):
+        """Возвращает страницу доступных случаев, размещая выбранные в начале"""
+        selected_ids = selected_ids or []
+        if len(selected_ids) > 10000 or any(value <= 0 for value in selected_ids):
+            raise ValueError("Некорректный список выбранных случаев")
         table = cls._case_table(user)
         conditions = cls._conditions(table, filters)
+        ordering = []
+        if selected_ids:
+            ordering.append(case((table.c.id.in_(selected_ids), 0), else_=1))
+        ordering.append(table.c.id.desc())
         total = await session.scalar(
             select(func.count()).select_from(table).where(*conditions)
         )
@@ -274,7 +289,7 @@ class StockCaseLinkService:
                 await session.execute(
                     select(table)
                     .where(*conditions)
-                    .order_by(table.c.id.desc())
+                    .order_by(*ordering)
                     .offset(offset)
                     .limit(limit)
                 )
