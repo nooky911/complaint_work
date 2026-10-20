@@ -6,6 +6,7 @@ export const FilterSidebarFooter = ({
   onReset,
   onClose,
   hasErrors,
+  isLoading = false,
 }) => {
   return (
     <div className="border-t border-slate-100 bg-slate-100/50 px-8 py-4">
@@ -28,14 +29,14 @@ export const FilterSidebarFooter = ({
 
         <button
           onClick={onApply}
-          disabled={hasErrors}
+          disabled={hasErrors || isLoading}
           className={`h-[42px] flex-[2] rounded-lg text-xs font-black tracking-widest text-white uppercase shadow-md transition-all ${
-            hasErrors
+            hasErrors || isLoading
               ? "cursor-not-allowed bg-slate-300 opacity-80 shadow-none"
               : "bg-[#0064fe] shadow-indigo-100 hover:bg-indigo-700 active:scale-[0.98]"
           }`}
         >
-          {hasErrors ? "ОШИБКА" : "ПРИМЕНИТЬ"}
+          {isLoading ? "Загрузка..." : hasErrors ? "ОШИБКА" : "ПРИМЕНИТЬ"}
         </button>
       </div>
     </div>

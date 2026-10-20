@@ -28,7 +28,6 @@ import {
   useFilterOptions,
 } from "../hooks/api/index";
 import { useDebouncedValue } from "../hooks/useDebounce";
-import { exportCasesToExcel } from "../api/export";
 import { useDropdown } from "../hooks/useDropdown";
 
 // Загружаем формы и фильтры при первом открытии
@@ -149,7 +148,12 @@ export default React.memo(function DashboardPage() {
   const updateCaseMutation = useUpdateCase();
   const deleteCaseMutation = useDeleteCase();
 
-  const { data: filterOptions } = useFilterOptions();
+  const {
+    data: filterOptions,
+    isPending: filterOptionsLoading,
+    isError: filterOptionsError,
+    refetch: refetchFilterOptions,
+  } = useFilterOptions(filterLoaded);
 
   const enhancedFilterOptions = useMemo(() => {
     if (!filterOptions) return null;
@@ -214,6 +218,7 @@ export default React.memo(function DashboardPage() {
   const handleExport = async () => {
     try {
       setIsExporting(true);
+      const { exportCasesToExcel } = await import("../api/export");
       await exportCasesToExcel(
         quickCaseNumber ? { display_number: quickCaseNumber } : appliedFilters,
       );
@@ -642,6 +647,9 @@ export default React.memo(function DashboardPage() {
             appliedFilters={appliedFilters}
             onApply={handleApplyFilters}
             options={enhancedFilterOptions}
+            optionsLoading={filterOptionsLoading}
+            optionsError={filterOptionsError}
+            onRetryOptions={refetchFilterOptions}
           />
         )}
       </Suspense>

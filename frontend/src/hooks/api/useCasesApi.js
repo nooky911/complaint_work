@@ -21,7 +21,7 @@ export const useCaseDisplayNumbers = (search, enabled) =>
   });
 
 // Хук для получения базовых опций фильтров
-export const useFilterOptions = () => {
+export const useFilterOptions = (enabled = true) => {
   return useQuery({
     queryKey: ["filter-options", "static"],
     queryFn: async () => {
@@ -29,6 +29,7 @@ export const useFilterOptions = () => {
       return res.data;
     },
     staleTime: 10 * 60 * 1000, // 10 минут
+    enabled,
   });
 };
 

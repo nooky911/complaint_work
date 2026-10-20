@@ -15,6 +15,9 @@ export const FilterSidebar = ({
   appliedFilters,
   onApply,
   options,
+  optionsLoading = false,
+  optionsError = false,
+  onRetryOptions,
 }) => {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
 
@@ -96,16 +99,43 @@ export const FilterSidebar = ({
               </div>
             )}
 
-            <FilterSectionsRenderer
-              openSections={openSections}
-              toggleSection={toggleSection}
-              getSectionCount={(keys) => getSectionCount(keys, filters)}
-              sectionThemes={sectionThemes}
-              filters={filters}
-              options={mergedOptions}
-              updateFilter={handleUpdateFilter}
-              userOptions={userOptions}
-            />
+            {optionsLoading ? (
+              <div
+                role="status"
+                className="flex items-center gap-2 py-6 text-sm font-semibold text-slate-700"
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"
+                />
+                Загрузка фильтров...
+              </div>
+            ) : optionsError ? (
+              <div
+                role="alert"
+                className="rounded-lg bg-red-50 p-3 text-sm text-red-700"
+              >
+                Не удалось загрузить фильтры.
+                <button
+                  type="button"
+                  onClick={onRetryOptions}
+                  className="ml-2 font-bold underline"
+                >
+                  Повторить
+                </button>
+              </div>
+            ) : (
+              <FilterSectionsRenderer
+                openSections={openSections}
+                toggleSection={toggleSection}
+                getSectionCount={(keys) => getSectionCount(keys, filters)}
+                sectionThemes={sectionThemes}
+                filters={filters}
+                options={mergedOptions}
+                updateFilter={handleUpdateFilter}
+                userOptions={userOptions}
+              />
+            )}
           </div>
 
           {/* Footer */}
@@ -113,7 +143,8 @@ export const FilterSidebar = ({
             onApply={handleApply}
             onReset={handleReset}
             onClose={handleClose}
-            hasErrors={hasErrors}
+            hasErrors={hasErrors || optionsError}
+            isLoading={optionsLoading}
           />
         </div>
       </div>
