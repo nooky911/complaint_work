@@ -20,6 +20,7 @@ export function StockColumnFilter({
   filters,
   onChange,
   children,
+  caseSelection = false,
 }) {
   const buttonRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -36,7 +37,13 @@ export function StockColumnFilter({
     isLoading,
     isError,
     refetch,
-  } = useOmegaStockFilterOptions(kind, column.key, otherFilters, open);
+  } = useOmegaStockFilterOptions(
+    kind,
+    column.key,
+    otherFilters,
+    open,
+    caseSelection,
+  );
   const options = useMemo(
     () =>
       column.key === "warehouse" ||
@@ -245,6 +252,18 @@ export function StockColumnFilter({
                     </div>
                   )}
                   <div className="mt-2 flex justify-end gap-2 border-t border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange(null);
+                        setSelected(null);
+                        setSearch("");
+                        setOpen(false);
+                      }}
+                      className="mr-auto rounded-lg px-3 py-2 text-red-600 hover:bg-red-50"
+                    >
+                      Сбросить
+                    </button>
                     <button
                       type="button"
                       onClick={() => setOpen(false)}

@@ -1,9 +1,7 @@
 """Данные складских документов Omega для API"""
 
 from datetime import datetime
-
 from typing import Literal
-
 from pydantic import BaseModel, Field
 
 
@@ -93,3 +91,17 @@ class OmegaStockItem(BaseModel):
 class OmegaStockFile(BaseModel):
     id: int
     name: str
+
+
+class OmegaStockCaseLinkRequest(BaseModel):
+    """Выбранные случаи и данные существующего блока передвижения"""
+
+    case_ids: list[int] = Field(min_length=1, max_length=100)
+    related_field: Literal[
+        "ttn_replacement", "ttn_from_rc", "ttn_to_supplier", "ttn_from_supplier"
+    ]
+    number: str = Field(max_length=50)
+    document_date: str
+    provider_id: int | None = None
+    preview_token: str | None = None
+    confirm_overwrite: bool = False

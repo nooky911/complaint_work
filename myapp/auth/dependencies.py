@@ -7,7 +7,6 @@ from myapp.auth.tokens import decode_token
 from myapp.database.base import get_db
 from myapp.models import RepairCaseEquipment
 from myapp.models.user import User
-from myapp.services.case_service import CaseService
 from myapp.services.file_service import FileService
 from sqlalchemy.orm import selectinload
 from myapp.config import settings
@@ -149,6 +148,7 @@ async def require_can_edit_file_case(
     Разрешает удаление файла только:
     - superadmin для любого файла
     - создателю случая, к которому привязан файл
+    - напарнику с разрешённым перекрёстным доступом к случаю
     """
     # 1. Найти файл и case_id
     case_file = await FileService.get_file_by_id(session, file_id)
@@ -162,22 +162,11 @@ async def require_can_edit_file_case(
     case_id = case_file.case_id
 
     # 2. Получить Case для авторизации
-    case = await CaseService.get_case(session, case_id)
+    current_user, case = await require_can_edit_case(case_id, session, current_user)
     if not case:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Associated case not found",
         )
 
-    # 3. Применить существующую логику авторизации
-    if current_user.role == "superadmin":
-        return current_user, case
-
-    # только создатель кейса
-    if getattr(case, "user_id", None) == current_user.id:
-        return current_user, case
-
-    raise HTTPException(
-        status_code=status.HTTP_403_FORBIDDEN,
-        detail="You can edit or delete files only in cases you created",
-    )
+    return current_user, case

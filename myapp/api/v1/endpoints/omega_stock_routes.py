@@ -3,8 +3,13 @@ import oracledb
 from datetime import date
 from typing import Annotated, Awaitable, Literal, TypeVar
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.auth.dependencies import require_viewer_or_higher
+from myapp.auth.dependencies import (
+    require_editor_or_superadmin,
+    require_viewer_or_higher,
+)
+from myapp.database.base import get_db
 from myapp.models.user import User
 from myapp.schemas.omega_stock import (
     OmegaInplantInvoice,
@@ -14,7 +19,10 @@ from myapp.schemas.omega_stock import (
     OmegaStockFilterRequest,
     OmegaStockItem,
     OmegaStockWarehouse,
+    OmegaStockCaseLinkRequest,
 )
+from myapp.services import CaseValidationError
+from myapp.services.omega_services.stock_case_link_service import StockCaseLinkService
 from myapp.services.omega_services.omega_stock_service import OmegaStockService
 
 
@@ -28,6 +36,12 @@ T = TypeVar("T")
 async def _read(operation: Awaitable[T]) -> T:
     try:
         return await operation
+    except CaseValidationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except RuntimeError as exc:
@@ -35,6 +49,77 @@ async def _read(operation: Awaitable[T]) -> T:
     except oracledb.Error as exc:
         logger.exception("Не удалось прочитать складские документы Omega")
         raise HTTPException(status_code=503, detail="Omega сейчас недоступна") from exc
+
+
+@router.post(
+    "/link-cases/search", summary="Выбрать доступные случаи для складского документа"
+)
+async def search_link_cases(
+    request: OmegaStockFilterRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+):
+    """Возвращает страницу случаев с учётом владельца и напарника"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.list_cases(session, user, request.filters, offset, limit)
+    )
+
+
+@router.post(
+    "/link-cases/filter-options/{column}", summary="Значения фильтра доступных случаев"
+)
+async def link_case_filter_options(
+    column: str,
+    request: OmegaStockFilterRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+):
+    """Возвращает значения только из случаев, которые пользователь может изменить"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.filter_options(session, user, column, request.filters)
+    )
+
+
+@router.post(
+    "/documents/{kind}/{document_id}/link-cases/preview",
+    summary="Проверить перенос данных и замену заполненных блоков",
+)
+async def preview_case_link(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    request: OmegaStockCaseLinkRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+):
+    """Проверяет права и показывает данные, которые будут заменены"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.preview(session, user, kind, document_id, request)
+    )
+
+
+@router.post(
+    "/documents/{kind}/{document_id}/link-cases",
+    summary="Перенести складской документ и все вложения в случаи",
+)
+async def apply_case_link(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    request: OmegaStockCaseLinkRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+):
+    """Сохраняет подтверждённые поля и локальные вложения без таблицы привязок"""
+    return await _read(
+        StockCaseLinkService.apply(session, user, kind, document_id, request)
+    )
 
 
 @router.get(
