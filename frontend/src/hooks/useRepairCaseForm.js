@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLockCase, useUnlockCase } from "./api/useCasesApi";
 import { formatFullName } from "../utils/formatters";
 import { useToast } from "./useToast";
@@ -33,6 +33,54 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const leaseState = useRef({ saving: false, showError: showToastError });
+  useEffect(() => {
+    leaseState.current = { saving, showError: showToastError };
+  }, [saving, showToastError]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    const caseId = repairCase.id;
+    let stopped = false;
+    let pending = false;
+    const renew = async () => {
+      if (stopped || pending) return;
+      pending = true;
+      try {
+        await api.post(`/cases/${caseId}/lock/heartbeat`);
+      } catch (error) {
+        if (!stopped && error.response?.status === 423) {
+          clearInterval(timer);
+          if (!leaseState.current.saving) {
+            leaseState.current.showError(
+              "Блокировка редактирования потеряна",
+              "Введённые данные остались в форме. При сохранении доступ будет проверен повторно.",
+            );
+          }
+        }
+      } finally {
+        pending = false;
+      }
+    };
+    const release = () => {
+      // pagehide срабатывает при реальном уходе, а не при отменённом beforeunload
+      fetch(`${api.defaults.baseURL}/cases/${caseId}/unlock`, {
+        method: "POST",
+        credentials: "include",
+        keepalive: true,
+      }).catch(() => {});
+    };
+    const timer = setInterval(renew, 30000);
+    window.addEventListener("pagehide", release);
+    window.addEventListener("pageshow", renew);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      window.removeEventListener("pagehide", release);
+      window.removeEventListener("pageshow", renew);
+      release();
+    };
+  }, [isEditing, repairCase.id]);
 
   const [showError, setShowError] = useState(false);
 
@@ -97,12 +145,14 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   }, [repairCase, isEditing, equipmentChain]);
 
   const handleEditClick = async () => {
+    let acquired = false;
     setLoading(true);
     setShowError(false);
     try {
       // Пытаемся заблокировать случай
       try {
         await lockMutation.mutateAsync(repairCase.id);
+        acquired = true;
       } catch (lockError) {
         console.error("Lock error:", lockError);
         const lockerName = lockError.response?.data?.detail;
@@ -167,6 +217,9 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       setEditData(convertCaseToFormData(repairCase));
       setIsEditing(true);
     } catch (error) {
+      if (acquired) {
+        await unlockMutation.mutateAsync(repairCase.id).catch(() => {});
+      }
       console.error("Ошибка в handleEditClick:", error);
       showToastError("Ошибка", "Произошла ошибка при загрузке данных");
     } finally {
@@ -286,6 +339,8 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
 
     setSaving(true);
     try {
+      // После сна браузера аренда могла истечь; повторно проверяем доступ до записи.
+      await api.post(`/cases/${repairCase.id}/lock`);
       const cleanedData = { ...editData };
 
       if (currentUser?.role !== "superadmin") {
@@ -387,6 +442,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         .forEach((k) => delete payload[k]);
 
       if (Object.keys(payload).length === 0) {
+        await unlockMutation.mutateAsync(repairCase.id);
         setIsEditing(false);
         setSaving(false);
         return true;

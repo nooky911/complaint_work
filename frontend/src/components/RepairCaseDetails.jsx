@@ -3,6 +3,7 @@ import { Edit, Save, X, Trash2, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import api from "../api/api";
+import { isCaseLockedByOther } from "../utils/caseLock";
 import { formatFullName } from "../utils/formatters";
 import { useRepairCaseForm } from "../hooks/useRepairCaseForm";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -73,8 +74,16 @@ export function RepairCaseDetails({
       (repairCase.user_id === currentUser?.id || isPartnerAccess));
 
   // Проверка блокировки другими пользователями
-  const isLockedByOther =
-    repairCase.locked_by_id && repairCase.locked_by_id !== currentUser?.id;
+  const [lockClock, setLockClock] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setLockClock(Date.now()), 10000);
+    return () => clearInterval(timer);
+  }, []);
+  const isLockedByOther = isCaseLockedByOther(
+    repairCase,
+    currentUser?.id,
+    lockClock,
+  );
   const lockerName = repairCase.locked_by?.full_name
     ? formatFullName(repairCase.locked_by.full_name)
     : "Другой пользователь";
@@ -166,7 +175,7 @@ export function RepairCaseDetails({
     }
   };
 
-  const status = React.useMemo(() => getStatusConfig(repairCase), [repairCase]);
+  const status = getStatusConfig(repairCase);
   const displayId = caseIndex || repairCase.id;
   const currentData = isEditing ? editData : repairCase;
 

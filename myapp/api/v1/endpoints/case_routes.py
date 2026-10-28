@@ -205,6 +205,22 @@ async def lock_case(
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(e))
 
 
+@router.post("/{case_id}/lock/heartbeat", summary="Продлить блокировку редактирования")
+async def heartbeat_case(
+    case_id: Annotated[int, Path(ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+    ],
+):
+    """Продлевает блокировку случая"""
+    user, _ = user_and_case
+    try:
+        return await CaseService.heartbeat_case(session, case_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(e))
+
+
 @router.post("/{case_id}/unlock", summary="Снять блокировку")
 async def unlock_case(
     case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],

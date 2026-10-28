@@ -3,11 +3,16 @@ from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 
 from myapp.database.base import Base
+from myapp.constants.case_lock import lock_expires_at
 
 
 # Основная таблица со случаями неисправности
 class RepairCaseEquipment(Base):
     __tablename__ = "repair_case_equipment"
+
+    @property
+    def lock_expires_at(self):
+        return lock_expires_at(self.locked_at)
 
     # Индексы для оптимизации фильтров
     __table_args__ = (

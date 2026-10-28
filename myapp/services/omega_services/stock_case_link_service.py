@@ -1,5 +1,6 @@
 import asyncio
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
+from myapp.constants.case_lock import is_case_lock_active
 import hashlib
 import hmac
 from io import BytesIO
@@ -373,11 +374,7 @@ class StockCaseLinkService:
             )
         now = datetime.now(timezone.utc)
         for c in cases:
-            if (
-                c.locked_by_id
-                and c.locked_at
-                and now - c.locked_at < timedelta(minutes=30)
-            ):
+            if is_case_lock_active(c, now):
                 raise CaseValidationError(
                     "revision",
                     "Один из случаев сейчас редактируется. Завершите редактирование и повторите привязку",

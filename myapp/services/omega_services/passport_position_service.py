@@ -373,10 +373,35 @@ class PassportPositionService:
         while eid in equipment and eid not in seen:
             seen.add(eid)
             row = equipment[eid]
-            names.append(row["name"].lower().replace("_", " "))
+            names.append(
+                row["name"].lower().replace("_", " ").replace("ё", "е").strip()
+            )
             eid = row["parent_id"]
         return any(
-            "тэд" == n or "подшипник" in n or "тяговый двигатель" in n for n in names
+            n in {"тэд", "кп", "кмб"}
+            or "колесная пара" in n
+            or "подшипник" in n
+            or "тяговый двигатель" in n
+            for n in names
+        )
+
+    @classmethod
+    def is_kmb_position(cls, node, state, equipment, by_code):
+        """Учитывает и классификатор, и принадлежность позиции к КП в паспорте"""
+        ctx = cls.context(node, by_code)
+        if not (ctx["section"] and ctx["bogie_id"] and ctx["kp"]):
+            # Не превращаем явно выбранную КП в обычную замену при сломанном контексте
+            return any(
+                re.search(
+                    r"кол[её]сная\s+пара|тяговый (?:электро)?двигатель",
+                    a.tree_name or "",
+                    re.I,
+                )
+                for a in cls.ancestors(node, by_code)
+            )
+        return cls.is_kmb_failure(state.get("equipment_id"), equipment) or any(
+            re.search(r"кол[её]сная\s+пара|подшипник", a.tree_name or "", re.I)
+            for a in cls.ancestors(node, by_code)
         )
 
     @staticmethod
@@ -387,10 +412,7 @@ class PassportPositionService:
             re.search(pattern, name)
             for pattern in (
                 r"кол[её]сная пара",
-                r"узел компактный.*подшипник",
-                r"буксов.*подшипник",
-                r"подшипник.*буксов",
-                r"моторно.?осев.*подшипник",
+                r"подшипник",
                 r"поводок тэд",
                 r"тяговый (?:электро)?двигатель",
                 r"(?:электро)?двигатель тяговый",
@@ -424,7 +446,7 @@ class PassportPositionService:
             kmb = [
                 n
                 for n in failed
-                if cls.is_kmb_failure(states[n.id].get("equipment_id"), equipment)
+                if cls.is_kmb_position(n, states[n.id], equipment, by_code)
             ]
             if kmb:
                 for failed_node in kmb:

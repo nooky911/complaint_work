@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from myapp.database.query_builders.query_case_builders import load_detail_relations
 from myapp.database.transactional import transactional
+from myapp.constants.case_lock import is_case_lock_active
 from myapp.models import WaybillDoc
 from myapp.models.auxiliaries import LocomotiveNumberException
 from myapp.models.product_passports import CasePassportLink, ProductPassport
@@ -266,6 +267,10 @@ class CaseService:
             return None
 
         old_duplicate_identity = CaseService._duplicate_identity(case)
+        if is_case_lock_active(case) and case.locked_by_id != current_user_id:
+            raise CaseValidationError(
+                "revision", "Случай сейчас редактирует другой пользователь"
+            )
         update_data = case_data.model_dump(
             exclude_unset=True,
             exclude={
@@ -459,6 +464,8 @@ class CaseService:
             select(RepairCaseEquipment)
             .where(RepairCaseEquipment.id == case_id)
             .options(selectinload(RepairCaseEquipment.locked_by))
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
         result = await session.execute(stmt)
         case = result.scalar_one_or_none()
@@ -467,11 +474,10 @@ class CaseService:
             raise ValueError("Случай не найден")
 
         now = datetime.now(timezone.utc)
-        timeout = timedelta(minutes=30)
 
         # Проверка текущей блокировки
         if case.locked_by_id and case.locked_by_id != user_id:
-            if case.locked_at and (now - case.locked_at) < timeout:
+            if is_case_lock_active(case, now):
                 locker_name = (
                     case.locked_by.full_name
                     if case.locked_by
@@ -488,14 +494,35 @@ class CaseService:
 
     @staticmethod
     @transactional
+    async def heartbeat_case(session: AsyncSession, case_id: int, user_id: int):
+        """Продлевает свою блокировку, но никогда не захватывает чужую или снятую"""
+        case = await session.scalar(
+            select(RepairCaseEquipment)
+            .where(RepairCaseEquipment.id == case_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if case is None or case.locked_by_id != user_id:
+            raise ValueError("Блокировка редактирования больше не принадлежит вам")
+        case.locked_at = datetime.now(timezone.utc)
+        await session.flush()
+        return {"lock_expires_at": case.lock_expires_at}
+
+    @staticmethod
+    @transactional
     async def unlock_case(session: AsyncSession, case_id: int, user_id: int) -> bool:
         """Снятие блокировки со случая"""
-        case = await session.get(RepairCaseEquipment, case_id)
+        case = await session.scalar(
+            select(RepairCaseEquipment)
+            .where(RepairCaseEquipment.id == case_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if not case:
             return False
 
-        # Снимаем только если блокировка принадлежит текущему пользователю или если мы суперадмин
-        if case.locked_by_id == user_id:
+        # Повторное снятие безопасно; чужую блокировку не трогаем.
+        if case.locked_by_id is None or case.locked_by_id == user_id:
             case.locked_by_id = None
             case.locked_at = None
             await session.flush()

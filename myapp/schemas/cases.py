@@ -123,6 +123,7 @@ class CaseOutputData(CaseBase):
     user_id: int
     user: UserPreview | None = None
     locked_by_id: int | None = None
+    lock_expires_at: datetime | None = None
     locked_by: UserPreview | None = None
 
     display_number: int | None = None

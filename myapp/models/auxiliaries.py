@@ -43,14 +43,19 @@ class LocomotiveModel(Base):
 
 
 class LocomotiveNumberException(Base):
-    """Номера, разрешённые для новых случаев без паспорта."""
+    """Номера, разрешённые для новых случаев без паспорта"""
 
     __tablename__ = "locomotive_number_exceptions"
     __table_args__ = (
-        CheckConstraint("section_mask > 0 AND section_mask <= 7", name="ck_locomotive_exception_sections"),
+        CheckConstraint(
+            "section_mask > 0 AND section_mask <= 7",
+            name="ck_locomotive_exception_sections",
+        ),
     )
 
-    locomotive_model_id: Mapped[int] = mapped_column(ForeignKey("locomotive_models.id"), primary_key=True)
+    locomotive_model_id: Mapped[int] = mapped_column(
+        ForeignKey("locomotive_models.id"), primary_key=True
+    )
     locomotive_number: Mapped[str] = mapped_column(String(50), primary_key=True)
     section_mask: Mapped[int] = mapped_column(Integer, nullable=False)
 
