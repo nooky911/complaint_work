@@ -1,5 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field
+from typing import Literal
 
 
 class UserBase(BaseModel):
@@ -22,7 +23,7 @@ class UserResponse(UserBase):
 
     id: int
     created_at: datetime
-    partner_access: list[str] = []
+    partner_ids: list[int] = Field(default_factory=list)
     login: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -33,3 +34,14 @@ class UserPasswordChange(BaseModel):
 
     old_password: str = Field(..., description="Текущий пароль пользователя")
     new_password: str = Field(..., min_length=8, description="Новый пароль")
+
+
+class AdminUserData(BaseModel):
+    """Данные пользователя для создания и редактирования в админ-панели"""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    login: str = Field(min_length=1, max_length=50, pattern=r"^[A-Za-z0-9_.@-]+$")
+    full_name: str = Field(min_length=1, max_length=255)
+    role: Literal["viewer", "editor", "superadmin"] = "viewer"
+    is_active: bool = True
+    partner_ids: list[int] = Field(default_factory=list, max_length=500)

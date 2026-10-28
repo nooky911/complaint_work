@@ -61,12 +61,10 @@ export function RepairCaseDetails({
     setShowError,
   } = useRepairCaseForm(repairCase, onUpdate, currentUser);
 
-  const partnerAccess = currentUser?.partner_access || [];
+  const partnerIds = currentUser?.partner_ids || [];
   const serverError = { show: false, message: "" };
 
-  const isPartnerAccess =
-    partnerAccess.includes(currentUser?.login) &&
-    partnerAccess.includes(repairCase.user?.login);
+  const isPartnerAccess = partnerIds.includes(repairCase.user_id);
 
   const canEdit =
     currentUser?.role === "superadmin" ||

@@ -1,6 +1,7 @@
 import asyncio
 from datetime import date, datetime, timezone
 from myapp.constants.case_lock import is_case_lock_active
+from myapp.services.user_access_service import UserAccessService
 import hashlib
 import hmac
 from io import BytesIO
@@ -78,14 +79,9 @@ class StockCaseLinkService:
         if user.role == "superadmin":
             return true()
         owner = RepairCaseEquipment.user_id == user.id
-        if user.login in settings.partner_access_list:
-            return or_(
-                owner,
-                RepairCaseEquipment.user_id.in_(
-                    select(User.id).where(User.login.in_(settings.partner_access_list))
-                ),
-            )
-        return owner
+        if user.role != "editor":
+            return literal(False)
+        return or_(owner, RepairCaseEquipment.user_id.in_(UserAccessService.partner_ids(user.id)))
 
     @staticmethod
     def _document_text(

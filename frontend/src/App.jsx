@@ -17,6 +17,7 @@ const EquipmentManagementPage = lazy(
 );
 const ProductPassportsPage = lazy(() => import("./pages/ProductPassportsPage"));
 const OmegaStockPage = lazy(() => import("./pages/OmegaStockPage"));
+const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
 
 export default function App() {
   const { isAuth, loading } = useAuth();
@@ -63,6 +64,7 @@ export default function App() {
                   element={<ProductPassportsPage />}
                 />
                 <Route path="/omega-stock" element={<OmegaStockPage />} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route
                   path="/login"
                   element={<Navigate to="/dashboard" replace />}

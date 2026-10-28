@@ -1,4 +1,4 @@
-from pydantic import model_validator
+from pydantic import model_validator, SecretStr, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -11,6 +11,8 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 600
+
+    ADMIN_DEFAULT_PASSWORD: SecretStr = Field(min_length=8)
 
     PARTNER_ACCESS_NAMES: str = ""
 

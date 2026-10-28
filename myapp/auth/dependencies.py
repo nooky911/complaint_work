@@ -9,10 +9,7 @@ from myapp.models import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.services.file_service import FileService
 from sqlalchemy.orm import selectinload
-from myapp.config import settings
-
-# Список ФИО пользователей с перекрестным доступом
-PARTNER_ACCESS = settings.partner_access_list
+from myapp.services.user_access_service import UserAccessService
 
 
 def raise_401(detail: str) -> NoReturn:
@@ -63,6 +60,8 @@ async def get_current_user(
     # Проверка на активность
     if not user.is_active:
         raise_401("Аккаунт деактивирован")
+    if payload.get("ver", 0) != user.auth_version:
+        raise_401("Сессия завершена. Войдите снова")
 
     return user  # type: ignore[valid-type]
 
@@ -88,7 +87,7 @@ async def require_can_edit_case(
     Разрешает редактирование только:
     - superadmin для любого случая
     - создателю случая (по полю user_id)
-    - сотрудникам из списка PARTNER_ACCESS (Барынкин Д.С., Шакиров Р.М.) друг для друга
+    - редакторам, которым назначен взаимный доступ с владельцем случая
     """
     stmt = (
         select(RepairCaseEquipment)
@@ -101,17 +100,7 @@ async def require_can_edit_case(
     if not case:
         return current_user, None
 
-    # 1. superadmin может всё
-    if current_user.role == "superadmin":
-        return current_user, case
-
-    # 2. проверка на владельца
-    is_owner = getattr(case, "user_id", None) == current_user.id
-    if is_owner:
-        return current_user, case
-
-    # 3. проверка на доступ двум сотрудникам
-    if current_user.login in PARTNER_ACCESS and case.user.login in PARTNER_ACCESS:
+    if await UserAccessService.can_edit_owner(session, current_user, case.user_id):
         return current_user, case
 
     raise HTTPException(

@@ -43,7 +43,7 @@ async def login_user(
             detail="Аккаунт деактивирован",
         )
 
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": str(user.id), "ver": user.auth_version})
 
     response.set_cookie(
         key="access_token",

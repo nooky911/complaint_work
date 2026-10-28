@@ -36,4 +36,4 @@ from .product_passports import (
     ProductPassportEventItem,
     ProductPassportFile,
 )
-from .user import User
+from .user import User, UserEditPartner

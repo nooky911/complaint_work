@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { User, ChevronDown, KeyRound, LogOut } from "lucide-react";
+import { User, ChevronDown, KeyRound, LogOut, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import ulLogo from "../../assets/logo/ul-logo.svg";
@@ -61,6 +61,18 @@ export default function Header({ onChangePassword }) {
 
           {isOpen && (
             <div className="animate-in fade-in zoom-in absolute top-full right-0 z-50 mt-2 w-48 rounded-md border border-gray-100 bg-white py-1 shadow-lg duration-100">
+              {user.role === "superadmin" && (
+                <button
+                  onClick={() => {
+                    navigate("/admin/users");
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <Shield size={14} />
+                  Админ-панель
+                </button>
+              )}
               <button
                 onClick={() => {
                   onChangePassword();

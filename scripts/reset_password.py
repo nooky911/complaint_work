@@ -27,6 +27,7 @@ async def reset_password(user_id: int, new_password: str = "12345678"):
                 return False
 
             user.hashed_password = get_password_hash(new_password)
+            user.auth_version += 1
 
             session.add(user)
             await session.commit()
