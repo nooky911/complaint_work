@@ -20,7 +20,7 @@ const OmegaStockPage = lazy(() => import("./pages/OmegaStockPage"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
 
 export default function App() {
-  const { isAuth, loading } = useAuth();
+  const { isAuth, loading, user } = useAuth();
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
 
   if (loading)
@@ -49,31 +49,41 @@ export default function App() {
             <Header onChangePassword={() => setIsPassModalOpen(true)} />
 
             <main className="flex h-[calc(100vh-50px)] flex-1 flex-col">
-              <Routes>
-                <Route
-                  path="/"
-                  element={<Navigate to="/dashboard" replace />}
-                />
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route
-                  path="/equipment-management"
-                  element={<EquipmentManagementPage />}
-                />
-                <Route
-                  path="/product-passports"
-                  element={<ProductPassportsPage />}
-                />
-                <Route path="/omega-stock" element={<OmegaStockPage />} />
-                <Route path="/admin/users" element={<AdminUsersPage />} />
-                <Route
-                  path="/login"
-                  element={<Navigate to="/dashboard" replace />}
-                />
-                <Route
-                  path="*"
-                  element={<Navigate to="/dashboard" replace />}
-                />
-              </Routes>
+              {user?.restricted_access ? (
+                <Routes>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route
+                    path="*"
+                    element={<Navigate to="/dashboard" replace />}
+                  />
+                </Routes>
+              ) : (
+                <Routes>
+                  <Route
+                    path="/"
+                    element={<Navigate to="/dashboard" replace />}
+                  />
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route
+                    path="/equipment-management"
+                    element={<EquipmentManagementPage />}
+                  />
+                  <Route
+                    path="/product-passports"
+                    element={<ProductPassportsPage />}
+                  />
+                  <Route path="/omega-stock" element={<OmegaStockPage />} />
+                  <Route path="/admin/users" element={<AdminUsersPage />} />
+                  <Route
+                    path="/login"
+                    element={<Navigate to="/dashboard" replace />}
+                  />
+                  <Route
+                    path="*"
+                    element={<Navigate to="/dashboard" replace />}
+                  />
+                </Routes>
+              )}
             </main>
 
             <ChangePasswordModal

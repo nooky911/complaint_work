@@ -51,42 +51,44 @@ export const CaseHeader = ({
         </div>
 
         {/* ФИО И ДАТА */}
-        <div className="flex flex-col items-start justify-center gap-1 border-l border-gray-100 pl-4">
-          {/* ФИО / ВЫБОР ЮЗЕРА */}
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
-            <UserCheck className="h-3.5 w-3.5 text-slate-400" />
+        {!currentUser?.restricted_access && (
+          <div className="flex flex-col items-start justify-center gap-1 border-l border-gray-100 pl-4">
+            {/* ФИО / ВЫБОР ЮЗЕРА */}
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+              <UserCheck className="h-3.5 w-3.5 text-slate-400" />
 
-            {isEditing && currentUser?.role === "superadmin" ? (
-              <div className="rounded border border-indigo-200 bg-indigo-50/50 px-1.5 py-0.5">
-                <select
-                  value={editData?.user_id || ""}
-                  onChange={(e) =>
-                    updateField(
-                      "user_id",
-                      e.target.value ? Number(e.target.value) : null,
-                    )
-                  }
-                  className="cursor-pointer bg-transparent outline-none focus:ring-0"
-                >
-                  {users?.map((u) => (
-                    <option key={u.id} value={u.id}>
-                      {formatFullName(u.full_name)}{" "}
-                      {u.id === currentUser?.id ? "(ВЫ)" : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <span>{formatFullName(repairCase.creator_full_name)}</span>
-            )}
-          </div>
+              {isEditing && currentUser?.role === "superadmin" ? (
+                <div className="rounded border border-indigo-200 bg-indigo-50/50 px-1.5 py-0.5">
+                  <select
+                    value={editData?.user_id || ""}
+                    onChange={(e) =>
+                      updateField(
+                        "user_id",
+                        e.target.value ? Number(e.target.value) : null,
+                      )
+                    }
+                    className="cursor-pointer bg-transparent outline-none focus:ring-0"
+                  >
+                    {users?.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {formatFullName(u.full_name)}{" "}
+                        {u.id === currentUser?.id ? "(ВЫ)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <span>{formatFullName(repairCase.creator_full_name)}</span>
+              )}
+            </div>
 
-          {/* ДАТА */}
-          <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
-            <Calendar className="h-3.5 w-3.5" />
-            <span>от {formatDate(repairCase.date_recorded)}</span>
+            {/* ДАТА */}
+            <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+              <Calendar className="h-3.5 w-3.5" />
+              <span>от {formatDate(repairCase.date_recorded)}</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <button
           onClick={onClose}

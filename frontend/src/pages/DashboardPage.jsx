@@ -66,6 +66,11 @@ function WindowLoading() {
 }
 
 export default React.memo(function DashboardPage() {
+  const { user: currentUser } = useAuth();
+  const restricted = !!currentUser?.restricted_access;
+  const filtersStorageKey = restricted
+    ? `restrictedFilters:${currentUser.id}`
+    : "appliedFilters";
   // --- ПАГИНАЦИЯ ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 25;
@@ -104,17 +109,15 @@ export default React.memo(function DashboardPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filterLoaded, setFilterLoaded] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState(() => {
-    const saved = localStorage.getItem("appliedFilters");
+    const saved = localStorage.getItem(filtersStorageKey);
     return saved ? JSON.parse(saved) : INITIAL_FILTERS;
   });
 
   // Сохраняем фильтры в localStorage при изменении
   useEffect(() => {
-    localStorage.setItem("appliedFilters", JSON.stringify(appliedFilters));
-  }, [appliedFilters]);
+    localStorage.setItem(filtersStorageKey, JSON.stringify(appliedFilters));
+  }, [appliedFilters, filtersStorageKey]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  const { user: currentUser } = useAuth();
 
   // Debounced фильтры для оптимизации
   const debouncedAppliedFilters = useDebouncedValue(appliedFilters, 300);
@@ -419,25 +422,29 @@ export default React.memo(function DashboardPage() {
 
         {/* ПРАВЫЙ БЛОК КНОПОК */}
         <div className="flex items-center gap-3">
-          <SectionsMenu isSuperadmin={currentUser?.role === "superadmin"} />
+          {!restricted && (
+            <SectionsMenu isSuperadmin={currentUser?.role === "superadmin"} />
+          )}
 
           {/* Кнопка экспорта в Excel */}
-          <button
-            onClick={handleExport}
-            disabled={isExporting}
-            className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
-              isExporting
-                ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
-                : "border-green-200 bg-green-50 text-green-700 hover:border-green-300 hover:bg-green-100"
-            }`}
-          >
-            {isExporting ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-700 border-t-transparent"></div>
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            {isExporting ? "Экспорт..." : "Экспорт в Excel"}
-          </button>
+          {!restricted && (
+            <button
+              onClick={handleExport}
+              disabled={isExporting}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-black tracking-wider uppercase shadow-sm transition-all active:scale-95 ${
+                isExporting
+                  ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400"
+                  : "border-green-200 bg-green-50 text-green-700 hover:border-green-300 hover:bg-green-100"
+              }`}
+            >
+              {isExporting ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-green-700 border-t-transparent"></div>
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isExporting ? "Экспорт..." : "Экспорт в Excel"}
+            </button>
+          )}
 
           {/* Кнопка создания */}
           {currentUser?.role !== "viewer" && (
@@ -464,6 +471,7 @@ export default React.memo(function DashboardPage() {
         ) : (
           <RepairCaseList
             cases={cases}
+            restricted={restricted}
             onCaseClick={handleCaseClick}
             pagination={
               <div className="flex w-fit items-center gap-1 p-1 select-none">
@@ -642,6 +650,7 @@ export default React.memo(function DashboardPage() {
         {/* САЙДБАР ФИЛЬТРОВ */}
         {filterLoaded && (
           <FilterSidebar
+            restricted={restricted}
             isOpen={isFilterOpen}
             onClose={() => setIsFilterOpen(false)}
             appliedFilters={appliedFilters}

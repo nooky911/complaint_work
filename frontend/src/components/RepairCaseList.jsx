@@ -14,7 +14,12 @@ import {
   Repeat,
 } from "lucide-react";
 
-import { formatDate, getText, formatFullName, formatSectionMask } from "../utils/formatters";
+import {
+  formatDate,
+  getText,
+  formatFullName,
+  formatSectionMask,
+} from "../utils/formatters";
 import { getStatusConfig } from "../utils/statusHelpers";
 import { REPAIR_FIELDS_LABELS } from "../constants/labels";
 
@@ -25,7 +30,16 @@ const NumberIcon = () => (
 );
 
 const SectionsIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    aria-hidden="true"
+  >
     <rect x="4.5" y="6" width="15" height="10" rx="1" />
     <path d="M1 14h3.5M19.5 14H23" />
     <circle cx="7.5" cy="18.5" r="2" />
@@ -112,7 +126,7 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
 };
 
 // Оптимизированный компонент карточки
-const CaseCard = React.memo(({ item, index, onCaseClick }) => {
+const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
   const status = React.useMemo(() => getStatusConfig(item), [item]);
   const StatusIcon = status.icon;
 
@@ -147,19 +161,23 @@ const CaseCard = React.memo(({ item, index, onCaseClick }) => {
             <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
               # {formattedData.displayNumber}
             </span>
-            <div
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
-            >
-              <StatusIcon className="h-4 w-4" />
-              {formattedData.status}
+            {!restricted && (
+              <div
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
+              >
+                <StatusIcon className="h-4 w-4" />
+                {formattedData.status}
+              </div>
+            )}
+          </div>
+          {!restricted && (
+            <div className="flex items-center gap-2 rounded-md border-l-[4px] border-l-indigo-400 bg-white px-3 py-1 shadow-lg ring-1 ring-black/5">
+              <User className="h-3.5 w-3.5 text-indigo-600" strokeWidth={3} />
+              <span className="text-[11px] font-black tracking-tight text-slate-900 uppercase">
+                {formattedData.creator}
+              </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2 rounded-md border-l-[4px] border-l-indigo-400 bg-white px-3 py-1 shadow-lg ring-1 ring-black/5">
-            <User className="h-3.5 w-3.5 text-indigo-600" strokeWidth={3} />
-            <span className="text-[11px] font-black tracking-tight text-slate-900 uppercase">
-              {formattedData.creator}
-            </span>
-          </div>
+          )}
         </div>
 
         <div className="flex flex-wrap items-center gap-6">
@@ -290,7 +308,12 @@ const CaseCard = React.memo(({ item, index, onCaseClick }) => {
   );
 });
 
-export function RepairCaseList({ cases, onCaseClick, pagination }) {
+export function RepairCaseList({
+  cases,
+  onCaseClick,
+  pagination,
+  restricted = false,
+}) {
   if (!cases || cases.length === 0) {
     return (
       <div className="flex h-full flex-col gap-4">
@@ -308,6 +331,7 @@ export function RepairCaseList({ cases, onCaseClick, pagination }) {
         <CaseCard
           key={item.id}
           item={item}
+          restricted={restricted}
           index={index}
           onCaseClick={onCaseClick}
         />

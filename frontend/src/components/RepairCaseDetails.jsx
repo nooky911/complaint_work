@@ -27,6 +27,7 @@ export function RepairCaseDetails({
   currentUser,
   caseIndex,
 }) {
+  const restricted = !!currentUser?.restricted_access;
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("details");
   const [showToast, setShowToast] = useState(false);
@@ -179,11 +180,13 @@ export function RepairCaseDetails({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
-      <CaseValidationToast
-        show={showToast}
-        onClose={() => setShowToast(false)}
-        validation={validation}
-      />
+      {isEditing && (
+        <CaseValidationToast
+          show={showToast}
+          onClose={() => setShowToast(false)}
+          validation={validation}
+        />
+      )}
 
       {serverError.show && (
         <ErrorToast
@@ -201,7 +204,7 @@ export function RepairCaseDetails({
         <CaseHeader
           repairCase={repairCase}
           displayId={displayId}
-          status={status}
+          status={restricted ? null : status}
           isEditing={isEditing}
           references={references}
           editData={editData}
@@ -222,11 +225,13 @@ export function RepairCaseDetails({
             onClick={() => setActiveTab("reclamation")}
             label="РЕКЛАМАЦИЯ"
           />
-          <TabButton
-            active={activeTab === "movement"}
-            onClick={() => setActiveTab("movement")}
-            label="ПЕРЕДВИЖЕНИЕ"
-          />
+          {!restricted && (
+            <TabButton
+              active={activeTab === "movement"}
+              onClick={() => setActiveTab("movement")}
+              label="ПЕРЕДВИЖЕНИЕ"
+            />
+          )}
         </div>
 
         <div
@@ -270,11 +275,13 @@ export function RepairCaseDetails({
               showError={showError}
               validation={validation}
             />
-            <CaseDocuments
-              caseId={repairCase.id}
-              isEditing={isEditing}
-              onFilesUploaded={onFilesUploadedDuringEdit}
-            />
+            {!restricted && (
+              <CaseDocuments
+                caseId={repairCase.id}
+                isEditing={isEditing}
+                onFilesUploaded={onFilesUploadedDuringEdit}
+              />
+            )}
           </div>
           {activeTab === "reclamation" && (
             <WarrantyWork
@@ -287,7 +294,7 @@ export function RepairCaseDetails({
               onFilesUploaded={onFilesUploadedDuringEdit}
             />
           )}
-          {activeTab === "movement" && (
+          {!restricted && activeTab === "movement" && (
             <TtnBlocks
               isEditing={isEditing}
               ttnData={currentData}

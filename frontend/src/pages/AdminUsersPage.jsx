@@ -23,6 +23,8 @@ const blank = {
   role: "viewer",
   is_active: true,
   partner_ids: [],
+  restricted_access: false,
+  allowed_rc_names: [],
 };
 /** Возвращает понятное сообщение об ошибке административного действия */
 const errorText = (e) => {
@@ -73,6 +75,8 @@ export default function AdminUsersPage() {
             role: u.role,
             is_active: u.is_active,
             partner_ids: [...u.partner_ids],
+            restricted_access: u.restricted_access || false,
+            allowed_rc_names: u.allowed_rc_names || [],
           }
         : { ...blank, partner_ids: [] },
     );
@@ -340,6 +344,12 @@ export default function AdminUsersPage() {
                     setForm({
                       ...form,
                       role: e.target.value,
+                      restricted_access:
+                        e.target.value === "viewer" && form.restricted_access,
+                      allowed_rc_names:
+                        e.target.value === "viewer"
+                          ? form.allowed_rc_names
+                          : [],
                       partner_ids:
                         e.target.value === "editor" ? form.partner_ids : [],
                     })
@@ -363,6 +373,44 @@ export default function AdminUsersPage() {
                 />
                 Активный пользователь
               </label>
+              <div className="space-y-3 rounded-lg border border-slate-200 p-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    disabled={form.role !== "viewer"}
+                    checked={form.restricted_access}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        restricted_access: e.target.checked,
+                        allowed_rc_names: e.target.checked
+                          ? form.allowed_rc_names.length
+                            ? form.allowed_rc_names
+                            : ["13", "14", "15", "21"]
+                          : [],
+                      })
+                    }
+                  />
+                  Ограниченный доступ (для роли «Просмотр»)
+                </label>
+                {form.restricted_access && (
+                  <label className="block text-sm">
+                    Разрешённые РЦ через запятую
+                    <input
+                      required
+                      className={input}
+                      value={form.allowed_rc_names.join(",")}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          allowed_rc_names: e.target.value.split(","),
+                        })
+                      }
+                      placeholder="13,14,15,21"
+                    />
+                  </label>
+                )}
+              </div>
               <fieldset
                 disabled={form.role !== "editor"}
                 className="rounded-lg border border-slate-200 p-3 disabled:opacity-60"

@@ -1,3 +1,5 @@
+import { useAuth } from "../../context/AuthContext";
+import { restrictedApi } from "../../features/restricted-view/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -5,10 +7,18 @@ import api from "../../api/api";
 import { buildFilterParams } from "../../utils/filterUtils";
 
 // Хук для получения списка номеров случаев
-export const useCaseDisplayNumbers = (search, enabled) =>
-  useQuery({
-    queryKey: ["cases", "display-numbers", search],
+export const useCaseDisplayNumbers = (search, enabled) => {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: [
+      "cases",
+      "display-numbers",
+      user?.id,
+      !!user?.restricted_access,
+      search,
+    ],
     queryFn: async ({ signal }) => {
+      if (user?.restricted_access) return restrictedApi.numbers(search, signal);
       const response = await api.get("/cases/display-numbers", {
         params: { search, limit: 50 },
         signal,
@@ -19,12 +29,15 @@ export const useCaseDisplayNumbers = (search, enabled) =>
     staleTime: 0,
     refetchOnWindowFocus: false,
   });
+};
 
 // Хук для получения базовых опций фильтров
 export const useFilterOptions = (enabled = true) => {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["filter-options", "static"],
+    queryKey: ["filter-options", "static", user?.id, !!user?.restricted_access],
     queryFn: async () => {
+      if (user?.restricted_access) return restrictedApi.filters();
       const res = await api.get("/references/filter-options");
       return res.data;
     },
@@ -35,6 +48,7 @@ export const useFilterOptions = (enabled = true) => {
 
 // Хук для динамических опций фильтров
 export const useDynamicFilterOptions = (filters) => {
+  const { user } = useAuth();
   const memoizedParams = useMemo(() => {
     const params = buildFilterParams(filters, 0, 50);
     params.delete("skip");
@@ -43,8 +57,14 @@ export const useDynamicFilterOptions = (filters) => {
   }, [filters]);
 
   return useQuery({
-    queryKey: ["dynamicFilterOptions", memoizedParams],
+    queryKey: [
+      "dynamicFilterOptions",
+      user?.id,
+      !!user?.restricted_access,
+      memoizedParams,
+    ],
     queryFn: async () => {
+      if (user?.restricted_access) return restrictedApi.filters(filters);
       const res = await api.get(
         `/references/dynamic-filter-options?${memoizedParams}`,
       );
@@ -59,9 +79,20 @@ export const useDynamicFilterOptions = (filters) => {
 
 // Хук для получения списка случаев
 export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["cases", filters, sortOrder, page, limit],
+    queryKey: [
+      "cases",
+      user?.id,
+      !!user?.restricted_access,
+      filters,
+      sortOrder,
+      page,
+      limit,
+    ],
     queryFn: async () => {
+      if (user?.restricted_access)
+        return restrictedApi.list(filters, sortOrder, page, limit);
       const skip = (page - 1) * limit;
       const params = buildFilterParams(filters, skip, limit);
       params.append("sort_order", sortOrder);
@@ -77,10 +108,14 @@ export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
 
 // Хук для получения деталей случая
 export const useCaseDetail = (caseId) => {
+  const { user } = useAuth();
   return useQuery({
-    queryKey: ["case", caseId],
+    queryKey: user?.restricted_access
+      ? ["restricted-case", user.id, caseId]
+      : ["case", caseId],
     queryFn: async () => {
       if (!caseId) return null;
+      if (user?.restricted_access) return restrictedApi.detail(caseId);
       const res = await api.get(`/cases/${caseId}`);
       return res.data;
     },

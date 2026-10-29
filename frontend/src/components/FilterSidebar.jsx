@@ -10,6 +10,7 @@ import {
 } from "./filters";
 
 export const FilterSidebar = ({
+  restricted = false,
   isOpen,
   onClose,
   appliedFilters,
@@ -126,6 +127,7 @@ export const FilterSidebar = ({
               </div>
             ) : (
               <FilterSectionsRenderer
+                restricted={restricted}
                 openSections={openSections}
                 toggleSection={toggleSection}
                 getSectionCount={(keys) => getSectionCount(keys, filters)}

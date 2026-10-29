@@ -24,6 +24,8 @@ class UserResponse(UserBase):
     id: int
     created_at: datetime
     partner_ids: list[int] = Field(default_factory=list)
+    restricted_access: bool = False
+    allowed_rc_names: list[str] = Field(default_factory=list, max_length=100)
     login: str
 
     model_config = ConfigDict(from_attributes=True)
@@ -45,3 +47,5 @@ class AdminUserData(BaseModel):
     role: Literal["viewer", "editor", "superadmin"] = "viewer"
     is_active: bool = True
     partner_ids: list[int] = Field(default_factory=list, max_length=500)
+    restricted_access: bool = False
+    allowed_rc_names: list[str] = Field(default_factory=list, max_length=100)

@@ -63,6 +63,17 @@ async def get_current_user(
     if payload.get("ver", 0) != user.auth_version:
         raise_401("Сессия завершена. Войдите снова")
 
+    if user.restricted_access:
+        allowed = {
+            ("GET", "/api/v1/users/me"),
+            ("POST", "/api/v1/users/me/password"),
+            ("POST", "/api/v1/auth/logout"),
+        }
+        path = request.url.path
+        if (request.method, path) not in allowed and not (
+            request.method == "GET" and path.startswith("/api/v1/restricted/cases")
+        ):
+            raise HTTPException(403, "Недостаточно прав")
     return user  # type: ignore[valid-type]
 
 

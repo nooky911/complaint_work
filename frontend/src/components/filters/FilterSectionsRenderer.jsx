@@ -12,6 +12,7 @@ import {
 import { filterSectionsConfig } from "./FilterSectionConfig";
 
 export const FilterSectionsRenderer = ({
+  restricted = false,
   openSections,
   toggleSection,
   getSectionCount,
@@ -31,32 +32,43 @@ export const FilterSectionsRenderer = ({
     StatusBlock,
   };
 
-  return filterSectionsConfig.map((sectionConfig) => {
-    const { key, title, icon, component: componentName, keys } = sectionConfig;
-    const Component = componentMap[componentName];
+  return filterSectionsConfig
+    .filter(
+      (section) =>
+        !restricted || !["ttn", "suppliers", "status"].includes(section.key),
+    )
+    .map((sectionConfig) => {
+      const {
+        key,
+        title,
+        icon,
+        component: componentName,
+        keys,
+      } = sectionConfig;
+      const Component = componentMap[componentName];
 
-    const componentProps = {
-      filters,
-      options,
-      updateFilter,
-    };
+      const componentProps = {
+        filters,
+        options,
+        updateFilter,
+      };
 
-    if (componentName === "StatusBlock") {
-      componentProps.userOptions = userOptions;
-    }
+      if (componentName === "StatusBlock") {
+        componentProps.userOptions = userOptions;
+      }
 
-    return (
-      <FilterSection
-        key={key}
-        title={title}
-        icon={icon}
-        isOpen={openSections[key]}
-        onToggle={() => toggleSection(key)}
-        activeCount={getSectionCount(keys)}
-        colorTheme={sectionThemes[key]}
-      >
-        <Component {...componentProps} />
-      </FilterSection>
-    );
-  });
+      return (
+        <FilterSection
+          key={key}
+          title={title}
+          icon={icon}
+          isOpen={openSections[key]}
+          onToggle={() => toggleSection(key)}
+          activeCount={getSectionCount(keys)}
+          colorTheme={sectionThemes[key]}
+        >
+          <Component {...componentProps} />
+        </FilterSection>
+      );
+    });
 };

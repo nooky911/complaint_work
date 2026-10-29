@@ -1,4 +1,5 @@
 import React from "react";
+import { useAuth } from "../../context/AuthContext";
 import { Archive, Bell, MessageSquare, FileText, Search } from "lucide-react";
 import { formatDate, getText } from "../../utils/formatters";
 import {
@@ -206,15 +207,19 @@ export const WarrantyWork = ({
   caseId,
   onFilesUploaded,
 }) => {
+  const { user } = useAuth();
   const data = isEditing
     ? currentData?.warranty_work
     : repairCase?.warranty_work;
 
   // Получаем все warranty-файлы для проверки количества
-  const { files: allWarrantyFiles } = useUnifiedFileManagement(caseId, {
-    category: "warranty",
-    useReactQuery: true,
-  });
+  const { files: allWarrantyFiles } = useUnifiedFileManagement(
+    user?.restricted_access ? null : caseId,
+    {
+      category: "warranty",
+      useReactQuery: true,
+    },
+  );
 
   const decisionFullText = isEditing
     ? references?.decision_summaries?.find(

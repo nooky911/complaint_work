@@ -9,12 +9,15 @@ from .warranty_routes import router as warranty_router
 from .equipment_routes import router as equipment_router
 from .product_passport_routes import router as product_passport_router
 from .omega_stock_routes import router as omega_stock_router
+from .restricted_view_routes import router as restricted_view_router
 
 endpoints_router = APIRouter()
-
+endpoints_router.include_router(restricted_view_router)  # /restricted/cases/**
 endpoints_router.include_router(auth_router)  # /auth/**
 endpoints_router.include_router(user_router)  # /users/**
-endpoints_router.include_router(case_router)  # /cases/** (включает warranty_router и export_router)
+endpoints_router.include_router(
+    case_router
+)  # /cases/** (включает warranty_router и export_router)
 endpoints_router.include_router(files_router)  # /files/**
 endpoints_router.include_router(references_router)  # /references/**
 endpoints_router.include_router(equipment_router)  # /equipment/**

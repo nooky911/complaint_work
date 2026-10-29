@@ -1,8 +1,8 @@
 from sqlalchemy import select, delete, or_
+
 from myapp.database.transactional import transactional
 from myapp.models.user import User, UserEditPartner
 from myapp.auth.security import get_password_hash
-
 from myapp.config import settings
 
 
@@ -29,6 +29,8 @@ class AdminUserService:
                 is_active=u.is_active,
                 created_at=u.created_at,
                 partner_ids=sorted(partners[u.id]),
+                restricted_access=u.restricted_access,
+                allowed_rc_names=u.allowed_rc_names,
             )
             for u in users
         ]
@@ -55,6 +57,22 @@ class AdminUserService:
     @staticmethod
     def validate_change(users, data, target_id):
         """Проверяет логин, напарников и наличие активного администратора"""
+        if data.restricted_access and (
+            data.role != "viewer" or not data.allowed_rc_names
+        ):
+            raise ValueError(
+                "Ограниченный доступ требует роли «Просмотр» и хотя бы одного РЦ"
+            )
+        if any(
+            not name.strip().isdigit() or not 1 <= int(name.strip()) <= 999
+            for name in data.allowed_rc_names
+        ):
+            raise ValueError("Проверьте наименования РЦ")
+        data.allowed_rc_names = (
+            sorted(set(str(int(name.strip())) for name in data.allowed_rc_names))
+            if data.restricted_access
+            else []
+        )
         if target_id in data.partner_ids:
             raise ValueError("Нельзя назначить пользователя напарником самому себе")
         if set(data.partner_ids) - {u.id for u in users}:
@@ -109,6 +127,8 @@ class AdminUserService:
                 settings.ADMIN_DEFAULT_PASSWORD.get_secret_value()
             ),
             auth_version=0,
+            restricted_access=data.restricted_access,
+            allowed_rc_names=data.allowed_rc_names,
         )
         session.add(user)
         await session.flush()
@@ -128,12 +148,21 @@ class AdminUserService:
             raise LookupError("Пользователь не найден")
         cls.validate_change(users, data, user_id)
         if (
-            user.role != data.role
+            user.restricted_access != data.restricted_access
+            or user.allowed_rc_names != data.allowed_rc_names
+            or user.role != data.role
             or user.is_active != data.is_active
             or user.login != data.login
         ):
             user.auth_version += 1
-        for field in ("login", "full_name", "role", "is_active"):
+        for field in (
+            "login",
+            "full_name",
+            "role",
+            "is_active",
+            "restricted_access",
+            "allowed_rc_names",
+        ):
             setattr(user, field, getattr(data, field))
         await cls._set_partners(session, user_id, data.partner_ids)
         await session.flush()

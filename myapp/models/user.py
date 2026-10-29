@@ -1,4 +1,5 @@
 from sqlalchemy import (
+    JSON,
     String,
     Text,
     TIMESTAMP,
@@ -22,6 +23,12 @@ class User(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     auth_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"), default=0
+    )
+    restricted_access: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    allowed_rc_names: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list, server_default=text("'[]'")
     )
     login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(Text, nullable=False)

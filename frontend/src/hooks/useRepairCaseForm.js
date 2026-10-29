@@ -128,7 +128,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
   ]);
 
   useEffect(() => {
-    if (!isEditing && repairCase) {
+    if (!currentUser?.restricted_access && !isEditing && repairCase) {
       const targetId =
         repairCase.element_equipment?.id || repairCase.component_equipment?.id;
 
@@ -142,7 +142,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
           .catch((err) => console.error("Ошибка загрузки цепочки:", err));
       }
     }
-  }, [repairCase, isEditing, equipmentChain]);
+  }, [repairCase, isEditing, equipmentChain, currentUser?.restricted_access]);
 
   const handleEditClick = async () => {
     let acquired = false;
