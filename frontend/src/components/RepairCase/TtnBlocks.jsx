@@ -1,4 +1,3 @@
-import React from "react";
 import { Truck, ArrowRight, ArrowLeft, RefreshCw } from "lucide-react";
 import { BLOCK_TITLES, REPAIR_FIELDS_LABELS } from "../../constants/labels";
 import { ColorBlock } from "../shared/ColorBlock";

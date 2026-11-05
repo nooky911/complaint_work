@@ -21,6 +21,7 @@ export function StockColumnFilter({
   onChange,
   children,
   caseSelection = false,
+  direction = "loco",
 }) {
   const buttonRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -43,6 +44,7 @@ export function StockColumnFilter({
     otherFilters,
     open,
     caseSelection,
+    direction,
   );
   const options = useMemo(
     () =>

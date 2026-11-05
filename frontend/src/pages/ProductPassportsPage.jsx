@@ -1,5 +1,6 @@
+import { SectionPageHeader } from "../components/shared/SectionPageHeader";
 import { useState } from "react";
-import { ArrowLeft, BookOpenText, SearchX } from "lucide-react";
+import { BookOpenText, SearchX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import { PassportSearch } from "../components/productPassports/PassportSearch";
@@ -7,9 +8,9 @@ import { PassportTree } from "../components/productPassports/PassportTree";
 import {
   useProductPassport,
   useProductPassportModels,
-} from "../hooks/api/useProductPassportsApi";
+} from "../hooks/api/index.jsx";
 
-export default function ProductPassportsPage() {
+export default function ProductPassportsPage({ direction = "loco" }) {
   const navigate = useNavigate();
   const [selectedModelId, setSelectedModelId] = useState(null);
   const [selectedPassportId, setSelectedPassportId] = useState(null);
@@ -17,7 +18,7 @@ export default function ProductPassportsPage() {
     data: models = [],
     isLoading: modelsLoading,
     isError: modelsError,
-  } = useProductPassportModels();
+  } = useProductPassportModels(direction);
   const {
     data: passport,
     isLoading: passportLoading,
@@ -26,18 +27,10 @@ export default function ProductPassportsPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-4 border-b border-gray-200 bg-white px-6 py-4">
-        <button
-          onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Назад</span>
-        </button>
-        <h1 className="text-xl font-semibold text-gray-900">
-          Паспорта изделий
-        </h1>
-      </div>
+      <SectionPageHeader
+        title="Паспорта изделий"
+        onBack={() => navigate(direction === "train" ? "/train" : "/dashboard")}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-50 p-6">
         <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5">
@@ -51,7 +44,9 @@ export default function ProductPassportsPage() {
                   Поиск паспорта
                 </h2>
                 <p className="text-xs text-slate-500">
-                  Выберите модель и найдите локомотив по номеру
+                  Выберите модель и найдите{" "}
+                  {direction === "train" ? "электропоезд" : "локомотив"} по
+                  номеру
                 </p>
               </div>
             </div>
@@ -63,10 +58,11 @@ export default function ProductPassportsPage() {
               </div>
             ) : modelsError ? (
               <div className="rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
-                Не удалось загрузить модели локомотивов
+                Не удалось загрузить модели
               </div>
             ) : (
               <PassportSearch
+                direction={direction}
                 models={models}
                 selectedModelId={selectedModelId}
                 onModelChange={setSelectedModelId}
@@ -97,7 +93,8 @@ export default function ProductPassportsPage() {
                 Выберите паспорт для просмотра
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                Данные появятся после выбора точного номера локомотива
+                Данные появятся после выбора точного номера{" "}
+                {direction === "train" ? "электропоезда" : "локомотива"}
               </p>
             </div>
           )}

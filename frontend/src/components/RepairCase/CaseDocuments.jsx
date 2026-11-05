@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   FileText,
@@ -30,6 +30,8 @@ export const CaseDocuments = ({
   const fileApi = useUnifiedFileManagement(caseId, {
     category: "primary",
     useReactQuery: true,
+    pendingFiles,
+    onFilesUploaded,
   });
   const [showFileToast, setShowFileToast] = useState(false);
   const fileInputRef = useRef(null);
@@ -100,11 +102,8 @@ export const CaseDocuments = ({
     }
 
     try {
-      const uploaded = await fileApi.uploadFiles(fileList);
-      if (uploaded && onFilesUploaded) {
-        onFilesUploaded(uploaded);
-      }
-    } catch (error) {
+      await fileApi.uploadFilesAsync(fileList);
+    } catch {
       console.warn("Файлы не прошли валидацию");
     }
   };

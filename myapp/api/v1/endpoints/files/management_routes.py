@@ -5,7 +5,7 @@ from fastapi import (
     status,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated
+from typing import Annotated, Literal
 
 from myapp.models.case_files import FileCategory
 from myapp.models.user import User
@@ -91,13 +91,14 @@ async def search_files(
     category: FileCategory,
     related_field: str | None = None,
     query: str | None = None,
+    direction: Literal["loco", "train"] = "loco",
     session: AsyncSession = Depends(get_db),
     _user: User = Depends(require_viewer_or_higher),
 ):
     """Поиск файлов для сервиса по прикреплению к случаям"""
     try:
         return await FileService.search_unique_files(
-            session, category, related_field, query
+            session, category, related_field, query, direction=direction
         )
     except Exception as e:
         handle_file_not_found(e)

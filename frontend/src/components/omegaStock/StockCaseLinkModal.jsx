@@ -38,8 +38,18 @@ const PROVIDERS = {
 };
 
 /** Выбирает случаи и переносит документ в существующий блок передвижения */
-export function StockCaseLinkModal({ kind, document, onClose }) {
+export function StockCaseLinkModal({
+  kind,
+  document,
+  onClose,
+  direction = "loco",
+}) {
   const { user } = useAuth();
+  const columns = COLUMNS.map((column) =>
+    column.key === "locomotive" && direction === "train"
+      ? { ...column, title: "Электропоезд" }
+      : column,
+  );
   const queryClient = useQueryClient();
   const dialogRef = useRef(null);
   const confirmationRef = useRef(null);
@@ -77,6 +87,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
       "omega-stock",
       "link-cases",
       user?.id,
+      direction,
       filters,
       page,
       selectedIds,
@@ -87,13 +98,17 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
         (page - 1) * PAGE_SIZE,
         PAGE_SIZE,
         selectedIds,
+        direction,
       ),
     placeholderData: keepPreviousData,
     staleTime: 0,
   });
   const { data: references, isError: referencesError } = useQuery({
     queryKey: ["references", "stock-link-form"],
-    queryFn: async () => (await api.get("/references/case-form")).data,
+    queryFn: async () => ({
+      shipping_providers: (await api.get("/references/shipping-providers"))
+        .data,
+    }),
   });
   const mutation = useMutation({
     mutationFn: ({ payload, checking }) =>
@@ -143,6 +158,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
     });
   };
   const payload = () => ({
+    direction,
     case_ids: [...selected],
     related_field: field,
     number: values[field] || "",
@@ -196,10 +212,11 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
         checking: false,
       });
       setResult(response);
-      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.invalidateQueries({
+        queryKey: [direction === "train" ? "train-cases" : "cases"],
+      });
       queryClient.invalidateQueries({ queryKey: ["case"] });
       queryClient.invalidateQueries({ queryKey: ["files"] });
-      queryClient.invalidateQueries({ queryKey: ["filesGrouped"] });
       queryClient.invalidateQueries({
         queryKey: ["omega-stock", "link-cases"],
       });
@@ -314,9 +331,10 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                   <table className="w-full min-w-[1000px] text-center text-sm text-black">
                     <thead className="sticky top-0 z-10 bg-slate-200">
                       <tr>
-                        {COLUMNS.map((column) => (
+                        {columns.map((column) => (
                           <th key={column.key} className="py-3 font-bold">
                             <StockColumnFilter
+                              direction={direction}
                               kind={kind}
                               column={column}
                               filters={filters}
@@ -336,7 +354,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                       {isPending ? (
                         <tr>
                           <td
-                            colSpan={COLUMNS.length + 1}
+                            colSpan={columns.length + 1}
                             className="p-8 text-slate-600"
                           >
                             Загрузка случаев...
@@ -345,7 +363,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                       ) : isError ? (
                         <tr>
                           <td
-                            colSpan={COLUMNS.length + 1}
+                            colSpan={columns.length + 1}
                             className="p-8 text-red-700"
                           >
                             Не удалось загрузить случаи{" "}
@@ -361,7 +379,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                       ) : !data?.items.length ? (
                         <tr>
                           <td
-                            colSpan={COLUMNS.length + 1}
+                            colSpan={columns.length + 1}
                             className="p-8 text-slate-600"
                           >
                             Случаи не найдены
@@ -377,7 +395,7 @@ export function StockCaseLinkModal({ kind, document, onClose }) {
                                 : "even:bg-slate-50"
                             }
                           >
-                            {COLUMNS.map((column) => (
+                            {columns.map((column) => (
                               <td
                                 key={column.key}
                                 className="max-w-64 px-3 py-3 align-middle break-words"

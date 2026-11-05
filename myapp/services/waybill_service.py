@@ -27,20 +27,13 @@ class WaybillService:
         return result.unique().scalar_one_or_none()
 
     @staticmethod
-    async def get_waybill_doc_by_case(
-        session: AsyncSession,
-        case_id: int,
-    ) -> WaybillDoc | None:
-        """Получение данных по ТТН"""
-        return await WaybillService._get_waybill_doc_with_relations(case_id, session)
-
-    @staticmethod
     @transactional
     async def update_waybill_doc(
         session: AsyncSession, case_id: int, waybill_data: WaybillDocUpdate
     ) -> WaybillDoc | None:
         """Редактирование данных ТТН"""
 
+        waybill_data.validate_dates()
         waybill_doc = await WaybillService._get_waybill_doc_with_relations(
             case_id, session
         )

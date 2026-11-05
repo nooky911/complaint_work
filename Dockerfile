@@ -10,6 +10,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY myapp/ ./myapp/
+COPY scripts/ ./scripts/
+COPY template_excel/ ./template_excel/
 
 CMD ["uvicorn", "myapp.main:app", "--host", "0.0.0.0", "--port", "8000"]

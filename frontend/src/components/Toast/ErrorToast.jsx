@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from "lucide-react";
 
 const toastConfig = {
@@ -49,6 +49,8 @@ export const ErrorToast = ({
 
   const config = toastConfig[type] || toastConfig.error;
   const Icon = config.icon;
+
+  if (!show) return null;
 
   return (
     <div

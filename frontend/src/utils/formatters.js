@@ -1,3 +1,4 @@
+import { REPAIR_FIELDS_LABELS } from "../constants/labels";
 import { SECTIONS_CONFIG } from "../constants/sections_mask";
 
 export const DATE_MASK = "__.__.____";
@@ -404,3 +405,25 @@ export const formatEquipmentName = (name, quantity) => {
   }
   return cleanName;
 };
+
+/** Показывает номера вагонов без повторения подписи поля */
+export const formatWagonNumbers = (names = []) =>
+  (names || [])
+    .map((name) =>
+      String(name)
+        .replace(/^вагон\s*№?\s*/iu, "")
+        .trim(),
+    )
+    .join(", ") || "—";
+
+/** Показывает б/н для пустого заводского номера */
+export const formatSerialNumber = (value) =>
+  String(value ?? "").trim() || "б/н";
+
+/** Выбирает подпись номера по уровню заменяемого оборудования */
+export const replacementSerialLabel = (repairTypeId, element = false) =>
+  element || Number(repairTypeId) === 3
+    ? REPAIR_FIELDS_LABELS.element_serial_number
+    : Number(repairTypeId) === 1
+      ? REPAIR_FIELDS_LABELS.equipment_serial_number
+      : REPAIR_FIELDS_LABELS.component_serial_number;

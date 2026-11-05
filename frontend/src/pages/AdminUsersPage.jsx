@@ -21,8 +21,10 @@ const blank = {
   login: "",
   full_name: "",
   role: "viewer",
+  direction: "loco",
   is_active: true,
   partner_ids: [],
+  can_manage_equipment: false,
   restricted_access: false,
   allowed_rc_names: [],
 };
@@ -73,7 +75,9 @@ export default function AdminUsersPage() {
             login: u.login,
             full_name: u.full_name || "",
             role: u.role,
+            direction: u.direction || "loco",
             is_active: u.is_active,
+            can_manage_equipment: !!u.can_manage_equipment,
             partner_ids: [...u.partner_ids],
             restricted_access: u.restricted_access || false,
             allowed_rc_names: u.allowed_rc_names || [],
@@ -106,7 +110,7 @@ export default function AdminUsersPage() {
         : await api.post("/users/admin", payload);
       setNotice(
         editing.id
-          ? "Пользователь сохранён. Взаимный доступ обновлён у обоих участников."
+          ? "Пользователь сохранён."
           : `Пользователь создан. Пароль: ${response.data.password}. Пользователь сможет сменить его через меню профиля.`,
       );
       setEditing(null);
@@ -187,7 +191,7 @@ export default function AdminUsersPage() {
           aria-label="Активность пользователей"
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          className={`${input} max-w-52`}
+          className={`${input} !w-44 shrink-0`}
         >
           <option value="all">Все пользователи</option>
           <option value="active">Активные</option>
@@ -212,6 +216,7 @@ export default function AdminUsersPage() {
                   "ФИО",
                   "Логин",
                   "Роль",
+                  "Раздел",
                   "Активность",
                   "Взаимный доступ",
                   "",
@@ -233,6 +238,13 @@ export default function AdminUsersPage() {
                   </td>
                   <td className="px-4 py-3">{u.login}</td>
                   <td className="px-4 py-3">{roles[u.role] || u.role}</td>
+                  <td className="px-4 py-3">
+                    {u.role === "viewer"
+                      ? "—"
+                      : u.direction === "train"
+                        ? "Электропоезда"
+                        : "Локомотивы"}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={
@@ -267,7 +279,7 @@ export default function AdminUsersPage() {
               ))}
               {!filtered.length && (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-slate-500">
+                  <td colSpan={7} className="p-6 text-center text-slate-500">
                     Пользователи не найдены
                   </td>
                 </tr>
@@ -336,6 +348,21 @@ export default function AdminUsersPage() {
                   className={input}
                 />
               </label>
+              {form.role !== "viewer" && (
+                <label className="block text-sm font-bold text-black">
+                  Раздел
+                  <select
+                    className="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-2 text-black"
+                    value={form.direction}
+                    onChange={(e) =>
+                      setForm({ ...form, direction: e.target.value })
+                    }
+                  >
+                    <option value="loco">Локомотивы</option>
+                    <option value="train">Электропоезда</option>
+                  </select>
+                </label>
+              )}
               <label className="block space-y-1 text-sm font-semibold">
                 Роль
                 <select
@@ -393,6 +420,21 @@ export default function AdminUsersPage() {
                   />
                   Ограниченный доступ (для роли «Просмотр»)
                 </label>
+                {form.role === "editor" && (
+                  <label className="flex items-center gap-2 text-sm text-black">
+                    <input
+                      type="checkbox"
+                      checked={!!form.can_manage_equipment}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          can_manage_equipment: e.target.checked,
+                        })
+                      }
+                    />
+                    Разрешить управление оборудованием своего раздела
+                  </label>
+                )}
                 {form.restricted_access && (
                   <label className="block text-sm">
                     Разрешённые РЦ через запятую

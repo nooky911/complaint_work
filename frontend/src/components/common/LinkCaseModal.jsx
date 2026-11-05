@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Search, X, Copy, FileText, Train } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +15,8 @@ export const LinkCaseModal = ({
   currentCaseId,
   currentFiles = [],
 }) => {
+  const location = useLocation();
+  const direction = location.pathname.startsWith("/train") ? "train" : "loco";
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebouncedValue(searchTerm, 400);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,9 +28,17 @@ export const LinkCaseModal = ({
   });
 
   const { data: cases = [], isLoading } = useQuery({
-    queryKey: ["cases_list_for_link"],
+    queryKey: ["cases_list_for_link", direction, debouncedSearch],
     queryFn: async () => {
-      const response = await api.get("/cases");
+      const response = await api.get(
+        direction === "train" ? "/train/cases" : "/cases",
+        {
+          params:
+            direction === "train"
+              ? { search: debouncedSearch, page: 1, limit: 100 }
+              : undefined,
+        },
+      );
       return Array.isArray(response.data)
         ? response.data
         : response.data.items || [];
@@ -47,7 +58,7 @@ export const LinkCaseModal = ({
     // Поиск именно по визуальному номеру, а не по ID БД
     return (
       String(c.display_number || c.id).includes(term) ||
-      String(c.locomotive_number || "")
+      String(c.train?.train_number || c.locomotive_number || "")
         .toLowerCase()
         .includes(term)
     );
@@ -145,9 +156,19 @@ export const LinkCaseModal = ({
               <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Поиск по номеру случая или локомотива..."
+                placeholder={
+                  direction === "train"
+                    ? "Поиск по номеру случая..."
+                    : "Поиск по номеру случая или локомотива..."
+                }
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) =>
+                  setSearchTerm(
+                    direction === "train"
+                      ? e.target.value.replace(/\D/g, "")
+                      : e.target.value,
+                  )
+                }
                 className="w-full rounded-lg border border-gray-300 bg-white py-2 pr-4 pl-9 text-sm font-bold text-slate-900 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none"
               />
             </div>
@@ -176,8 +197,11 @@ export const LinkCaseModal = ({
                         Случай #{c.display_number || c.id}
                       </span>
                       <span className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-                        <Train className="h-3 w-3" /> Локомотив:{" "}
-                        {c.locomotive_number || "Не указан"}
+                        <Train className="h-3 w-3" />{" "}
+                        {direction === "train" ? "Электропоезд:" : "Локомотив:"}{" "}
+                        {c.train?.train_number ||
+                          c.locomotive_number ||
+                          "Не указан"}
                       </span>
                     </div>
                     <button

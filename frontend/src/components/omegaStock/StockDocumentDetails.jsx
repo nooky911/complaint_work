@@ -1,16 +1,24 @@
 import { useEffect, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Link } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
 import { STOCK_ITEM_COLUMNS } from "../../constants/omegaStockConfig";
 import { useOmegaStockItems } from "../../hooks/api/useOmegaStockApi";
-import { formatOmegaStockValue } from "../../utils/omegaStockFormatters";
+import {
+  formatOmegaStockValue,
+  getStockDirection,
+  canLinkStockCases,
+} from "../../utils/omegaStockFormatters";
 import { StockCaseLinkModal } from "./StockCaseLinkModal";
 import { StockDocumentFiles } from "./StockDocumentFiles";
 
 export function StockDocumentDetails({ kind, document }) {
   const documentId = document.document_id;
   const { user } = useAuth();
+  const location = useLocation();
+  const direction = getStockDirection(location, user);
+  const canLink = canLinkStockCases(user, direction);
   const [linkOpen, setLinkOpen] = useState(false);
   const topScrollRef = useRef(null);
   const tableScrollRef = useRef(null);
@@ -50,7 +58,7 @@ export function StockDocumentDetails({ kind, document }) {
           <h3 className="text-sm font-black text-slate-900">
             Состав документа
           </h3>
-          {["editor", "superadmin"].includes(user?.role) && (
+          {canLink && (
             <button
               type="button"
               onClick={() => setLinkOpen(true)}
@@ -136,9 +144,11 @@ export function StockDocumentDetails({ kind, document }) {
           <StockDocumentFiles kind={kind} documentId={documentId} />
         </div>
       </section>
-      {linkOpen && (
+      {linkOpen && canLink && (
         <StockCaseLinkModal
+          key={direction}
           kind={kind}
+          direction={direction}
           document={document}
           onClose={() => setLinkOpen(false)}
         />

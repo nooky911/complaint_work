@@ -1,0 +1,283 @@
+from fastapi import APIRouter, Depends, Path, status, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
+from typing import Annotated
+
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.models.user import User
+from myapp.schemas.cases import (
+    PaginatedCaseListResponse,
+    CaseDetail,
+    CaseCreate,
+    CaseUpdate,
+    SupplierPreviewRequest,
+)
+from myapp.loco.schemas.filters import CaseFilterParams
+from myapp.loco.services.equipment_service import EquipmentService
+from myapp.services import CaseValidationError
+from myapp.services.case_service import CaseService
+from myapp.loco.services.case_filter_service import CaseFilterService
+from myapp.database.base import get_db
+from myapp.api.v1.endpoints.warranty_routes import router as warranty_router
+from myapp.loco.api.export_routes import router as export_router
+from myapp.auth.dependencies import (
+    require_editor_or_superadmin,
+    require_viewer_or_higher,
+    require_can_edit_case,
+    require_loco_case,
+)
+
+router = APIRouter(
+    prefix="/cases",
+    tags=["Случаи неисправности"],
+    dependencies=[Depends(require_loco_case)],
+)
+
+router.include_router(warranty_router, prefix="/{case_id}/warranty")
+router.include_router(export_router)
+
+
+# Полный список и фильтрация
+@router.get(
+    "/",
+    response_model=PaginatedCaseListResponse,
+    summary="Получить список случаев ремонта с (возможной) фильтрацией",
+    status_code=status.HTTP_200_OK,
+)
+async def list_and_filter_cases(
+    params: Annotated[CaseFilterParams, Query()],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Получить список случаев неисправности, используя параметры фильтрации"""
+    return await CaseFilterService.filter_cases(session, params)
+
+
+# Создание
+@router.post(
+    "/",
+    response_model=CaseDetail,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создание случая",
+)
+async def create_case(
+    case_data: CaseCreate,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_editor_or_superadmin)],
+):
+    """Создает новый случай неисправности от имени текущего пользователя"""
+    target_user_id = current_user.id
+
+    if current_user.role == "superadmin" and case_data.user_id is not None:
+        target_user_id = case_data.user_id
+
+    try:
+        return await CaseService.create_case(
+            session, case_data, target_user_id, current_user.id
+        )
+    except IntegrityError as exc:
+        code = getattr(exc.orig, "sqlstate", None)
+        raise HTTPException(
+            409 if code == "23505" else 422,
+            (
+                "Такой случай уже существует"
+                if code == "23505"
+                else "Проверьте связанные записи и обязательные поля"
+            ),
+        ) from exc
+    except CaseValidationError as exc:
+        raise HTTPException(
+            status_code=409 if exc.field in ("revision", "duplicate") else 422,
+            detail=str(exc),
+        ) from exc
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Такой случай уже существует.",
+        )
+
+
+# Фильтр по номеру случая
+@router.get(
+    "/display-numbers",
+    response_model=list[int],
+    summary="Поиск отображаемого номера случая",
+)
+async def get_display_numbers(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    search: Annotated[str, Query(pattern=r"^[0-9]*$", max_length=10)] = "",
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+):
+    return await CaseFilterService.get_display_numbers(session, search, limit)
+
+
+# Детали случаи
+@router.get(
+    "/{case_id}",
+    response_model=CaseDetail,
+    summary="Получить детальную информацию о случае",
+)
+async def get_case_detail(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Получает полную информацию о случае по его ID, включая все связанные данные"""
+    case = await CaseService.get_case(session, case_id)
+
+    if not case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Случай с ID {case_id} не найден.",
+        )
+
+    return case
+
+
+# Редактирование
+@router.patch("/{case_id}", response_model=CaseDetail, summary="Редактирование случая")
+async def update_case(
+    case_data: CaseUpdate,
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment | None], Depends(require_can_edit_case)
+    ],
+):
+    """Обновляет основные поля случая и связанные данные WarrantyWork"""
+    current_user, case = user_and_case
+
+    if case is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Случай с ID {case_id} не найден.",
+        )
+
+    # Проверка прав на смену владельца случая
+    if case_data.user_id is not None and case_data.user_id != case.user_id:
+        if current_user.role != "superadmin":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Только superadmin может менять владельца случая",
+            )
+
+    try:
+        updated_case = await CaseService.update_case(
+            session, case_id, case_data, current_user.id
+        )
+    except IntegrityError as exc:
+        code = getattr(exc.orig, "sqlstate", None)
+        raise HTTPException(
+            409 if code == "23505" else 422,
+            (
+                "Такой случай уже существует"
+                if code == "23505"
+                else "Проверьте связанные записи и обязательные поля"
+            ),
+        ) from exc
+    except CaseValidationError as exc:
+        raise HTTPException(
+            status_code=409 if exc.field in ("revision", "duplicate") else 422,
+            detail=str(exc),
+        ) from exc
+
+    if not updated_case:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Случай с ID {case_id} для обновления не найден.",
+        )
+
+    return updated_case
+
+
+# Блокировка случая
+@router.post(
+    "/{case_id}/lock", response_model=CaseDetail, summary="Заблокировать случай"
+)
+async def lock_case(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+    ],
+):
+    """Пытается установить блокировку на случай для редактирования"""
+    current_user, case = user_and_case
+    try:
+        return await CaseService.lock_case(session, case_id, current_user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(e))
+
+
+@router.post("/{case_id}/lock/heartbeat", summary="Продлить блокировку редактирования")
+async def heartbeat_case(
+    case_id: Annotated[int, Path(ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+    ],
+):
+    """Продлевает блокировку случая"""
+    user, _ = user_and_case
+    try:
+        return await CaseService.heartbeat_case(session, case_id, user.id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_423_LOCKED, detail=str(e))
+
+
+@router.post("/{case_id}/unlock", summary="Снять блокировку")
+async def unlock_case(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    current_user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Снимает блокировку со случая"""
+    success = await CaseService.unlock_case(session, case_id, current_user.id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Не удалось снять блокировку (возможно, случай заблокирован другим пользователем)",
+        )
+    return {"status": "ok"}
+
+
+# Удаление случая
+@router.delete(
+    "/{case_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить случай по ID"
+)
+async def delete_case(
+    case_id: Annotated[int, Path(description="ID случая неисправности", ge=1)],
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user_and_case: Annotated[
+        tuple[User, RepairCaseEquipment], Depends(require_can_edit_case)
+    ],
+):
+    """Удаляет случай по его ID. Также удаляет связанные записи WarrantyWork"""
+    current_user, case = user_and_case
+
+    if case is None:
+        return None
+
+    await CaseService.delete_case(session, case_id, current_user.id, direction="loco")
+    return None
+
+
+@router.post(
+    "/resolve-supplier-preview",
+    summary="Динамический расчет поставщика для формы",
+    status_code=status.HTTP_200_OK,
+)
+async def resolve_supplier_preview(
+    data: SupplierPreviewRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Возвращает ID поставщика на основе оборудования и данных локомотива"""
+    supplier_id = await EquipmentService.resolve_supplier(
+        session,
+        equipment_id=data.equipment_id,
+        locomotive_number=data.locomotive_number,
+        locomotive_model_id=data.locomotive_model_id,
+    )
+    return {"supplier_id": supplier_id}

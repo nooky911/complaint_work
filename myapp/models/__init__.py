@@ -6,7 +6,8 @@ from .warranty_work import (
     ResearchStatus,
     InvestigationReason,
 )
-from .equipment_malfunctions import Equipment, EquipmentMalfunction, Malfunction
+from myapp.loco.models.equipment import Equipment, EquipmentMalfunction
+from myapp.models.malfunctions import Malfunction
 from .repair_case_equipment import RepairCaseEquipment
 from .case_files import (
     CaseFile,
@@ -37,3 +38,6 @@ from .product_passports import (
     ProductPassportFile,
 )
 from .user import User, UserEditPartner
+from myapp.train.models.train_models import TrainModel
+from myapp.train.models.equipment import TrainEquipment, TrainEquipmentMalfunction
+from myapp.train.models.case_details import TrainCaseDetails

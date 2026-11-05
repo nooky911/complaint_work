@@ -1,17 +1,21 @@
 import api from "./api";
 
-export const getProductPassportModels = async () => {
-  const response = await api.get("/product-passports/models");
+export const getProductPassportModels = async (direction = "loco") => {
+  const response = await api.get("/product-passports/models", {
+    params: { direction },
+  });
   return response.data;
 };
 
 export const searchProductPassports = async (
-  locomotiveModelId,
+  modelId,
   productNumber,
+  direction = "loco",
 ) => {
   const response = await api.get("/product-passports/search", {
     params: {
-      locomotive_model_id: locomotiveModelId,
+      model_id: modelId,
+      direction,
       product_number: productNumber,
     },
   });

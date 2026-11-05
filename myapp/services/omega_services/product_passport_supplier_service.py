@@ -1,6 +1,6 @@
 import re
 
-from myapp.constants.product_passport_supplier_constants import (
+from myapp.constants.omega.product_passport_supplier_constants import (
     MANUFACTURER_IF_NO_SUPPLIER,
     MANUFACTURER_OVERRIDES,
     SUPPLIER_NAMES,

@@ -1,23 +1,33 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
+import { getHomeSection, rememberViewerSection } from "./utils/userSections";
 import { useAuth } from "./context/AuthContext";
 import Header from "./components/Layout/Header";
 import ChangePasswordModal from "./components/Modals/ChangePasswordModal";
 
+const TrainDashboard = lazy(() => import("./train/pages/TrainDashboard"));
 const LoginPage = lazy(() => import("./pages/LoginPage"));
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const LocoDashboard = lazy(() => import("./loco/pages/LocoDashboard"));
 const EquipmentManagementPage = lazy(
-  () => import("./pages/EquipmentManagementPage"),
+  () => import("./pages/EquipmentManagementPage.jsx"),
 );
 const ProductPassportsPage = lazy(() => import("./pages/ProductPassportsPage"));
 const OmegaStockPage = lazy(() => import("./pages/OmegaStockPage"));
 const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
+
+/** Запоминает открытый раздел просмотра без привязки роли к группе */
+function ViewerSectionMemory({ user }) {
+  const location = useLocation();
+  useEffect(() => rememberViewerSection(user, location), [user, location]);
+  return null;
+}
 
 export default function App() {
   const { isAuth, loading, user } = useAuth();
@@ -32,6 +42,7 @@ export default function App() {
 
   return (
     <Router>
+      <ViewerSectionMemory user={user} />
       <Suspense
         fallback={
           <div className="flex h-screen items-center justify-center">
@@ -51,22 +62,35 @@ export default function App() {
             <main className="flex h-[calc(100vh-50px)] flex-1 flex-col">
               {user?.restricted_access ? (
                 <Routes>
-                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<LocoDashboard />} />
                   <Route
                     path="*"
-                    element={<Navigate to="/dashboard" replace />}
+                    element={<Navigate to={getHomeSection(user)} replace />}
                   />
                 </Routes>
               ) : (
                 <Routes>
                   <Route
                     path="/"
-                    element={<Navigate to="/dashboard" replace />}
+                    element={<Navigate to={getHomeSection(user)} replace />}
                   />
-                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/dashboard" element={<LocoDashboard />} />
+                  <Route path="/train" element={<TrainDashboard />} />
+                  <Route
+                    path="/train/product-passports"
+                    element={
+                      <ProductPassportsPage key="train" direction="train" />
+                    }
+                  />
+                  <Route
+                    path="/train/equipment-management"
+                    element={
+                      <EquipmentManagementPage key="train" direction="train" />
+                    }
+                  />
                   <Route
                     path="/equipment-management"
-                    element={<EquipmentManagementPage />}
+                    element={<EquipmentManagementPage key="loco" />}
                   />
                   <Route
                     path="/product-passports"
@@ -76,11 +100,11 @@ export default function App() {
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route
                     path="/login"
-                    element={<Navigate to="/dashboard" replace />}
+                    element={<Navigate to={getHomeSection(user)} replace />}
                   />
                   <Route
                     path="*"
-                    element={<Navigate to="/dashboard" replace />}
+                    element={<Navigate to={getHomeSection(user)} replace />}
                   />
                 </Routes>
               )}

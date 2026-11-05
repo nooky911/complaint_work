@@ -1,5 +1,6 @@
 from typing import Any
 from sqlalchemy import select, distinct, and_, asc
+
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
 from myapp.models.waybill_docs import WaybillDoc
@@ -7,10 +8,9 @@ from myapp.models.waybill_docs import WaybillDoc
 
 def _add_case_document_joins(stmt):
     """Связывает запрос опций с обоими блоками документов по одному случаю"""
-    return (
-        stmt.outerjoin(WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id)
-        .outerjoin(WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id)
-    )
+    return stmt.outerjoin(
+        WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+    ).outerjoin(WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id)
 
 
 def process_query_results(result) -> list[Any]:
@@ -45,12 +45,18 @@ async def get_distinct_values_with_join(
     if join_model is WarrantyWork:
         stmt = stmt.outerjoin(WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id)
     elif join_model is WaybillDoc:
-        stmt = stmt.outerjoin(WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id)
+        stmt = stmt.outerjoin(
+            WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+        )
     elif join_model is RepairCaseEquipment:
         if column.parent.class_ is WarrantyWork:
-            stmt = stmt.outerjoin(WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id)
+            stmt = stmt.outerjoin(
+                WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id
+            )
         elif column.parent.class_ is WaybillDoc:
-            stmt = stmt.outerjoin(WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id)
+            stmt = stmt.outerjoin(
+                WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+            )
         else:
             stmt = _add_case_document_joins(stmt)
 
@@ -134,9 +140,13 @@ async def get_used_items_with_intermediate_join(
 
     if base_model is RepairCaseEquipment:
         if intermediate_model is WarrantyWork:
-            stmt = stmt.outerjoin(WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id)
+            stmt = stmt.outerjoin(
+                WaybillDoc, RepairCaseEquipment.id == WaybillDoc.case_id
+            )
         elif intermediate_model is WaybillDoc:
-            stmt = stmt.outerjoin(WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id)
+            stmt = stmt.outerjoin(
+                WarrantyWork, RepairCaseEquipment.id == WarrantyWork.case_id
+            )
 
     if filtered_conditions:
         stmt = stmt.where(and_(*filtered_conditions))

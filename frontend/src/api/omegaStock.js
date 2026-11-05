@@ -59,20 +59,25 @@ export const getStockLinkCases = async (
   offset,
   limit,
   selectedIds = [],
+  direction = "loco",
 ) => {
   const response = await api.post(
     "/omega-stock/link-cases/search",
-    { filters, selected_ids: selectedIds },
+    { filters, selected_ids: selectedIds, direction },
     { params: { offset, limit } },
   );
   return response.data;
 };
 
 /** Возвращает значения фильтра случаев с учётом прав пользователя */
-export const getStockLinkCaseFilterOptions = async (column, filters) => {
+export const getStockLinkCaseFilterOptions = async (
+  column,
+  filters,
+  direction = "loco",
+) => {
   const response = await api.post(
     `/omega-stock/link-cases/filter-options/${column}`,
-    { filters },
+    { filters, direction },
   );
   return response.data;
 };

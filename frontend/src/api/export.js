@@ -3,14 +3,20 @@ import { buildFilterParams } from "../utils/filterUtils";
 import { message } from "antd";
 
 // Экспорт случаев в Excel
-export const exportCasesToExcel = async (filters = {}) => {
+export const exportCasesToExcel = async (
+  filters = {},
+  direction = "loco",
+  sortOrder = "desc",
+) => {
   try {
     const queryParams = buildFilterParams(filters);
     queryParams.delete("skip");
     queryParams.delete("limit");
 
     const response = await api.get(
-      `/cases/export${queryParams.toString() ? "?" + queryParams : ""}`,
+      direction === "train"
+        ? `/train/export?${new URLSearchParams({ filters: JSON.stringify(filters), search: filters.search || "", sort_order: sortOrder })}`
+        : `/cases/export${queryParams.toString() ? "?" + queryParams : ""}`,
       {
         responseType: "blob",
       },

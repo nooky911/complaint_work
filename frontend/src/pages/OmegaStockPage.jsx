@@ -1,7 +1,7 @@
+import { SectionPageHeader } from "../components/shared/SectionPageHeader";
 import { useState } from "react";
 import {
   ArrowDownToLine,
-  ArrowLeft,
   ArrowUpFromLine,
   ChevronLeft,
   ChevronRight,
@@ -9,7 +9,7 @@ import {
   Truck,
   Warehouse,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import { StockDocumentTable } from "../components/omegaStock/StockDocumentTable";
 import { STOCK_DOCUMENT_TYPES } from "../constants/omegaStockConfig";
@@ -24,6 +24,10 @@ const PAGE_SIZE = 50;
 
 export default function OmegaStockPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = ["/train", "/dashboard"].includes(location.state?.returnTo)
+    ? location.state.returnTo
+    : "/";
   const [kind, setKind] = useState(null);
   const [page, setPage] = useState(1);
   const [expandedDocumentId, setExpandedDocumentId] = useState(null);
@@ -77,21 +81,14 @@ export default function OmegaStockPage() {
 
   return (
     <div className="flex h-full min-w-0 flex-col">
-      <div className="flex items-center gap-4 border-b border-gray-200 bg-white px-6 py-4">
-        <button
-          type="button"
-          onClick={() => (kind ? selectKind(null) : navigate("/"))}
-          className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900"
-        >
-          <ArrowLeft className="h-5 w-5" />
-          <span>Назад</span>
-        </button>
-        <h1 className="text-xl font-semibold text-gray-900">
-          {selectedType?.title ?? "Склад"}
-        </h1>
-      </div>
+      <SectionPageHeader
+        title={selectedType?.title ?? "Склад"}
+        onBack={() => (kind ? selectKind(null) : navigate(returnTo))}
+      />
 
-      <div className={`min-h-0 flex-1 overflow-auto bg-gray-50 ${kind ? "px-2 py-6" : "p-6"}`}>
+      <div
+        className={`min-h-0 flex-1 overflow-auto bg-gray-50 ${kind ? "px-2 py-6" : "p-6"}`}
+      >
         <div
           className={`mx-auto flex w-full min-w-0 flex-col gap-5 ${
             kind ? "max-w-none" : "max-w-7xl"
@@ -150,7 +147,11 @@ export default function OmegaStockPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => { setFilters({}); setPage(1); setExpandedDocumentId(null); }}
+                    onClick={() => {
+                      setFilters({});
+                      setPage(1);
+                      setExpandedDocumentId(null);
+                    }}
                     disabled={Object.keys(filters).length === 0}
                     className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
                   >
@@ -197,7 +198,10 @@ export default function OmegaStockPage() {
                 <div className="flex items-center justify-end gap-3 border-t border-slate-100 px-5 py-3 text-xs font-bold text-slate-600">
                   <button
                     type="button"
-                    onClick={() => { setPage((current) => current - 1); setExpandedDocumentId(null); }}
+                    onClick={() => {
+                      setPage((current) => current - 1);
+                      setExpandedDocumentId(null);
+                    }}
                     disabled={page === 1}
                     aria-label="Предыдущая страница"
                     className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"
@@ -207,7 +211,10 @@ export default function OmegaStockPage() {
                   Страница {page}
                   <button
                     type="button"
-                    onClick={() => { setPage((current) => current + 1); setExpandedDocumentId(null); }}
+                    onClick={() => {
+                      setPage((current) => current + 1);
+                      setExpandedDocumentId(null);
+                    }}
                     disabled={!hasNextPage}
                     aria-label="Следующая страница"
                     className="rounded-lg p-2 hover:bg-slate-100 disabled:opacity-30"

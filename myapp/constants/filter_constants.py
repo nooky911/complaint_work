@@ -1,5 +1,3 @@
-"""Константы для фильтрации случаев"""
-
 from myapp.models import (
     RepairCaseEquipment,
     WarrantyWork,

@@ -1,4 +1,3 @@
-import React from "react";
 import {
   CheckCircle,
   UserCheck,
@@ -34,7 +33,7 @@ export const getStatusConfig = (item) => {
   const STYLE_YELLOW = `bg-yellow-400 text-slate-900 shadow-md ring-2 ring-inset ring-black/10`;
   const STYLE_GREEN = `bg-emerald-600 text-white shadow-md ${baseRing}`;
   const STYLE_ORANGE = `bg-orange-500 text-white shadow-md ${baseRing}`;
-  const STYLE_BLUE = `bg-sky-400 text-white shadow-md ${baseRing}`;
+  const STYLE_BLUE = `bg-[#92d050] text-black shadow-md ${baseRing}`;
 
   // ЗАВЕРШЕНО
   if (rawStatus === "Завершено") {

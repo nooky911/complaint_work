@@ -1,5 +1,5 @@
-from functools import wraps
 import logging
+from functools import wraps
 from typing import Any, Callable
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -43,9 +43,9 @@ def transactional(func) -> Callable[..., Any]:
                 try:
                     await callback()
                 except Exception:
-                    # Данные уже сохранены, поэтому ошибку удаления файла записываем без отката
+                    # Данные уже сохранены, поэтому ошибку отложенного действия записываем без отката
                     logger.exception(
-                        "Не удалось удалить файл после сохранения изменений"
+                        "Не удалось выполнить действие после сохранения изменений"
                     )
         return result
 

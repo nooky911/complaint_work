@@ -2,13 +2,13 @@ from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Annotated, NoReturn
+from sqlalchemy.orm import selectinload
 
 from myapp.auth.tokens import decode_token
 from myapp.database.base import get_db
 from myapp.models import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.services.file_service import FileService
-from sqlalchemy.orm import selectinload
 from myapp.services.user_access_service import UserAccessService
 
 
@@ -74,6 +74,21 @@ async def get_current_user(
             request.method == "GET" and path.startswith("/api/v1/restricted/cases")
         ):
             raise HTTPException(403, "Недостаточно прав")
+    if request.method not in ("GET", "HEAD", "OPTIONS") and user.role != "superadmin":
+        path = request.url.path
+        if path.startswith("/api/v1/train/") and user.direction != "train":
+            raise HTTPException(
+                403, "Недостаточно прав для изменения поездного раздела"
+            )
+        loco_paths = (
+            "/api/v1/cases",
+            "/api/v1/equipment",
+        )
+        if user.direction == "train" and any(path.startswith(p) for p in loco_paths):
+            raise HTTPException(
+                403, "Недостаточно прав для изменения локомотивного раздела"
+            )
+    session.info["actor_id"] = user.id
     return user  # type: ignore[valid-type]
 
 
@@ -111,6 +126,8 @@ async def require_can_edit_case(
     if not case:
         return current_user, None
 
+    if current_user.role != "superadmin" and current_user.direction != case.direction:
+        raise HTTPException(403, "Недостаточно прав для изменения чужого раздела")
     if await UserAccessService.can_edit_owner(session, current_user, case.user_id):
         return current_user, case
 
@@ -170,3 +187,20 @@ async def require_can_edit_file_case(
         )
 
     return current_user, case
+
+
+async def require_loco_case(
+    request: Request,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Не допускает поездной ID в локомотивные операции и карточки"""
+    case_id = request.path_params.get("case_id")
+    if case_id is not None:
+        direction = await session.scalar(
+            select(RepairCaseEquipment.direction).where(
+                RepairCaseEquipment.id == int(case_id)
+            )
+        )
+        if direction != "loco":
+            raise HTTPException(404, "Локомотивный случай не найден")

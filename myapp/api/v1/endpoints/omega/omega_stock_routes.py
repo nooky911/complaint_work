@@ -1,0 +1,286 @@
+import logging
+import oracledb
+from datetime import date
+from typing import Annotated, Awaitable, Literal, TypeVar
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from myapp.auth.dependencies import (
+    require_editor_or_superadmin,
+    require_viewer_or_higher,
+)
+from myapp.database.base import get_db
+from myapp.models.user import User
+from myapp.schemas.omega.omega_stock import (
+    OmegaInplantInvoice,
+    OmegaOutboundInvoice,
+    OmegaReceipt,
+    OmegaStockFile,
+    OmegaStockFilterRequest,
+    OmegaStockItem,
+    OmegaStockWarehouse,
+    OmegaStockCaseLinkRequest,
+    OmegaStockCaseSearchRequest,
+    OmegaStockCaseFilterRequest,
+)
+from myapp.services import CaseValidationError
+from myapp.services.omega_services.stock_case_link_service import StockCaseLinkService
+from myapp.services.omega_services.omega_stock_service import OmegaStockService
+
+
+router = APIRouter(prefix="/omega-stock", tags=["Склад Omega"])
+logger = logging.getLogger(__name__)
+service = OmegaStockService()
+StockKind = Literal["receipts", "inplant", "outbound"]
+T = TypeVar("T")
+
+
+async def _read(operation: Awaitable[T]) -> T:
+    try:
+        return await operation
+    except CaseValidationError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except oracledb.Error as exc:
+        logger.exception("Не удалось прочитать складские документы Omega")
+        raise HTTPException(status_code=503, detail="Omega сейчас недоступна") from exc
+
+
+@router.post(
+    "/link-cases/search", summary="Выбрать доступные случаи для складского документа"
+)
+async def search_link_cases(
+    request: OmegaStockCaseSearchRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+):
+    """Возвращает страницу случаев с учётом владельца и напарника"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.list_cases(
+            session, user, request.filters, offset, limit, request.selected_ids, direction=request.direction
+        )
+    )
+
+
+@router.post(
+    "/link-cases/filter-options/{column}", summary="Значения фильтра доступных случаев"
+)
+async def link_case_filter_options(
+    column: str,
+    request: OmegaStockCaseFilterRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+):
+    """Возвращает значения только из случаев, которые пользователь может изменить"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.filter_options(session, user, column, request.filters, direction=request.direction)
+    )
+
+
+@router.post(
+    "/documents/{kind}/{document_id}/link-cases/preview",
+    summary="Проверить перенос данных и замену заполненных блоков",
+)
+async def preview_case_link(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    request: OmegaStockCaseLinkRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+    response: Response,
+):
+    """Проверяет права и показывает данные, которые будут заменены"""
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        StockCaseLinkService.preview(session, user, kind, document_id, request)
+    )
+
+
+@router.post(
+    "/documents/{kind}/{document_id}/link-cases",
+    summary="Перенести складской документ и все вложения в случаи",
+)
+async def apply_case_link(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    request: OmegaStockCaseLinkRequest,
+    session: Annotated[AsyncSession, Depends(get_db)],
+    user: Annotated[User, Depends(require_editor_or_superadmin)],
+):
+    """Сохраняет подтверждённые поля и локальные вложения без таблицы привязок"""
+    return await _read(
+        StockCaseLinkService.apply(session, user, kind, document_id, request)
+    )
+
+
+@router.get(
+    "/warehouses/{kind}",
+    response_model=list[OmegaStockWarehouse],
+    summary="Получить склады для выбранного вида документов",
+)
+async def get_warehouses(
+    kind: StockKind,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(service.list_warehouses(kind))
+
+
+@router.get(
+    "/documents/{kind}",
+    response_model=list[OmegaReceipt | OmegaInplantInvoice | OmegaOutboundInvoice],
+    summary="Найти складские документы",
+)
+async def get_documents(
+    kind: StockKind,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+    warehouse_ids: Annotated[list[int] | None, Query()] = None,
+    number: Annotated[str | None, Query(max_length=100)] = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    sort_column: Annotated[str | None, Query(max_length=50)] = None,
+    sort_direction: Literal["asc", "desc"] = "desc",
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        service.list_documents(
+            kind,
+            warehouse_ids,
+            number,
+            date_from,
+            date_to,
+            offset,
+            limit,
+            sort_column=sort_column,
+            sort_direction=sort_direction,
+        )
+    )
+
+
+@router.post(
+    "/documents/{kind}/search",
+    response_model=list[OmegaReceipt | OmegaInplantInvoice | OmegaOutboundInvoice],
+    summary="Найти складские документы с фильтрами колонок",
+)
+async def search_documents(
+    kind: StockKind,
+    request: OmegaStockFilterRequest,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    sort_column: Annotated[str | None, Query(max_length=50)] = None,
+    sort_direction: Literal["asc", "desc"] = "desc",
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(
+        service.list_documents(
+            kind,
+            None,
+            None,
+            None,
+            None,
+            offset,
+            limit,
+            request.filters,
+            sort_column,
+            sort_direction,
+        )
+    )
+
+
+@router.post(
+    "/documents/{kind}/filter-options/{column}",
+    response_model=list[str | None],
+    summary="Получить доступные значения колонки с учётом других фильтров",
+)
+async def get_document_filter_options(
+    kind: StockKind,
+    column: str,
+    request: OmegaStockFilterRequest,
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+):
+    response.headers["Cache-Control"] = "no-store"
+    return await _read(service.list_filter_options(kind, column, request.filters))
+
+
+@router.get(
+    "/documents/{kind}/{document_id}/items",
+    response_model=list[OmegaStockItem],
+    summary="Получить состав складского документа",
+)
+async def get_document_items(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+):
+    response.headers["Cache-Control"] = "no-store"
+    items = await _read(service.list_items(kind, document_id))
+    if items is None:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return items
+
+
+@router.get(
+    "/documents/{kind}/{document_id}/files",
+    response_model=list[OmegaStockFile],
+    summary="Получить вложения складского документа",
+)
+async def get_document_files(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+    response: Response,
+):
+    response.headers["Cache-Control"] = "no-store"
+    files = await _read(service.list_files(kind, document_id))
+    if files is None:
+        raise HTTPException(status_code=404, detail="Документ не найден")
+    return files
+
+
+@router.get(
+    "/documents/{kind}/{document_id}/files/{file_id}",
+    summary="Открыть вложение складского документа",
+)
+async def get_document_file(
+    kind: StockKind,
+    document_id: Annotated[int, Path(ge=1)],
+    file_id: Annotated[int, Path(ge=1)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    file = await _read(service.get_file(kind, document_id, file_id))
+    if file is None:
+        raise HTTPException(status_code=404, detail="Вложение не найдено")
+    content = file
+    media_type = (
+        "application/pdf" if content.startswith(b"%PDF") else "application/octet-stream"
+    )
+    extension = ".pdf" if media_type == "application/pdf" else ""
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'inline; filename="omega-{file_id}{extension}"',
+            "Cache-Control": "no-store",
+        },
+    )

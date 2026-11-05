@@ -24,11 +24,17 @@ class User(Base):
     auth_version: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0"), default=0
     )
+    can_manage_equipment: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
     restricted_access: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default=text("false")
     )
     allowed_rc_names: Mapped[list[str]] = mapped_column(
         JSON, nullable=False, default=list, server_default=text("'[]'")
+    )
+    direction: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="loco", server_default="loco"
     )
     login: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(Text, nullable=False)

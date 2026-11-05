@@ -27,13 +27,27 @@ class ProductPassport(Base):
     __tablename__ = "product_passports"
     __table_args__ = (
         UniqueConstraint("locomotive_model_id", "product_number"),
+        UniqueConstraint(
+            "train_model_id", "product_number", name="uq_product_passports_train_number"
+        ),
+        CheckConstraint(
+            "(locomotive_model_id IS NOT NULL AND train_model_id IS NULL) OR "
+            "(locomotive_model_id IS NULL AND train_model_id IS NOT NULL)",
+            name="ck_product_passports_one_model",
+        ),
         Index("ix_product_passports_locomotive_model_id", "locomotive_model_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    locomotive_model_id: Mapped[int] = mapped_column(
-        ForeignKey("locomotive_models.id"), nullable=False
+    locomotive_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locomotive_models.id"), nullable=True
+    )
+    train_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("train_models.id"), nullable=True
+    )
+    train_model: Mapped["TrainModel | None"] = relationship(
+        back_populates="product_passports"
     )
     product_number: Mapped[str] = mapped_column(String(50), nullable=False)
     import_version: Mapped[int] = mapped_column(
@@ -53,7 +67,7 @@ class ProductPassport(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
-    locomotive_model: Mapped["LocomotiveModel"] = relationship(
+    locomotive_model: Mapped["LocomotiveModel | None"] = relationship(
         back_populates="product_passports"
     )
 
@@ -99,7 +113,10 @@ class ProductPassportNode(Base):
         ForeignKey("suppliers.id"), nullable=True
     )
     equipment_id: Mapped[int | None] = mapped_column(
-        ForeignKey("equipment.id"), nullable=True
+        ForeignKey("loco_equipment.id"), nullable=True
+    )
+    train_equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("train_equipment.id"), nullable=True, index=True
     )
     stockobj_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
@@ -127,7 +144,7 @@ class ProductPassportEquipmentMatch(Base):
     omega_supplier_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
     omega_manufacturer: Mapped[str | None] = mapped_column(Text, nullable=True)
     equipment_id: Mapped[int] = mapped_column(
-        ForeignKey("equipment.id"), nullable=False
+        ForeignKey("loco_equipment.id"), nullable=False
     )
     supplier_id: Mapped[int | None] = mapped_column(
         ForeignKey("suppliers.id"), nullable=True
@@ -146,7 +163,7 @@ class ProductPassportEquipmentSerialMatch(Base):
     omega_supplier_raw: Mapped[str | None] = mapped_column(Text, nullable=True)
     omega_manufacturer: Mapped[str | None] = mapped_column(Text, nullable=True)
     equipment_id: Mapped[int] = mapped_column(
-        ForeignKey("equipment.id"), nullable=False
+        ForeignKey("loco_equipment.id"), nullable=False
     )
     supplier_id: Mapped[int | None] = mapped_column(
         ForeignKey("suppliers.id"), nullable=True

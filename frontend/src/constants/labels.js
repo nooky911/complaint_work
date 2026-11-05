@@ -1,6 +1,9 @@
 /* Заголовки для полей */
 export const REPAIR_FIELDS_LABELS = {
   fault_date: "Дата акта осмотра",
+  train_model: "Модель поезда",
+  train_number: "Номер поезда",
+  wagon: "Вагон",
   locomotive_model: "Модель локомотива",
   locomotive_number: "Номер локомотива",
   section: "Секция",
@@ -8,6 +11,7 @@ export const REPAIR_FIELDS_LABELS = {
   fault_discovered: "Выявлено при",
   regional_center: "Региональный центр",
   serial_number: "Зав. номер",
+  equipment_serial_number: "Зав. номер оборудования",
   component_serial_number: "Зав. номер компонента",
   element_serial_number: "Зав. номер элемента",
   manufacture_date: "Дата изготовления",
@@ -39,6 +43,7 @@ export const REPAIR_FIELDS_LABELS = {
 };
 
 export const BLOCK_TITLES = {
+  train_block: "Поезд и место",
   locomotive_block: "Локомотив и место",
   equipment_block: "Неисправное оборудование",
   repair_block: "Выполненный ремонт",
@@ -54,4 +59,16 @@ export const BLOCK_TITLES = {
   ttn_from_rc: "Документ об отгрузке с РЦ",
   ttn_to_supplier: "Документ об отгрузке Поставщику",
   ttn_from_supplier: "Документ о возврате от Поставщика",
+};
+
+// Подписи компонентов
+export const SHARED_LABELS = {
+  equipment: "Оборудование",
+  general: "ОСНОВНЫЕ ДАННЫЕ",
+  warranty: "РЕКЛАМАЦИЯ",
+  movement: "ПЕРЕДВИЖЕНИЕ",
+  factory_number: "Зав. номер",
+  train_type: "Тип поезда",
+  electric_train_number: "Номер поезда",
+  equipment_type: "Тип оборудования",
 };

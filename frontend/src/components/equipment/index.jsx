@@ -1,3 +1,3 @@
-export { EquipmentLevelSelector } from "./EquipmentLevelSelector";
-export { EquipmentFields } from "./EquipmentFields";
-export { EquipmentMalfunctionSelector } from "./EquipmentMalfunctionSelector";
+export { EquipmentLevelSelector } from "./EquipmentLevelSelector.jsx";
+export { EquipmentFields } from "./EquipmentFields.jsx";
+export { EquipmentMalfunctionSelector } from "./EquipmentMalfunctionSelector.jsx";

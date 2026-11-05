@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+
 from myapp.models.case_files import (
     FileCategory,
     WarrantyDocumentField,
@@ -13,8 +14,6 @@ class FileInfo(BaseModel):
     original_name: str
     mime_type: str
     size_bytes: int
-    stored_name: str
-    file_path: str
     category: FileCategory
     related_field: WarrantyDocumentField | WaybillDocumentField | None = None
     case_id: int

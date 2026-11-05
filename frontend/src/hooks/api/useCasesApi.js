@@ -1,5 +1,5 @@
 import { useAuth } from "../../context/AuthContext";
-import { restrictedApi } from "../../features/restricted-view/api";
+import { restrictedApi } from "../../api/restrictedView";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 
@@ -7,22 +7,28 @@ import api from "../../api/api";
 import { buildFilterParams } from "../../utils/filterUtils";
 
 // Хук для получения списка номеров случаев
-export const useCaseDisplayNumbers = (search, enabled) => {
+export const useCaseDisplayNumbers = (search, enabled, direction = "loco") => {
   const { user } = useAuth();
   return useQuery({
     queryKey: [
       "cases",
       "display-numbers",
+      direction,
       user?.id,
       !!user?.restricted_access,
       search,
     ],
     queryFn: async ({ signal }) => {
       if (user?.restricted_access) return restrictedApi.numbers(search, signal);
-      const response = await api.get("/cases/display-numbers", {
-        params: { search, limit: 50 },
-        signal,
-      });
+      const response = await api.get(
+        direction === "train"
+          ? "/train/case-numbers"
+          : "/cases/display-numbers",
+        {
+          params: { search, limit: 50 },
+          signal,
+        },
+      );
       return response.data;
     },
     enabled,
@@ -47,7 +53,7 @@ export const useFilterOptions = (enabled = true) => {
 };
 
 // Хук для динамических опций фильтров
-export const useDynamicFilterOptions = (filters) => {
+export const useDynamicFilterOptions = (filters, direction = "loco") => {
   const { user } = useAuth();
   const memoizedParams = useMemo(() => {
     const params = buildFilterParams(filters, 0, 50);
@@ -59,11 +65,18 @@ export const useDynamicFilterOptions = (filters) => {
   return useQuery({
     queryKey: [
       "dynamicFilterOptions",
+      direction,
       user?.id,
       !!user?.restricted_access,
       memoizedParams,
     ],
     queryFn: async () => {
+      if (direction === "train")
+        return (
+          await api.get("/train/filter-options", {
+            params: { filters: JSON.stringify(filters) },
+          })
+        ).data;
       if (user?.restricted_access) return restrictedApi.filters(filters);
       const res = await api.get(
         `/references/dynamic-filter-options?${memoizedParams}`,
@@ -78,11 +91,17 @@ export const useDynamicFilterOptions = (filters) => {
 };
 
 // Хук для получения списка случаев
-export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
+export const useCasesList = (
+  filters,
+  sortOrder,
+  page = 1,
+  limit = 25,
+  direction = "loco",
+) => {
   const { user } = useAuth();
   return useQuery({
     queryKey: [
-      "cases",
+      direction === "train" ? "train-cases" : "cases",
       user?.id,
       !!user?.restricted_access,
       filters,
@@ -91,6 +110,19 @@ export const useCasesList = (filters, sortOrder, page = 1, limit = 25) => {
       limit,
     ],
     queryFn: async () => {
+      if (direction === "train") {
+        return (
+          await api.get("/train/cases", {
+            params: {
+              page,
+              limit,
+              search: filters.search || "",
+              sort_order: sortOrder,
+              filters: JSON.stringify(filters),
+            },
+          })
+        ).data;
+      }
       if (user?.restricted_access)
         return restrictedApi.list(filters, sortOrder, page, limit);
       const skip = (page - 1) * limit;

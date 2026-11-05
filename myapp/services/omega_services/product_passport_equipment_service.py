@@ -2,7 +2,7 @@ import hashlib
 import json
 import re
 
-from myapp.constants.product_passport_equipment_constants import (
+from myapp.constants.omega.product_passport_equipment_constants import (
     AMORTIZER_NAMES,
     CLASSIFIER_NAME_ALIASES,
     CODE_RULES,
@@ -46,9 +46,13 @@ class ProductPassportEquipmentService:
         links: NumberedPassportLinks,
         locomotive_model_id: int,
         node: ProductPassportNode,
+        equipment_field: str = "equipment_id",
     ) -> None:
         """Сохраняет однозначную связь номерного узла для такой же безномерной позиции"""
-        if not (node.serial_number or "").strip() or node.equipment_id is None:
+        if (
+            not (node.serial_number or "").strip()
+            or getattr(node, equipment_field) is None
+        ):
             return
         key = (
             locomotive_model_id,
@@ -59,7 +63,7 @@ class ProductPassportEquipmentService:
                 node.manufacturer,
             ),
         )
-        candidate = (node.equipment_id, node.supplier_id)
+        candidate = (getattr(node, equipment_field), node.supplier_id)
         if key in links and links[key] != candidate:
             links[key] = None
         else:
@@ -71,11 +75,14 @@ class ProductPassportEquipmentService:
         locomotive_model_id: int,
         nodes: list[ProductPassportNode],
         saved_links: NumberedPassportLinks | None = None,
+        equipment_field: str = "equipment_id",
     ) -> None:
         """Привязывает безномерные узлы только при единственном совпадении с номерными"""
         links = dict(saved_links or {})
         for node in nodes:
-            cls.remember_numbered_link(links, locomotive_model_id, node)
+            cls.remember_numbered_link(
+                links, locomotive_model_id, node, equipment_field
+            )
 
         for node in nodes:
             if (node.serial_number or "").strip():
@@ -93,13 +100,41 @@ class ProductPassportEquipmentService:
             if match is None:
                 continue
             equipment_id, supplier_id = match
-            if node.equipment_id not in (None, equipment_id):
+            if getattr(node, equipment_field) not in (None, equipment_id):
                 continue
             if supplier_id is not None and node.supplier_id not in (None, supplier_id):
                 continue
-            node.equipment_id = equipment_id
+            setattr(node, equipment_field, equipment_id)
             if supplier_id is not None:
                 node.supplier_id = supplier_id
+
+    @classmethod
+    def confirmed_match_rules(cls, nodes, equipment_field="equipment_id"):
+        """Строит однозначные правила по подтверждённым связям и длине номера"""
+        exact, serial = {}, {}
+        for node in nodes:
+            equipment_id = getattr(node, equipment_field)
+            if equipment_id is None or not (node.serial_number or "").strip():
+                continue
+            key = cls.match_key(
+                node.tree_name,
+                node.designation,
+                node.omega_supplier_raw,
+                node.manufacturer,
+            )
+            candidate = (equipment_id, node.supplier_id)
+            for rules, rule_key in (
+                (exact, key),
+                (serial, (key, len(node.serial_number.strip()))),
+            ):
+                if rule_key in rules and rules[rule_key] != candidate:
+                    rules[rule_key] = None
+                else:
+                    rules[rule_key] = candidate
+        return (
+            {key: value for key, value in exact.items() if value is not None},
+            {key: value for key, value in serial.items() if value is not None},
+        )
 
     @staticmethod
     def _matches(value: str, pattern: str, mode: str) -> bool:

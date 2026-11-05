@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { useState } from "react";
+import { useLocation } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { Search, X, Link as LinkIcon, FileText } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -16,6 +17,8 @@ export const LinkFileModal = ({
   currentCaseId,
   currentFiles = [],
 }) => {
+  const location = useLocation();
+  const direction = location.pathname.startsWith("/train") ? "train" : "loco";
   const [searchTerm, setSearchTerm] = useState("");
   const debouncedSearch = useDebouncedValue(searchTerm, 400);
   const [toastConfig, setToastConfig] = useState({
@@ -27,18 +30,19 @@ export const LinkFileModal = ({
 
   // Поисков файлов при открытом окне
   const { data: files = [], isLoading } = useQuery({
-    queryKey: ["searchFiles", category, relatedField, debouncedSearch],
+    queryKey: ["searchFiles", direction, category, relatedField, debouncedSearch],
     queryFn: async () => {
       if (
         category === "warranty" &&
         (relatedField === "notification" || relatedField === "re_notification")
       ) {
         const [notifFiles, reNotifFiles] = await Promise.all([
-          fileApi.searchUniqueFiles(category, "notification", debouncedSearch),
+          fileApi.searchUniqueFiles(category, "notification", debouncedSearch, direction),
           fileApi.searchUniqueFiles(
             category,
             "re_notification",
             debouncedSearch,
+            direction,
           ),
         ]);
 
@@ -49,7 +53,7 @@ export const LinkFileModal = ({
         return Array.from(uniqueMap.values());
       }
 
-      return fileApi.searchUniqueFiles(category, relatedField, debouncedSearch);
+      return fileApi.searchUniqueFiles(category, relatedField, debouncedSearch, direction);
     },
     enabled: isOpen,
     staleTime: 0,

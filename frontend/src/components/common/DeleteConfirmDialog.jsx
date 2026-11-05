@@ -1,4 +1,3 @@
-import React from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle } from "lucide-react";
 
@@ -8,6 +7,11 @@ export const DeleteConfirmDialog = ({
   isDeleting,
   onCancel,
   onConfirm,
+  title = "Вы точно хотите удалить файл?",
+  message = "Действие необратимо.",
+  confirmLabel = "Да, удалить",
+  cancelLabel = "Нет",
+  busyLabel = "Удаление...",
 }) => {
   if (!show) return null;
 
@@ -19,12 +23,12 @@ export const DeleteConfirmDialog = ({
       >
         <div className="mb-4 flex items-center gap-3 text-red-600">
           <AlertTriangle className="h-6 w-6" />
-          <h3 className="text-lg font-bold">Вы точно хотите удалить файл?</h3>
+          <h3 className="text-lg font-bold">{title}</h3>
         </div>
-        <p className="mb-2 truncate text-sm text-gray-600">
-          {fileName || "Файл"}
-        </p>
-        <p className="mb-6 text-sm text-gray-600">Действие необратимо.</p>
+        {fileName !== null && (
+          <p className="mb-2 truncate text-sm text-gray-600">{fileName || "Файл"}</p>
+        )}
+        <p className="mb-6 text-sm text-gray-600">{message}</p>
         <div className="flex justify-end gap-3">
           <button
             onClick={() => {
@@ -34,14 +38,14 @@ export const DeleteConfirmDialog = ({
             disabled={isDeleting}
             className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
           >
-            Нет
+            {cancelLabel}
           </button>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
             className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-red-700 disabled:opacity-50"
           >
-            {isDeleting ? "Удаление..." : "Да, удалить"}
+            {isDeleting ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

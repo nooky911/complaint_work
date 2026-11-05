@@ -1,4 +1,3 @@
-import React from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Archive, Bell, MessageSquare, FileText, Search } from "lucide-react";
 import { formatDate, getText } from "../../utils/formatters";
@@ -206,11 +205,36 @@ export const WarrantyWork = ({
   references,
   caseId,
   onFilesUploaded,
+  train = false,
 }) => {
   const { user } = useAuth();
-  const data = isEditing
+  if (train) {
+    references = {
+      ...references,
+      notification_summaries: (references?.notification_summaries || []).filter((item) =>
+        ["Командировать представителя", "Командировать представителя в депо", "Не требуется", "Негарантийный (по сроку)"].includes(item.name)),
+      response_summaries: (references?.response_summaries || []).filter((item) => ![5, 12, 14].includes(item.id)),
+      decision_summaries: (references?.decision_summaries || []).filter((item) => ![2, 10].includes(item.id)),
+    };
+  }
+  const sourceData = isEditing
     ? currentData?.warranty_work
     : repairCase?.warranty_work;
+
+  const data = train && sourceData ? { ...sourceData } : sourceData;
+  if (train && data) {
+    for (const [field, options] of [
+      ["notification_summary", references.notification_summaries],
+      ["response_summary", references.response_summaries],
+      ["decision_summary", references.decision_summaries],
+    ]) {
+      const id = data[`${field}_id`] ?? data[field]?.id;
+      if (id != null && !options.some((item) => item.id === id)) {
+        data[`${field}_id`] = null;
+        data[field] = null;
+      }
+    }
+  }
 
   // Получаем все warranty-файлы для проверки количества
   const { files: allWarrantyFiles } = useUnifiedFileManagement(
@@ -311,28 +335,30 @@ export const WarrantyWork = ({
       </ColorBlock>
 
       {/* Блок: Повторное уведомление */}
-      <ColorBlock
-        blockTitle={BLOCK_TITLES.warranty_re_notification}
-        blockIcon={<Bell className="h-4 w-4 text-[#16a34a]" />}
-        blockColor="green"
-      >
-        <FileRow
-          label="№ и дата повт. ув-ия"
-          num={data?.re_notification_number}
-          date={data?.re_notification_date}
-          numKey="re_notification_number"
-          dateKey="re_notification_date"
-          summary={getText(data?.re_notification_summary)}
-          summaryLabel={REPAIR_FIELDS_LABELS.summary}
-          isEditing={isEditing}
-          isMissing={!data?.re_notification_number}
-          onFieldChange={updateWarrantyField}
-          isAutoSummary={true}
-          caseId={caseId}
-          relatedField={WarrantyDocumentField.re_notification}
-          onFilesUploaded={onFilesUploaded}
-        />
-      </ColorBlock>
+      {!train && (
+        <ColorBlock
+          blockTitle={BLOCK_TITLES.warranty_re_notification}
+          blockIcon={<Bell className="h-4 w-4 text-[#16a34a]" />}
+          blockColor="green"
+        >
+          <FileRow
+            label="№ и дата повт. ув-ия"
+            num={data?.re_notification_number}
+            date={data?.re_notification_date}
+            numKey="re_notification_number"
+            dateKey="re_notification_date"
+            summary={getText(data?.re_notification_summary)}
+            summaryLabel={REPAIR_FIELDS_LABELS.summary}
+            isEditing={isEditing}
+            isMissing={!data?.re_notification_number}
+            onFieldChange={updateWarrantyField}
+            isAutoSummary={true}
+            caseId={caseId}
+            relatedField={WarrantyDocumentField.re_notification}
+            onFilesUploaded={onFilesUploaded}
+          />
+        </ColorBlock>
+      )}
 
       {/* Блок: Ответ поставщика */}
       <ColorBlock
@@ -429,124 +455,126 @@ export const WarrantyWork = ({
       </ColorBlock>
 
       {/* Блок: Акт исследования */}
-      <ColorBlock
-        blockTitle={BLOCK_TITLES.warranty_research_act}
-        blockIcon={<Search className="h-4 w-4 text-[#ca8a04]" />}
-        blockColor="yellow"
-      >
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="flex min-w-0 flex-col">
-              <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
-                Статус по результатам исследования
-              </label>
-              {isEditing ? (
-                <SelectField
-                  label={null}
-                  value={data?.research_status_id}
-                  options={references?.research_statuses}
-                  isEditing={true}
-                  onChange={handleStatusChange}
-                  placeholder="—"
-                />
-              ) : (
-                <div
-                  className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
-                    data?.research_status_id
-                      ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                      : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                  }`}
-                >
-                  <span className="truncate">
-                    {getText(data?.research_status) || "—"}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex min-w-0 flex-col">
-              <label
-                className={`mb-1 ml-1 block text-xs font-bold tracking-wider uppercase antialiased ${
-                  isReasonDisabled ? "text-gray-400" : "text-gray-500"
-                }`}
-              >
-                Причина
-              </label>
-              {isEditing ? (
-                <div
-                  className={`w-full ${
-                    isReasonDisabled ? "cursor-not-allowed opacity-50" : ""
-                  }`}
-                >
+      {!train && (
+        <ColorBlock
+          blockTitle={BLOCK_TITLES.warranty_research_act}
+          blockIcon={<Search className="h-4 w-4 text-[#ca8a04]" />}
+          blockColor="yellow"
+        >
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="flex min-w-0 flex-col">
+                <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
+                  Статус по результатам исследования
+                </label>
+                {isEditing ? (
                   <SelectField
                     label={null}
-                    value={data?.investigation_reason_id}
-                    options={getFilteredReasonOptions()}
+                    value={data?.research_status_id}
+                    options={references?.research_statuses}
                     isEditing={true}
-                    onChange={(value) =>
-                      updateWarrantyField("investigation_reason_id", value)
-                    }
+                    onChange={handleStatusChange}
                     placeholder="—"
-                    disabled={isReasonDisabled}
                   />
-                </div>
+                ) : (
+                  <div
+                    className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
+                      data?.research_status_id
+                        ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                        : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                    }`}
+                  >
+                    <span className="truncate">
+                      {getText(data?.research_status) || "—"}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex min-w-0 flex-col">
+                <label
+                  className={`mb-1 ml-1 block text-xs font-bold tracking-wider uppercase antialiased ${
+                    isReasonDisabled ? "text-gray-400" : "text-gray-500"
+                  }`}
+                >
+                  Причина
+                </label>
+                {isEditing ? (
+                  <div
+                    className={`w-full ${
+                      isReasonDisabled ? "cursor-not-allowed opacity-50" : ""
+                    }`}
+                  >
+                    <SelectField
+                      label={null}
+                      value={data?.investigation_reason_id}
+                      options={getFilteredReasonOptions()}
+                      isEditing={true}
+                      onChange={(value) =>
+                        updateWarrantyField("investigation_reason_id", value)
+                      }
+                      placeholder="—"
+                      disabled={isReasonDisabled}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
+                      data?.investigation_reason_id
+                        ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                        : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
+                    }`}
+                  >
+                    <span className="truncate">
+                      {getText(data?.investigation_reason) || "—"}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-col">
+              <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
+                № и дата документа об исследовании
+              </label>
+              {isEditing ? (
+                <EditableField
+                  value={data?.research_document}
+                  isEditing={true}
+                  onChange={(value) =>
+                    updateWarrantyField("research_document", value)
+                  }
+                  placeholder="№ и дата документа"
+                />
               ) : (
                 <div
                   className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
-                    data?.investigation_reason_id
+                    data?.research_document
                       ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
                       : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
                   }`}
                 >
                   <span className="truncate">
-                    {getText(data?.investigation_reason) || "—"}
+                    {data?.research_document || "—"}
                   </span>
+                </div>
+              )}
+
+              {/* Файлы акта исследования */}
+              {caseId && (
+                <div className="mt-0">
+                  <CompactWarrantyFiles
+                    caseId={caseId}
+                    isEditing={isEditing}
+                    relatedField={WarrantyDocumentField.research_document}
+                    onFilesUploaded={onFilesUploaded}
+                  />
                 </div>
               )}
             </div>
           </div>
-
-          <div className="flex min-w-0 flex-col">
-            <label className="mb-1 ml-1 block text-xs font-bold tracking-wider text-gray-500 uppercase antialiased">
-              № и дата документа об исследовании
-            </label>
-            {isEditing ? (
-              <EditableField
-                value={data?.research_document}
-                isEditing={true}
-                onChange={(value) =>
-                  updateWarrantyField("research_document", value)
-                }
-                placeholder="№ и дата документа"
-              />
-            ) : (
-              <div
-                className={`flex h-[38px] items-center rounded-lg border px-3 text-sm font-medium transition-all ${
-                  data?.research_document
-                    ? "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                    : "border border-gray-300 bg-gray-50 text-gray-900 shadow-sm"
-                }`}
-              >
-                <span className="truncate">
-                  {data?.research_document || "—"}
-                </span>
-              </div>
-            )}
-
-            {/* Файлы акта исследования */}
-            {caseId && (
-              <div className="mt-0">
-                <CompactWarrantyFiles
-                  caseId={caseId}
-                  isEditing={isEditing}
-                  relatedField={WarrantyDocumentField.research_document}
-                  onFilesUploaded={onFilesUploaded}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </ColorBlock>
+        </ColorBlock>
+      )}
 
       {/* Общая кнопка скачивания всех файлов Warranty */}
       {!isEditing &&

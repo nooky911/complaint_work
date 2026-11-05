@@ -4,7 +4,9 @@ from datetime import datetime
 from typing import Any
 from sqlalchemy import select
 
-from myapp.models.equipment_malfunctions import Equipment
+from myapp.loco.models.equipment import Equipment
+from myapp.train.services.equipment_service import equipment_details
+from myapp.utils.equipment_hierarchy import passport_classifier_ids
 from myapp.models.product_passports import (
     ProductPassportEvent,
     ProductPassportEventItem,
@@ -51,8 +53,10 @@ class PassportPositionService:
         return dict(
             schema_version=1,
             is_present=node.is_present,
-            equipment_id=node.equipment_id,
-            equipment_name=equipment.get(node.equipment_id, {}).get("name"),
+            equipment_id=getattr(node, "train_equipment_id", None) or node.equipment_id,
+            equipment_name=equipment.get(
+                getattr(node, "train_equipment_id", None) or node.equipment_id, {}
+            ).get("name"),
             serial_number=node.serial_number,
             manufacture_date_text=node.manufacture_date_text
             or (
@@ -63,8 +67,16 @@ class PassportPositionService:
             manufacture_date=(
                 node.manufacture_date.isoformat() if node.manufacture_date else None
             ),
-            supplier_id=node.supplier_id,
-            manufacturer=node.manufacturer,
+            supplier_id=(
+                equipment.get(node.train_equipment_id, {}).get("supplier_id")
+                if getattr(node, "train_equipment_id", None) is not None
+                else node.supplier_id
+            ),
+            manufacturer=(
+                equipment.get(node.train_equipment_id, {}).get("manufacturer")
+                if getattr(node, "train_equipment_id", None) is not None
+                else node.manufacturer
+            ),
             install_date=node.install_date.isoformat() if node.install_date else None,
             designation=node.designation,
             full_name=node.full_name,
@@ -81,19 +93,22 @@ class PassportPositionService:
         return state
 
     @staticmethod
-    async def equipment(session):
+    async def equipment(session, direction="loco"):
         """Читает типы оборудования и их поставщиков"""
+        if direction == "train":
+            return await equipment_details(session)
+        model = Equipment
         rows = (
             await session.execute(
                 select(
-                    Equipment.id,
-                    Equipment.equipment_name,
-                    Equipment.parent_id,
-                    Equipment.supplier_id,
+                    model.id,
+                    model.equipment_name,
+                    model.parent_id,
+                    model.supplier_id,
                 )
             )
         ).all()
-        return {
+        result = {
             r.id: {
                 "name": r.equipment_name,
                 "parent_id": r.parent_id,
@@ -101,6 +116,8 @@ class PassportPositionService:
             }
             for r in rows
         }
+
+        return result
 
     @staticmethod
     def family(eid, equipment):
@@ -127,7 +144,9 @@ class PassportPositionService:
         passport = await ProductPassportService.get_by_id(session, passport_id)
         if passport is None:
             cls.fail("Паспорт не найден")
-        equipment = await cls.equipment(session)
+        equipment = getattr(passport, "catalogue_details", None) or await cls.equipment(
+            session, "train" if passport.train_model_id is not None else "loco"
+        )
         nodes = {n.id: n for n in passport.nodes}
         changes = defaultdict(list)
         installations = {}
@@ -258,22 +277,11 @@ class PassportPositionService:
             )
         ]
 
-    @staticmethod
-    def equipment_path(equipment_id, equipment):
-        """Возвращает путь от типа оборудования до корня классификатора"""
-        path, seen = [], set()
-        while equipment_id in equipment and equipment_id not in seen:
-            seen.add(equipment_id)
-            path.append(equipment_id)
-            equipment_id = equipment[equipment_id]["parent_id"]
-        return list(reversed(path))
-
     @classmethod
     async def classifier_ids(
         cls, session, nodes, states, equipment, by_code, section_mask
     ):
         """Оставляет паспортные обозначения выбранных секций и оборудование для ручного ввода"""
-        paths = {eid: cls.equipment_path(eid, equipment) for eid in equipment}
         known_ids = (
             await session.scalars(
                 select(ProductPassportNode.equipment_id)
@@ -281,35 +289,17 @@ class PassportPositionService:
                 .distinct()
             )
         ).all()
-        # Ограничиваем конкретные паспортные обозначения, а не всё их семейство
-        managed_designations = {
-            paths[eid][3] for eid in known_ids if len(paths.get(eid, [])) >= 4
-        }
-        available = set()
+        present_ids = set()
         for node in nodes.values():
             state = states[node.id]
-            if not state.get("is_present", True):
-                continue
             section = cls.context(node, by_code)["section"]
-            if section and not section & section_mask:
-                continue
-            available.update(paths.get(state.get("equipment_id"), []))
-        allowed = set(equipment)
-        children = defaultdict(set)
-        for eid, row in equipment.items():
-            children[row["parent_id"]].add(eid)
-            path = paths[eid]
-            if (
-                len(path) >= 4
-                and path[3] in managed_designations
-                and path[3] not in available
+            if state.get("is_present", True) and (
+                not section or section & section_mask
             ):
-                allowed.discard(eid)
-        # Убираем пустые ветки, сохраняя детей для ручного ввода под доступным обозначением
-        for eid in sorted(equipment, key=lambda key: len(paths[key]), reverse=True):
-            if children[eid] and not children[eid] & allowed:
-                allowed.discard(eid)
-        return sorted(allowed)
+                present_ids.add(state.get("equipment_id"))
+        return passport_classifier_ids(
+            equipment, known_ids, present_ids, managed_level=4
+        )
 
     @classmethod
     async def options(
@@ -546,16 +536,16 @@ class PassportPositionService:
                     ),
                 }
         children = defaultdict(list)
-        for row in planned.values():
-            row["parent_node_id"] = next(
+        for planned_item in planned.values():
+            planned_item["parent_node_id"] = next(
                 (
                     a.id
-                    for a in cls.ancestors(nodes[row["node_id"]], by_code)
-                    if a.id != row["node_id"] and a.id in planned
+                    for a in cls.ancestors(nodes[planned_item["node_id"]], by_code)
+                    if a.id != planned_item["node_id"] and a.id in planned
                 ),
                 None,
             )
-            children[row["parent_node_id"]].append(row)
+            children[planned_item["parent_node_id"]].append(planned_item)
 
         def order(row):
             """Определяет порядок позиций внутри состава замены"""

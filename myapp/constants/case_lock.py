@@ -1,5 +1,3 @@
-"""Срок блокировки продлевается открытой формой редактирования"""
-
 from datetime import datetime, timedelta, timezone
 
 CASE_LOCK_TTL = timedelta(minutes=2)

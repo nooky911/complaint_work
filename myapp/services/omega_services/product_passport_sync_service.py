@@ -1,23 +1,22 @@
 import asyncio
-from datetime import datetime, timezone
 import logging
 import re
-
+from datetime import datetime, timezone
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import selectinload
 
 from myapp.config import settings
 from myapp.database.base import async_session_maker
 from myapp.models.auxiliaries import LocomotiveModel, Supplier
-from myapp.models.equipment_malfunctions import Equipment
+from myapp.loco.models.equipment import Equipment
 from myapp.models.product_passports import (
     ProductPassport,
     ProductPassportEquipmentMatch,
     ProductPassportEquipmentSerialMatch,
     ProductPassportNode,
 )
-from myapp.omega.client import OmegaClient
-from myapp.schemas.omega import OmegaPassportRootData
+from myapp.integrations.omega.client import OmegaClient
+from myapp.schemas.omega.source import OmegaPassportRootData
 from myapp.services.omega_services.product_passport_equipment_service import (
     NumberedPassportLinks,
     ProductPassportEquipmentService,
@@ -25,7 +24,7 @@ from myapp.services.omega_services.product_passport_equipment_service import (
 from myapp.services.omega_services.product_passport_service import (
     ProductPassportService,
 )
-from myapp.ul_service.client import ULServiceClient
+from myapp.integrations.ul.client import ULServiceClient
 from myapp.validators.product_passport_validator import ProductPassportValidator
 
 

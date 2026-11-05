@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Query, Depends
 from typing import Annotated
 from sqlalchemy.ext.asyncio import AsyncSession
-from myapp.database.base import get_db
+from sqlalchemy import select
 
+from myapp.models.waybill_docs import ShippingProvider
+from myapp.database.base import get_db
 from myapp.auth.dependencies import (
     require_viewer_or_higher,
     require_superadmin,
@@ -14,16 +16,37 @@ from myapp.schemas.references import (
     EquipmentManagementReferencesResponse,
     LocomotiveNumberItem,
 )
-from myapp.schemas.filters import FilterOptionsResponse, CaseFilterParams
+from myapp.loco.schemas.filters import FilterOptionsResponse, CaseFilterParams
 from myapp.services.reference_service import ReferenceService
-from myapp.services.case_filter_service import CaseFilterService
+from myapp.loco.services.case_filter_service import CaseFilterService
 
 
 router = APIRouter(prefix="/references", tags=["Выпадающие списки"])
 
 
-@router.get("/locomotive-numbers", response_model=list[LocomotiveNumberItem],
-            summary="Номера локомотивов выбранной модели для формы случая")
+@router.get(
+    "/shipping-providers", summary="Общий справочник перевозчиков и действий ТТН"
+)
+async def get_shipping_providers(
+    session: Annotated[AsyncSession, Depends(get_db)],
+    _user: Annotated[User, Depends(require_viewer_or_higher)],
+):
+    """Возвращает только общий справочник ТТН без оборудования чужого направления"""
+    rows = (
+        await session.execute(
+            select(ShippingProvider.id, ShippingProvider.name_provider).order_by(
+                ShippingProvider.id
+            )
+        )
+    ).all()
+    return [dict(id=row.id, name=row.name_provider) for row in rows]
+
+
+@router.get(
+    "/locomotive-numbers",
+    response_model=list[LocomotiveNumberItem],
+    summary="Номера локомотивов выбранной модели для формы случая",
+)
 async def get_locomotive_numbers(
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_editor_or_superadmin)],
@@ -31,7 +54,9 @@ async def get_locomotive_numbers(
     search: Annotated[str, Query(max_length=50)] = "",
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ):
-    return await ReferenceService.get_locomotive_numbers(session, locomotive_model_id, search, limit)
+    return await ReferenceService.get_locomotive_numbers(
+        session, locomotive_model_id, search, limit
+    )
 
 
 @router.get(

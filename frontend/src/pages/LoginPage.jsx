@@ -23,8 +23,7 @@ const LoginPage = () => {
 
       await login();
       message.success("Успешный вход!");
-      navigate("/dashboard", { replace: true });
-
+      navigate("/", { replace: true });
     } catch (error) {
       message.error(
         "Ошибка входа: " + (error.response?.data?.detail || "Ошибка"),

@@ -6,18 +6,28 @@ import {
   searchProductPassports,
 } from "../../api/productPassports";
 
-export const useProductPassportModels = () =>
+export const useProductPassportModels = (direction = "loco") =>
   useQuery({
-    queryKey: ["product-passports", "models"],
-    queryFn: getProductPassportModels,
+    queryKey: ["product-passports", "models", direction],
+    queryFn: () => getProductPassportModels(direction),
     staleTime: 5 * 60 * 1000,
   });
 
-export const useProductPassportSearch = (locomotiveModelId, productNumber) =>
+export const useProductPassportSearch = (
+  modelId,
+  productNumber,
+  direction = "loco",
+) =>
   useQuery({
-    queryKey: ["product-passports", "search", locomotiveModelId, productNumber],
-    queryFn: () => searchProductPassports(locomotiveModelId, productNumber),
-    enabled: Boolean(locomotiveModelId && productNumber.trim()),
+    queryKey: [
+      "product-passports",
+      "search",
+      direction,
+      modelId,
+      productNumber,
+    ],
+    queryFn: () => searchProductPassports(modelId, productNumber, direction),
+    enabled: Boolean(modelId && productNumber.trim()),
     staleTime: 60 * 1000,
   });
 

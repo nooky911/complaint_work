@@ -9,6 +9,8 @@ class SimpleCache:
     """in-memory кеш для статических данных"""
 
     def __init__(self):
+        """Создаёт локальный кэш с поколением для защиты от устаревших загрузок"""
+        self._generation = 0
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._lock = asyncio.Lock()
 
@@ -23,15 +25,31 @@ class SimpleCache:
                     del self._cache[key]
             return None
 
-    async def set(self, key: str, value: Any, ttl_seconds: int = 300):
-        """Сохранить значение в кеш"""
+    async def set(
+        self,
+        key: str,
+        value: Any,
+        ttl_seconds: int = 300,
+        *,
+        generation: int | None = None,
+    ):
+        """Сохраняет значение, если за время загрузки кэш не был сброшен"""
         async with self._lock:
+            if generation is not None and generation != self._generation:
+                return
             self._cache[key] = {"value": value, "expires": time.time() + ttl_seconds}
 
     async def clear(self):
         """Очистить кеш"""
         async with self._lock:
+            self._generation += 1
             self._cache.clear()
+
+    def clear_after_commit(self, session: AsyncSession) -> None:
+        """Планирует один сброс кэша после успешной общей транзакции"""
+        callbacks = session.info.setdefault("after_commit", [])
+        if self.clear not in callbacks:
+            callbacks.append(self.clear)
 
     async def delete(self, key: str):
         """Удалить конкретный ключ из кэша"""
@@ -58,12 +76,13 @@ def cached(ttl_seconds: int = 300):
 
             cache_key = f"{func.__name__}_{hash(str(filterable_args) + str(sorted(kwargs.items())))}"
 
+            generation = cache._generation
             cached_result = await cache.get(cache_key)
             if cached_result is not None:
                 return cached_result
 
             result = await func(*args, **kwargs)
-            await cache.set(cache_key, result, ttl_seconds)
+            await cache.set(cache_key, result, ttl_seconds, generation=generation)
             return result
 
         return wrapper

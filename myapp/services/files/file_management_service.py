@@ -1,10 +1,12 @@
 import asyncio
 from functools import partial
 from pathlib import Path
-
+from fastapi import HTTPException
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from myapp.services.user_access_service import lock_case_for_change
+from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.database.base import async_session_maker
 from myapp.database.transactional import transactional
 from myapp.models.case_files import (
@@ -36,6 +38,8 @@ class FileManagementService:
         case_file = await FileManagementService.get_file_by_id(session, file_id)
         if not case_file:
             return 0
+
+        await lock_case_for_change(session, case_file.case_id)
 
         stmt = (
             select(func.count())
@@ -78,12 +82,20 @@ class FileManagementService:
         related_field: str | None = None,
         search_query: str | None = None,
         limit: int = 50,
+        direction: str = "loco",
     ) -> list[CaseFile]:
         """Поиск уникальных файлов для выбора"""
 
-        stmt = select(CaseFile).distinct(CaseFile.file_path)
+        stmt = (
+            select(CaseFile)
+            .join(RepairCaseEquipment, RepairCaseEquipment.id == CaseFile.case_id)
+            .distinct(CaseFile.file_path)
+        )
 
-        conditions = [CaseFile.category == category]
+        conditions = [
+            CaseFile.category == category,
+            RepairCaseEquipment.direction == direction,
+        ]
         if related_field:
             conditions.append(CaseFile.related_field == related_field)
 
@@ -109,11 +121,26 @@ class FileManagementService:
     ) -> CaseFile:
         """Создает ссылку на уже существующий файл для нового случая"""
 
+        await lock_case_for_change(session, case_id)
         existing_file = await FileManagementService.get_file_by_id(
             session, existing_file_id
         )
         if not existing_file:
             raise ValueError(f"Исходный файл с ID {existing_file_id} не найден")
+
+        directions = dict(
+            (
+                await session.execute(
+                    select(RepairCaseEquipment.id, RepairCaseEquipment.direction).where(
+                        RepairCaseEquipment.id.in_([case_id, existing_file.case_id])
+                    )
+                )
+            ).all()
+        )
+        if case_id not in directions or existing_file.case_id not in directions:
+            raise FileNotFoundError("Случай не найден")
+        if directions[case_id] != directions[existing_file.case_id]:
+            raise HTTPException(422, "Нельзя привязать файл из другого направления")
 
         new_file = CaseFile(
             case_id=case_id,

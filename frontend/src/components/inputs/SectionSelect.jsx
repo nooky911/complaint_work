@@ -1,8 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { ChevronDown, Check } from "lucide-react";
 import { formatSectionMask } from "../../utils/formatters";
 import { SECTIONS_CONFIG } from "../../constants/sections_mask";
 import { useDropdown } from "../../hooks/useDropdown";
+
+const hasMaskBit = (value, bit) => Math.floor((value || 0) / bit) % 2 === 1;
 
 export const SectionSelect = ({
   label,
@@ -13,18 +15,39 @@ export const SectionSelect = ({
   error,
   isDisabled = false,
   availableMask = 7,
+  options,
+  selectedValues = [],
 }) => {
   const { isOpen, setIsOpen, containerRef } = useDropdown();
 
   const toggleBit = (bit) => {
-    if (!isDisabled && (availableMask & bit)) onChange((mask || 0) ^ bit);
+    if (isDisabled) return;
+    if (options) {
+      onChange(
+        selectedValues.includes(bit)
+          ? selectedValues.filter((id) => id !== bit)
+          : [...selectedValues, bit],
+      );
+      return;
+    }
+    if (hasMaskBit(availableMask, bit)) {
+      onChange(hasMaskBit(mask, bit) ? (mask || 0) - bit : (mask || 0) + bit);
+    }
   };
-  const isSelected = (bit) => !!(mask & bit);
+  const isSelected = (bit) =>
+    options ? selectedValues.includes(bit) : hasMaskBit(mask, bit);
 
   const displayValue = useMemo(() => {
+    if (options)
+      return (
+        options
+          .filter((item) => selectedValues.includes(item.id))
+          .map((item) => item.name)
+          .join(", ") || "—"
+      );
     const formatted = formatSectionMask(mask);
     return formatted === "—" ? "—" : formatted;
-  }, [mask]);
+  }, [mask, options, selectedValues]);
 
   if (!isEditing) return null;
 
@@ -40,7 +63,9 @@ export const SectionSelect = ({
         aria-label={label}
         aria-disabled={isDisabled}
         tabIndex={isDisabled ? -1 : 0}
-        onClick={() => { if (!isDisabled) setIsOpen(!isOpen); }}
+        onClick={() => {
+          if (!isDisabled) setIsOpen(!isOpen);
+        }}
         onKeyDown={(event) => {
           if (!isDisabled && (event.key === "Enter" || event.key === " ")) {
             event.preventDefault();
@@ -48,11 +73,13 @@ export const SectionSelect = ({
           }
         }}
         className={`flex h-[38px] items-center justify-between rounded-lg border px-3 shadow-sm transition-all ${
-          isDisabled ? "cursor-not-allowed border-gray-100 bg-gray-50" : error
-            ? "border-red-500 bg-red-50 shadow-red-50"
-            : isOpen
-              ? "border-indigo-500 ring-1 ring-indigo-50"
-              : "border-slate-200 bg-white hover:border-slate-400"
+          isDisabled
+            ? "cursor-not-allowed border-gray-100 bg-gray-50"
+            : error
+              ? "border-red-500 bg-red-50 shadow-red-50"
+              : isOpen
+                ? "border-indigo-500 ring-1 ring-indigo-50"
+                : "border-slate-200 bg-white hover:border-slate-400"
         }`}
       >
         <span
@@ -68,7 +95,10 @@ export const SectionSelect = ({
       {isOpen && !isDisabled && (
         <div className="animate-in fade-in zoom-in-95 absolute left-0 z-[120] mt-2 w-full overflow-hidden rounded-xl border border-slate-100 bg-white p-2 shadow-2xl duration-200">
           <div className="space-y-1">
-            {SECTIONS_CONFIG.filter((s) => availableMask & s.bit).map((s) => (
+            {(options
+              ? options.map((item) => ({ bit: item.id, label: item.name }))
+              : SECTIONS_CONFIG.filter((s) => hasMaskBit(availableMask, s.bit))
+            ).map((s) => (
               <div
                 key={s.bit}
                 onClick={() => toggleBit(s.bit)}
@@ -93,7 +123,7 @@ export const SectionSelect = ({
                       isSelected(s.bit) ? "text-indigo-900" : "text-slate-600"
                     }`}
                   >
-                    Секция {s.label}
+                    {options ? s.label : `Секция ${s.label}`}
                   </span>
                 </div>
               </div>

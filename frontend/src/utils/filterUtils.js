@@ -1,4 +1,40 @@
-import { EMPTY_FILTER_VALUE } from "../constants/filters";
+import { EMPTY_FILTER_VALUE, INITIAL_FILTERS } from "../constants/filters";
+
+/** Восстанавливает известные фильтры, сохраняя значения по умолчанию при ошибке */
+export const readSavedFilters = (storageKey) => {
+  let saved;
+  try {
+    saved = JSON.parse(localStorage.getItem(storageKey));
+  } catch {
+    saved = null;
+  }
+  const source =
+    saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  return Object.fromEntries(
+    Object.entries(INITIAL_FILTERS).map(([key, initial]) => {
+      const value = source[key];
+      if (Array.isArray(initial)) {
+        return [
+          key,
+          Array.isArray(value)
+            ? value.filter(
+                (item) =>
+                  typeof item === "string" ||
+                  (typeof item === "number" && Number.isFinite(item)),
+              )
+            : [],
+        ];
+      }
+      if (typeof initial === "number") {
+        return [
+          key,
+          Number.isSafeInteger(value) && value >= 0 ? value : initial,
+        ];
+      }
+      return [key, typeof value === "string" ? value : initial];
+    }),
+  );
+};
 
 // Подсчет количества активных фильтров для бейджика
 export const countActiveFilters = (filters) => {

@@ -1,12 +1,10 @@
 import asyncio
-from datetime import date, datetime, timezone
-from myapp.constants.case_lock import is_case_lock_active
-from myapp.services.user_access_service import UserAccessService
 import hashlib
 import hmac
-from io import BytesIO
 import json
 import logging
+from datetime import date, datetime, timezone
+from io import BytesIO
 from fastapi import UploadFile
 from sqlalchemy import (
     SQLColumnExpression,
@@ -24,6 +22,8 @@ from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import Subquery
 from starlette.datastructures import Headers
 
+from myapp.constants.case_lock import is_case_lock_active
+from myapp.services.user_access_service import UserAccessService
 from myapp.config import settings
 from myapp.database.transactional import transactional
 from myapp.models.auxiliaries import (
@@ -33,18 +33,24 @@ from myapp.models.auxiliaries import (
     Supplier,
 )
 from myapp.models.case_files import CaseFile, FileCategory, WaybillDocumentField
-from myapp.models.equipment_malfunctions import Equipment
+from myapp.loco.models.equipment import Equipment
+from myapp.train.models.equipment import TrainEquipment
+from myapp.train.models.case_details import TrainCaseDetails
+from myapp.train.models.train_models import TrainModel
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.models.warranty_work import WarrantyWork
 from myapp.models.waybill_docs import ShippingProvider
 from myapp.services import CaseValidationError
-from myapp.services.case_filter_service import CaseFilterService
+from myapp.loco.services.case_filter_service import CaseFilterService
 from myapp.services.omega_services.omega_stock_service import OmegaStockService
 from myapp.services.storage_service import StorageService
 from myapp.services.waybill_service import WaybillService
 from myapp.schemas.waybill import WaybillDocUpdate
-from myapp.schemas.omega_stock import OmegaStockCaseLinkRequest, OmegaStockColumnFilter
+from myapp.schemas.omega.omega_stock import (
+    OmegaStockCaseLinkRequest,
+    OmegaStockColumnFilter,
+)
 from myapp.validators.file_validator import FileValidator, MAX_CASE_SIZE
 
 logger = logging.getLogger(__name__)
@@ -74,6 +80,28 @@ class StockCaseLinkService:
     )
 
     @staticmethod
+    def require_direction(user, direction):
+        """Разрешает привязку только в собственном разделе либо суперадминистратору"""
+        if direction not in ("loco", "train"):
+            raise ValueError("Неизвестное направление")
+        if user.role == "superadmin":
+            return
+        if user.role != "editor" or user.direction != direction:
+            raise PermissionError("В чужом разделе склад доступен только для просмотра")
+
+    @staticmethod
+    def numbered_cases(direction):
+        """Нумерует случаи внутри направления до применения фильтров и прав"""
+        if direction == "loco":
+            return CaseFilterService._numbered_cases()
+        r = RepairCaseEquipment
+        return (
+            select(r.id, func.row_number().over(order_by=r.id).label("display_number"))
+            .where(r.direction == "train")
+            .cte("train_stock_case_numbers")
+        )
+
+    @staticmethod
     def access_condition(user: User) -> ColumnElement[bool]:
         """Ограничивает выбор владельцем случая и разрешённым напарником"""
         if user.role == "superadmin":
@@ -81,7 +109,10 @@ class StockCaseLinkService:
         owner = RepairCaseEquipment.user_id == user.id
         if user.role != "editor":
             return literal(False)
-        return or_(owner, RepairCaseEquipment.user_id.in_(UserAccessService.partner_ids(user.id)))
+        return or_(
+            owner,
+            RepairCaseEquipment.user_id.in_(UserAccessService.partner_ids(user.id)),
+        )
 
     @staticmethod
     def _document_text(
@@ -107,49 +138,62 @@ class StockCaseLinkService:
         )
 
     @classmethod
-    def _case_table(cls, user: User) -> Subquery:
+    def _case_table(cls, user: User, direction="loco") -> Subquery:
         """Собирает колонки выбора с общими номерами случаев до фильтрации"""
+        cls.require_direction(user, direction)
         r = RepairCaseEquipment
-        numbered = CaseFilterService._numbered_cases()
+        train = direction == "train"
+        equipment_model = TrainEquipment if train else Equipment
+        component_id = (
+            func.coalesce(TrainCaseDetails.component_id, TrainCaseDetails.equipment_id)
+            if train
+            else r.component_equipment_id
+        )
+        element_id = TrainCaseDetails.element_id if train else r.element_equipment_id
+        numbered = cls.numbered_cases(direction)
         show_element = and_(
-            r.element_equipment_id.is_not(None),
+            element_id.is_not(None),
             r.repair_type_id.in_(
                 select(RepairType.id).where(RepairType.auto_fill_strategy == "LEVEL_4")
             ),
         )
         # Ближайший поставщик в классификаторе определяет обозначение оборудования
-        ancestors = (
-            select(
-                r.id.label("case_id"),
-                Equipment.id.label("equipment_id"),
-                Equipment.parent_id,
-                Equipment.supplier_id,
-                Equipment.equipment_name,
-                literal(0).label("depth"),
-                show_element.label("show_element"),
+        ancestors = select(
+            r.id.label("case_id"),
+            equipment_model.id.label("equipment_id"),
+            equipment_model.parent_id,
+            equipment_model.supplier_id,
+            equipment_model.equipment_name,
+            literal(0).label("depth"),
+            show_element.label("show_element"),
+        ).select_from(r)
+        if train:
+            ancestors = ancestors.join(
+                TrainCaseDetails, TrainCaseDetails.case_id == r.id
             )
-            .join(
-                Equipment,
-                Equipment.id
+        ancestors = (
+            ancestors.join(
+                equipment_model,
+                equipment_model.id
                 == case(
-                    (show_element, r.element_equipment_id),
-                    else_=r.component_equipment_id,
+                    (show_element, element_id),
+                    else_=component_id,
                 ),
             )
-            .where(cls.access_condition(user))
+            .where(cls.access_condition(user), r.direction == direction)
             .cte("stock_equipment", recursive=True)
         )
         ancestors = ancestors.union_all(
             select(
                 ancestors.c.case_id,
-                Equipment.id,
-                Equipment.parent_id,
-                Equipment.supplier_id,
-                Equipment.equipment_name,
+                equipment_model.id,
+                equipment_model.parent_id,
+                equipment_model.supplier_id,
+                equipment_model.equipment_name,
                 ancestors.c.depth + 1,
                 ancestors.c.show_element,
             )
-            .join(Equipment, Equipment.id == ancestors.c.parent_id)
+            .join(equipment_model, equipment_model.id == ancestors.c.parent_id)
             .where(
                 ~ancestors.c.show_element,
                 ancestors.c.supplier_id.is_(None),
@@ -198,14 +242,19 @@ class StockCaseLinkService:
             w.re_notification_number.is_not(None), w.re_notification_number != ""
         )
         claim = and_(w.claim_act_number.is_not(None), w.claim_act_number != "")
-        return (
+        vehicle_name = (
+            func.concat(TrainModel.train_model_name, " ", TrainCaseDetails.train_number)
+            if train
+            else func.concat(
+                LocomotiveModel.locomotive_model_name, " ", r.locomotive_number
+            )
+        )
+        statement = (
             select(
                 r.id,
                 numbered.c.display_number.cast(String).label("display_number"),
                 RegionalCenter.regional_center_name.label("regional_center"),
-                func.concat(
-                    LocomotiveModel.locomotive_model_name, " ", r.locomotive_number
-                ).label("locomotive"),
+                vehicle_name.label("locomotive"),
                 equipment.c.equipment_name.label("equipment"),
                 serial_text.label("serial"),
                 Supplier.supplier_name.label("supplier"),
@@ -223,13 +272,23 @@ class StockCaseLinkService:
                     case((claim, w.claim_act_date), else_=w.work_completion_act_date),
                 ).label("act"),
             )
+            .select_from(r)
             .join(numbered, r.id == numbered.c.id)
-            .join(LocomotiveModel)
-            .join(RegionalCenter, r.regional_center_id == RegionalCenter.id)
+        )
+        if train:
+            statement = statement.join(
+                TrainCaseDetails, TrainCaseDetails.case_id == r.id
+            ).join(TrainModel, TrainModel.id == TrainCaseDetails.train_model_id)
+        else:
+            statement = statement.join(
+                LocomotiveModel, LocomotiveModel.id == r.locomotive_model_id
+            )
+        return (
+            statement.join(RegionalCenter, r.regional_center_id == RegionalCenter.id)
             .outerjoin(equipment, r.id == equipment.c.case_id)
             .outerjoin(Supplier, Supplier.id == r.supplier_id)
             .outerjoin(w, w.case_id == r.id)
-            .where(cls.access_condition(user))
+            .where(cls.access_condition(user), r.direction == direction)
             .subquery("stock_cases")
         )
 
@@ -267,12 +326,14 @@ class StockCaseLinkService:
         return conditions
 
     @classmethod
-    async def list_cases(cls, session, user, filters, offset, limit, selected_ids=None):
+    async def list_cases(
+        cls, session, user, filters, offset, limit, selected_ids=None, direction="loco"
+    ):
         """Возвращает страницу доступных случаев, размещая выбранные в начале"""
         selected_ids = selected_ids or []
         if len(selected_ids) > 10000 or any(value <= 0 for value in selected_ids):
             raise ValueError("Некорректный список выбранных случаев")
-        table = cls._case_table(user)
+        table = cls._case_table(user, direction)
         conditions = cls._conditions(table, filters)
         ordering = []
         if selected_ids:
@@ -297,11 +358,11 @@ class StockCaseLinkService:
         return {"items": [dict(row) for row in items], "total": total}
 
     @classmethod
-    async def filter_options(cls, session, user, column, filters):
+    async def filter_options(cls, session, user, column, filters, direction="loco"):
         """Возвращает значения колонки в пределах прав пользователя"""
         if column not in cls.COLUMNS:
             raise ValueError("Неизвестная колонка фильтра")
-        table = cls._case_table(user)
+        table = cls._case_table(user, direction)
         return list(
             (
                 await session.scalars(
@@ -349,11 +410,16 @@ class StockCaseLinkService:
         }
 
     @classmethod
-    async def _cases(cls, session, user, ids, lock=False):
+    async def _cases(cls, session, user, ids, lock=False, direction="loco"):
         """Повторно проверяет доступ и блокировки перед изменением случаев"""
+        cls.require_direction(user, direction)
         statement = (
             select(RepairCaseEquipment)
-            .where(RepairCaseEquipment.id.in_(ids), cls.access_condition(user))
+            .where(
+                RepairCaseEquipment.id.in_(ids),
+                RepairCaseEquipment.direction == direction,
+                cls.access_condition(user),
+            )
             .order_by(RepairCaseEquipment.id)
             .options(
                 selectinload(RepairCaseEquipment.waybill_doc),
@@ -382,7 +448,7 @@ class StockCaseLinkService:
         cls, session, user, data, cases, files, values, kind, document_id
     ):
         """Сохраняет в подписи проверенные данные без отдельной таблицы привязок"""
-        numbered = CaseFilterService._numbered_cases()
+        numbered = cls.numbered_cases(data.direction)
         numbers = dict(
             (
                 await session.execute(
@@ -421,6 +487,7 @@ class StockCaseLinkService:
         content = json.dumps(
             [
                 user.id,
+                data.direction,
                 kind,
                 document_id,
                 values,
@@ -444,7 +511,7 @@ class StockCaseLinkService:
     async def preview(cls, session, user, kind, document_id, data):
         """Показывает заполненные блоки до подтверждения замены"""
         values = await cls._validate(session, kind, data)
-        cases = await cls._cases(session, user, data.case_ids)
+        cases = await cls._cases(session, user, data.case_ids, direction=data.direction)
         files = await OmegaStockService().list_files(kind, document_id)
         if files is None:
             raise FileNotFoundError("Складской документ не найден")
@@ -506,7 +573,7 @@ class StockCaseLinkService:
     async def _apply(cls, session, user, kind, document_id, data, paths):
         """Сохраняет поля передвижения и все файлы одной общей транзакцией"""
         values = await cls._validate(session, kind, data)
-        cases = await cls._cases(session, user, data.case_ids)
+        cases = await cls._cases(session, user, data.case_ids, direction=data.direction)
         stock = OmegaStockService()
         files = await stock.list_files(kind, document_id)
         if files is None:
@@ -532,7 +599,9 @@ class StockCaseLinkService:
                 raise ValueError(
                     "Вложения склада превышают лимит размера случая (50 МБ)"
                 )
-        cases = await cls._cases(session, user, data.case_ids, lock=True)
+        cases = await cls._cases(
+            session, user, data.case_ids, lock=True, direction=data.direction
+        )
         preview = await cls._preview(
             session, user, data, cases, files, values, kind, document_id
         )
@@ -578,6 +647,7 @@ class StockCaseLinkService:
                     FileCategory.waybill,
                     stored,
                     WaybillDocumentField(data.related_field),
+                    direction=c.direction,
                 )
                 paths.append(StorageService.get_full_path(relative))
                 await StorageService.save_file_to_disk(upload, relative)

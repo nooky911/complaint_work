@@ -1,6 +1,6 @@
-import React, { useMemo, useEffect, useCallback } from "react";
+import { useMemo, useEffect, useCallback } from "react";
 
-import { PassportReplacementFields } from "./equipment/PassportEquipmentFields";
+import { PassportReplacementFields } from "../loco/equipment/components/PassportEquipmentFields.jsx";
 import { SelectField } from "./inputs/index";
 import { EquipmentHierarchyEditor } from "./EquipmentHierarchyEditor";
 import { REPAIR_FIELDS_LABELS } from "../constants/labels";
@@ -14,14 +14,21 @@ export const RepairExecutionEditor = ({
   faultyHierarchy,
   showError,
   validation,
+  equipmentAdapter,
 }) => {
   const rId = Number(
     currentData?.repair_type?.id || currentData?.repair_type_id,
   );
 
-  const usesPassportReplacement = [1, 2, 3].includes(rId) && currentData?.passport_links?.some((x) => rId === 3 ? x.role === "element" : x.role === "component" || rId === 1);
+  const usesPassportReplacement =
+    [1, 2, 3].includes(rId) &&
+    currentData?.passport_links?.some((x) =>
+      rId === 3 ? x.role === "element" : x.role === "component" || rId === 1,
+    );
   const hasLevel3 = Boolean(faultyHierarchy?.fullHierarchy?.lvl3);
-  const isRepairTypeDisabled = !hasLevel3;
+  const isRepairTypeDisabled = equipmentAdapter
+    ? !equipmentAdapter.isSelected
+    : !hasLevel3;
 
   // ЕДИНАЯ ФУНКЦИЯ ОЧИСТКИ ВСЕХ ЗАВИСИМЫХ ПОЛЕЙ
   const resetAllRepairFields = useCallback(() => {
@@ -48,11 +55,19 @@ export const RepairExecutionEditor = ({
 
   // АВТОМАТИЧЕСКИЙ СБРОС
   useEffect(() => {
+    if (equipmentAdapter) return;
     if (rId !== 0 && isRepairTypeDisabled && isEditing) {
       updateField("repair_type_id", null);
       resetAllRepairFields();
     }
-  }, [isRepairTypeDisabled, rId, isEditing, updateField, resetAllRepairFields]);
+  }, [
+    isRepairTypeDisabled,
+    rId,
+    isEditing,
+    updateField,
+    resetAllRepairFields,
+    equipmentAdapter,
+  ]);
 
   const disabledStyles =
     "border-slate-200 text-slate-400 shadow-none pointer-events-none opacity-70";
@@ -80,10 +95,17 @@ export const RepairExecutionEditor = ({
 
   // РУЧНОЙ СБРОС
   const handleRepairTypeChange = (val) => {
+    if (equipmentAdapter) {
+      equipmentAdapter.onRepairTypeChange(val);
+      return;
+    }
     const nextId = Number(val);
     if (nextId === rId) return;
 
-    updateField("repair_type_id", nextId, { replacement_items: [], _passport_replacement_invalid: true });
+    updateField("repair_type_id", nextId, {
+      replacement_items: [],
+      _passport_replacement_invalid: true,
+    });
     resetAllRepairFields();
 
     const h = faultyHierarchy?.fullHierarchy || {};
@@ -135,34 +157,46 @@ export const RepairExecutionEditor = ({
         />
       </div>
 
-      {[5, 8].includes(rId) && !!currentData?.passport_links?.length && <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">Для этого типа ремонта состав паспорта автоматически не меняется.</p>}
-      {usesPassportReplacement && <PassportReplacementFields data={currentData} updateField={updateField} />}
-      {strategy !== "NONE" && !usesPassportReplacement && (
-        <EquipmentHierarchyEditor
-          isEditing={isEditing}
-          mode="new"
-          currentId={
-            strategy === "LEVEL_4"
-              ? currentData?.new_element_equipment_id || null
-              : currentData?.new_component_equipment_id || null
-          }
-          allEquipment={allEquipment}
-          references={references}
-          currentData={currentData}
+      {[5, 8].includes(rId) && !!currentData?.passport_links?.length && (
+        <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900">
+          Для этого типа ремонта состав паспорта автоматически не меняется.
+        </p>
+      )}
+      {usesPassportReplacement && (
+        <PassportReplacementFields
+          data={currentData}
           updateField={updateField}
-          filterStrategy={strategy}
-          initialLevels={faultyHierarchy?.fullHierarchy}
-          onSelect={(data) => {
-            if (data.component) {
-              updateField("new_component_equipment_id", data.component);
-            }
-            updateField("new_element_equipment_id", data.element || null);
-          }}
-          showError={showError}
-          errorDesignation={showError && validation.isNewComponentMissing}
-          errorElement={showError && validation.isNewElementMissing}
         />
       )}
+      {equipmentAdapter
+        ? equipmentAdapter.replacement
+        : strategy !== "NONE" &&
+          !usesPassportReplacement && (
+            <EquipmentHierarchyEditor
+              isEditing={isEditing}
+              mode="new"
+              currentId={
+                strategy === "LEVEL_4"
+                  ? currentData?.new_element_equipment_id || null
+                  : currentData?.new_component_equipment_id || null
+              }
+              allEquipment={allEquipment}
+              references={references}
+              currentData={currentData}
+              updateField={updateField}
+              filterStrategy={strategy}
+              initialLevels={faultyHierarchy?.fullHierarchy}
+              onSelect={(data) => {
+                if (data.component) {
+                  updateField("new_component_equipment_id", data.component);
+                }
+                updateField("new_element_equipment_id", data.element || null);
+              }}
+              showError={showError}
+              errorDesignation={showError && validation.isNewComponentMissing}
+              errorElement={showError && validation.isNewElementMissing}
+            />
+          )}
 
       <div className="grid grid-cols-2 gap-3">
         <SelectField

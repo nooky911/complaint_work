@@ -12,18 +12,14 @@ class UserBase(BaseModel):
     is_active: bool = True
 
 
-class UserCreate(UserBase):
-    """Схема для создания нового пользователя"""
-
-    password: str = Field(..., min_length=8)
-
-
 class UserResponse(UserBase):
     """Схема ответа с данными пользователя"""
 
     id: int
     created_at: datetime
     partner_ids: list[int] = Field(default_factory=list)
+    direction: Literal["loco", "train"] = "loco"
+    can_manage_equipment: bool = False
     restricted_access: bool = False
     allowed_rc_names: list[str] = Field(default_factory=list, max_length=100)
     login: str
@@ -47,5 +43,7 @@ class AdminUserData(BaseModel):
     role: Literal["viewer", "editor", "superadmin"] = "viewer"
     is_active: bool = True
     partner_ids: list[int] = Field(default_factory=list, max_length=500)
+    direction: Literal["loco", "train"] = "loco"
+    can_manage_equipment: bool = False
     restricted_access: bool = False
     allowed_rc_names: list[str] = Field(default_factory=list, max_length=100)

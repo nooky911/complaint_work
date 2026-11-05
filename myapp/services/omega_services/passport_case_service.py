@@ -3,7 +3,13 @@ import json
 from collections import defaultdict
 from sqlalchemy import delete, func, select
 
-from myapp.models.equipment_malfunctions import Malfunction
+from myapp.models.malfunctions import Malfunction
+from myapp.models.repair_case_equipment import RepairCaseEquipment
+from myapp.train.services.passport_selection_service import (
+    train_passport_links,
+    train_replacement_plan,
+    train_position_context,
+)
 from myapp.models.product_passports import (
     CasePassportLink,
     ProductPassport,
@@ -11,8 +17,8 @@ from myapp.models.product_passports import (
     ProductPassportEventItem,
     ProductPassportNode,
 )
-from myapp.services.case_filter_service import CaseFilterService
-from myapp.services.equipment_service import EquipmentService
+from myapp.loco.services.case_filter_service import CaseFilterService
+from myapp.loco.services.equipment_service import EquipmentService
 from myapp.services.omega_services.passport_history_service import (
     PassportHistoryService,
 )
@@ -49,6 +55,7 @@ class PassportCaseService:
         installed=None,
         expected_revision=None,
         force=False,
+        train_details=None,
     ):
         """Сохраняет выбранные экземпляры и изменения паспорта по случаю"""
         existing = (
@@ -66,6 +73,8 @@ class PassportCaseService:
             PassportPositionService.fail(
                 "Случай изменён другим пользователем. Обновите карточку.", "revision"
             )
+        if train_details is not None and links is None:
+            links = []
         selection_from_record = links is None
         if links is None:
             if not force:
@@ -93,6 +102,10 @@ class PassportCaseService:
         _, nodes, states, equipment, by_code = await PassportPositionService.load(
             session, case.passport_id, case.fault_date, case.id
         )
+        if train_details is not None:
+            links = train_passport_links(
+                train_details, nodes, states, by_code, links or None
+            )
         same_selection = {(x.node_id, x.role) for x in existing} == {
             (x["node_id"], x["role"]) for x in links
         }
@@ -116,15 +129,16 @@ class PassportCaseService:
             )
             for old_item in old_items:
                 states[old_item.node_id] = old_item.before_state
-        PassportPositionService.validate_links(
-            nodes,
-            states,
-            by_code,
-            links,
-            case.component_equipment_id,
-            case.element_equipment_id,
-            case.section_mask,
-        )
+        if train_details is None:
+            PassportPositionService.validate_links(
+                nodes,
+                states,
+                by_code,
+                links,
+                case.component_equipment_id,
+                case.element_equipment_id,
+                case.section_mask,
+            )
         for link in links:
             if (
                 link.get("version") is not None
@@ -134,8 +148,20 @@ class PassportCaseService:
                     "Состав паспорта изменился. Обновите выбор оборудования.",
                     "revision",
                 )
-        plan = PassportPositionService.plan(
-            nodes, states, equipment, by_code, links, case.repair_type_id
+        plan = (
+            train_replacement_plan(
+                nodes,
+                states,
+                equipment,
+                by_code,
+                train_details,
+                case.repair_type_id,
+                links,
+            )
+            if train_details is not None
+            else PassportPositionService.plan(
+                nodes, states, equipment, by_code, links, case.repair_type_id
+            )
         )
         if installed is None:
             if plan:
@@ -231,8 +257,10 @@ class PassportCaseService:
                     role=role,
                     parent_link_id=parent_links.get(link.get("parent_node_id")),
                     selected_state=states[nid],
-                    position_context=PassportPositionService.context(
-                        nodes[nid], by_code
+                    position_context=(
+                        train_position_context(nodes[nid], by_code, train_details)
+                        if train_details is not None
+                        else PassportPositionService.context(nodes[nid], by_code)
                     ),
                     sort_order=order,
                 )
@@ -269,7 +297,18 @@ class PassportCaseService:
                 + 1
             )
             malfunction = await session.get(Malfunction, case.malfunction_id)
-            display = await CaseFilterService.get_display_number(session, case.id)
+            display = (
+                await session.scalar(
+                    select(func.count())
+                    .select_from(RepairCaseEquipment)
+                    .where(
+                        RepairCaseEquipment.direction == "train",
+                        RepairCaseEquipment.id <= case.id,
+                    )
+                )
+                if train_details is not None
+                else await CaseFilterService.get_display_number(session, case.id)
+            )
             event = ProductPassportEvent(
                 passport_id=case.passport_id,
                 case_id=case.id,
@@ -298,17 +337,29 @@ class PassportCaseService:
             suppliers = {}
             for eid in {v.get("equipment_id") for v in supplied.values()}:
                 suppliers[eid] = (
-                    await EquipmentService.resolve_supplier(
-                        session,
-                        equipment_id=eid,
-                        locomotive_number=case.locomotive_number,
-                        locomotive_model_id=case.locomotive_model_id,
+                    equipment.get(eid, {}).get("supplier_id")
+                    if train_details is not None
+                    else (
+                        await EquipmentService.resolve_supplier(
+                            session,
+                            equipment_id=eid,
+                            locomotive_number=case.locomotive_number,
+                            locomotive_model_id=case.locomotive_model_id,
+                        )
+                        if eid
+                        else None
                     )
-                    if eid
-                    else None
                 )
             for item in plan:
                 value = supplied[item["node_id"]]
+                if (
+                    train_details is not None
+                    and item["parent_node_id"] is None
+                    and value.get("equipment_id") != item["equipment_id"]
+                ):
+                    PassportPositionService.fail(
+                        "Установленный тип не соответствует выбранной поездной замене"
+                    )
                 old = item["before_state"]
                 new = PassportPositionService.replacement_state(
                     item,
@@ -365,13 +416,20 @@ class PassportCaseService:
                         ),
                     )
                     types = {x.get("equipment_id") for x in values}
-                    setattr(
-                        case,
-                        "new_" + role + "_equipment_id",
-                        next(iter(types)) if len(types) == 1 else None,
-                    )
+                    if train_details is None:
+                        setattr(
+                            case,
+                            "new_" + role + "_equipment_id",
+                            next(iter(types)) if len(types) == 1 else None,
+                        )
             case.new_supplier_id = suppliers.get(
-                case.new_element_equipment_id or case.new_component_equipment_id
+                (
+                    train_details.new_element_id
+                    or train_details.new_component_id
+                    or train_details.new_equipment_id
+                )
+                if train_details is not None
+                else (case.new_element_equipment_id or case.new_component_equipment_id)
             )
         await session.flush()
         await PassportHistoryService.recalculate(session, affected)

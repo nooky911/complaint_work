@@ -2,6 +2,7 @@ from datetime import date, datetime
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
+from myapp.services import CaseValidationError
 from .references import AuxiliaryItem, EquipmentItem
 from .warranty import WarrantyWorkResponse, WarrantyWorkUpdate
 from .waybill import WaybillDocResponse, WaybillDocUpdate
@@ -68,6 +69,38 @@ class CaseBase(BaseModel):
     destination_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    def validate_write(self) -> None:
+        """Проверяет общие правила записи без ограничений чтения старых данных"""
+        data = self.model_dump(exclude_unset=True)
+        for field in (
+            "component_manufacture_date_old", "element_manufacture_date_old",
+            "component_manufacture_date_new", "element_manufacture_date_new",
+        ):
+            value = data.get(field)
+            if value is not None and any(character.isalpha() for character in value):
+                raise CaseValidationError(field)
+        for item in self.replacement_items or []:
+            value = item.manufacture_date_text
+            if value and any(character.isalpha() for character in value):
+                raise CaseValidationError("replacement_items")
+        if "fault_date" in data:
+            if self.fault_date is None or not 2000 <= self.fault_date.year or self.fault_date > date.today():
+                raise CaseValidationError("fault_date", "Укажите дату неисправности с 2000 года, не позже сегодняшней")
+        if self.mileage is not None and self.mileage < 0:
+            raise CaseValidationError("mileage", "Пробег не может быть отрицательным")
+        for field in ("component_quantity", "element_quantity", "new_component_quantity", "new_element_quantity"):
+            value = getattr(self, field)
+            if value is not None and value < 1:
+                raise CaseValidationError(field, "Количество выбранного оборудования должно быть не меньше 1")
+        if "component_quantity" in data and self.component_quantity is None:
+            raise CaseValidationError("component_quantity", "Укажите количество выбранного оборудования")
+        warranty = getattr(self, "warranty_work", None)
+        if warranty is not None:
+            warranty.validate_dates(self.fault_date)
+        waybill = getattr(self, "waybill_doc", None)
+        if waybill is not None:
+            waybill.validate_dates()
 
 
 class CaseCreate(CaseBase):

@@ -1,8 +1,8 @@
+import json
 from fastapi import FastAPI
 from fastapi.responses import Response
 from fastapi.openapi.utils import get_openapi
 from typing import Any
-import json
 
 
 def openapi_encoding_fix(app: FastAPI):

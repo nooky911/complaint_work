@@ -18,17 +18,6 @@ export const fileApi = {
     return response.data;
   },
 
-  getFilesGrouped: async (caseId) => {
-    const response = await api.get(`/files/cases/${caseId}/grouped`);
-    return response.data;
-  },
-
-  // Получение файлов warranty для конкретного поля
-  getWarrantyFiles: async (caseId, relatedField) => {
-    const groupedFiles = await fileApi.getFilesGrouped(caseId);
-    return groupedFiles[relatedField] || [];
-  },
-
   uploadWarrantyFiles: async (caseId, relatedField, files) => {
     const filesArray = Array.from(files || []);
 
@@ -139,15 +128,22 @@ export const fileApi = {
     if (fileName.includes("%")) {
       try {
         fileName = decodeURIComponent(fileName);
-      } catch (e) {}
+      } catch {
+        // Сохраняем исходное имя, если сервер вернул некорректное кодирование
+      }
     }
 
     triggerDownload(response.data, fileName);
   },
 
   // Поиск уникальных файлов для переиспользования
-  searchUniqueFiles: async (category, relatedField = null, query = null) => {
-    const params = new URLSearchParams({ category });
+  searchUniqueFiles: async (
+    category,
+    relatedField = null,
+    query = null,
+    direction = "loco",
+  ) => {
+    const params = new URLSearchParams({ category, direction });
     if (relatedField) params.append("related_field", relatedField);
     if (query) params.append("query", query);
 

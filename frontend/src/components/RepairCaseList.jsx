@@ -19,9 +19,10 @@ import {
   getText,
   formatFullName,
   formatSectionMask,
+  formatWagonNumbers,
 } from "../utils/formatters";
 import { getStatusConfig } from "../utils/statusHelpers";
-import { REPAIR_FIELDS_LABELS } from "../constants/labels";
+import { REPAIR_FIELDS_LABELS, SHARED_LABELS } from "../constants/labels";
 
 const NumberIcon = () => (
   <span className="text-xl leading-none font-black text-amber-300 select-none">
@@ -50,7 +51,7 @@ const SectionsIcon = ({ className }) => (
 // Вспомогательные компоненты
 const DataHeader = ({ label, value, icon: Icon, iconColor }) => (
   <div className="flex items-center gap-2">
-    <Icon className={`h-6 w-6 ${iconColor}`} />
+    {React.createElement(Icon, { className: `h-6 w-6 ${iconColor}` })}
     <div>
       <p className="text-[10px] font-bold text-purple-50 uppercase">{label}</p>
       <p className="text-xl font-black text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.5)]">
@@ -60,18 +61,26 @@ const DataHeader = ({ label, value, icon: Icon, iconColor }) => (
   </div>
 );
 
-const EquipmentBlock = ({ label, value, serial, year, icon: Icon, color }) => (
+const EquipmentBlock = ({
+  label,
+  value,
+  serial,
+  year,
+  icon: Icon,
+  color,
+  showSerial = false,
+}) => (
   <div>
     <div className={`mb-1 flex items-center gap-2 font-black ${color}`}>
-      <Icon className="h-5 w-5" />
+      {React.createElement(Icon, { className: "h-5 w-5" })}
       <span className="text-xs tracking-wider uppercase">{label}</span>
     </div>
     <p className="text-sm font-bold text-slate-900">{value}</p>
-    {serial && (
+    {(showSerial || serial) && (
       <p className="mt-1 text-[12px] font-medium text-slate-900">
         зав. №{" "}
         <span className="text-[13px] font-black text-slate-900">
-          {serial}
+          {String(serial ?? "").trim() || "б/н"}
           {year ? ` (${year})` : ""}
         </span>
       </p>
@@ -90,9 +99,9 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
 
   return (
     <div className="text-sm">
-      <Icon
-        className={`mr-2 inline h-4 w-4 align-text-bottom ${color && colorMap[color] ? colorMap[color].split(" ")[0] : "text-slate-700"}`}
-      />
+      {React.createElement(Icon, {
+        className: `mr-2 inline h-4 w-4 align-text-bottom ${color && colorMap[color] ? colorMap[color].split(" ")[0] : "text-slate-700"}`,
+      })}
       <span
         className={`mr-2 text-[12px] font-bold uppercase ${color && colorMap[color] ? colorMap[color].split(" ")[0].replace("600", "700") : "text-slate-900"}`}
       >
@@ -127,6 +136,7 @@ const DocItem = ({ icon: Icon, label, num, date, summary, color }) => {
 
 // Оптимизированный компонент карточки
 const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
+  const isTrain = item.direction === "train";
   const status = React.useMemo(() => getStatusConfig(item), [item]);
   const StatusIcon = status.icon;
 
@@ -134,20 +144,32 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
     () => ({
       displayNumber: item.display_number,
       status: item.status || "Ожидает отправки уведомления поставщику",
-      creator: formatFullName(item.creator_full_name),
-      locomotiveModel: getText(item.locomotive_model),
-      locomotiveNumber: item.locomotive_number || "—",
-      sections: formatSectionMask(item.section_mask),
+      creator: formatFullName(
+        isTrain ? item.user?.full_name : item.creator_full_name,
+      ),
+      locomotiveModel: isTrain
+        ? item.card_view?.model || "—"
+        : getText(item.locomotive_model),
+      locomotiveNumber: isTrain
+        ? item.train?.train_number || "—"
+        : item.locomotive_number || "—",
+      sections: isTrain
+        ? formatWagonNumbers(item.train?.wagon_names)
+        : formatSectionMask(item.section_mask),
       regionalCenter: getText(item.regional_center),
       faultDate: formatDate(item.fault_date),
       supplier: getText(item.supplier),
-      equipment: `${item.component_equipment?.parent ? getText(item.component_equipment.parent) + " " : ""}${getText(item.component_equipment)}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`,
-      element: item.element_equipment
-        ? `${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
-        : "—",
+      equipment: isTrain
+        ? `${item.card_view?.equipment || "—"}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`
+        : `${item.component_equipment?.parent ? getText(item.component_equipment.parent) + " " : ""}${getText(item.component_equipment)}${item.component_quantity > 1 ? ` (${item.component_quantity} шт.)` : ""}`,
+      element: isTrain
+        ? `${item.card_view?.element || "—"}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
+        : item.element_equipment
+          ? `${getText(item.element_equipment)}${item.element_quantity > 1 ? ` (${item.element_quantity} шт.)` : ""}`
+          : "—",
       malfunction: getText(item.malfunction),
     }),
-    [item],
+    [item, isTrain],
   );
 
   return (
@@ -161,7 +183,7 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
             <span className="text-[18px] font-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.4)]">
               # {formattedData.displayNumber}
             </span>
-            {!restricted && (
+            {!restricted && (!isTrain || item.status) && (
               <div
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold tracking-wide uppercase shadow-sm ${status.style}`}
               >
@@ -182,7 +204,7 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
 
         <div className="flex flex-wrap items-center gap-6">
           <DataHeader
-            label="Тип эл-за"
+            label={isTrain ? "Тип поезда" : "Тип эл-за"}
             value={formattedData.locomotiveModel}
             icon={Train}
             iconColor="text-cyan-300"
@@ -194,7 +216,7 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
             iconColor="text-amber-300"
           />
           <DataHeader
-            label={REPAIR_FIELDS_LABELS.section}
+            label={isTrain ? "Вагон" : REPAIR_FIELDS_LABELS.section}
             value={formattedData.sections}
             icon={SectionsIcon}
             iconColor="text-violet-300"
@@ -229,8 +251,13 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
       <div className="border-b-4 border-blue-400/40 bg-white p-4 text-slate-900">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           <EquipmentBlock
-            label="Оборудование"
+            label={SHARED_LABELS.equipment}
             value={formattedData.equipment}
+            showSerial={
+              !!(isTrain
+                ? item.train?.equipment_id
+                : item.component_equipment?.id)
+            }
             serial={item.component_serial_number_old}
             year={item.component_manufacture_date_old}
             icon={Package}
@@ -239,6 +266,9 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
           <EquipmentBlock
             label={REPAIR_FIELDS_LABELS.element}
             value={formattedData.element}
+            showSerial={
+              !!(isTrain ? item.train?.element_id : item.element_equipment?.id)
+            }
             serial={item.element_serial_number_old}
             year={item.element_manufacture_date_old}
             icon={Wrench}
@@ -254,7 +284,9 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
       </div>
 
       <div className="bg-white p-4 text-slate-900">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div
+          className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${isTrain ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}
+        >
           <DocItem
             icon={Mail}
             label="Уведомление"
@@ -263,13 +295,15 @@ const CaseCard = React.memo(({ item, index, onCaseClick, restricted }) => {
             summary={item.warranty_work?.notification_summary}
             color="blue"
           />
-          <DocItem
-            icon={Repeat}
-            label="Повт. Увед."
-            num={item.warranty_work?.re_notification_number}
-            date={item.warranty_work?.re_notification_date}
-            color="indigo"
-          />
+          {!isTrain && (
+            <DocItem
+              icon={Repeat}
+              label="Повт. Увед."
+              num={item.warranty_work?.re_notification_number}
+              date={item.warranty_work?.re_notification_date}
+              color="indigo"
+            />
+          )}
           <DocItem
             icon={Mail}
             label="Ответ"

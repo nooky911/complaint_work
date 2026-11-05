@@ -1,9 +1,8 @@
-import React from "react";
 
-import { SearchableSelect } from "../inputs";
-import { AutoResizingTextarea } from "../Components";
-import { Tooltip } from "../../utils/Tooltip";
-import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import { SearchableSelect } from "../inputs/index.jsx";
+import { AutoResizingTextarea } from "../Components.jsx";
+import { Tooltip } from "../../utils/Tooltip.jsx";
+import { REPAIR_FIELDS_LABELS } from "../../constants/labels.js";
 
 export const EquipmentMalfunctionSelector = ({
   activeId,
@@ -25,7 +24,7 @@ export const EquipmentMalfunctionSelector = ({
   );
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-3">
       <Tooltip
         text={
           finalMalfunctionOptions.find(

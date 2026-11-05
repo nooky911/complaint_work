@@ -8,7 +8,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from myapp.schemas.product_passports import (
+from myapp.schemas.omega.product_passports import (
     ProductPassportNodeResponse,
     ProductPassportResponse,
 )
@@ -57,7 +57,16 @@ class ProductPassportExportService:
         roots = children[None]
         if len(roots) != 1:
             raise ValueError("У паспорта должен быть один корневой узел")
-        children[roots[0].id].sort(key=cls._section_order)
+        if passport.direction == "train":
+            children[roots[0].id].sort(
+                key=lambda n: (
+                    int(re.search(r"\d+", n.tree_name)[0])
+                    if re.search(r"\d+", n.tree_name)
+                    else 0
+                )
+            )
+        else:
+            children[roots[0].id].sort(key=cls._section_order)
         stack = [(roots[0], 0, "", True)]
         visited = set()
         ordered = []
@@ -209,6 +218,6 @@ class ProductPassportExportService:
             return None
         data = ProductPassportService.to_response(passport)
         stream = await asyncio.to_thread(cls.generate_excel, data)
-        filename = f"Паспорт_{data.locomotive_model_name}_{data.product_number}.xlsx"
+        filename = f"Паспорт_{data.train_model_name or data.locomotive_model_name}_{data.product_number}.xlsx"
         filename = re.sub(r'[\\/:*?"<>|\r\n]', "_", filename)
         return stream, filename

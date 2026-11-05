@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useMutation, useQuery, useQueryClient, useIsMutating } from "@tanstack/react-query";
 
 import { fileApi } from "../api/files";
 
@@ -8,51 +8,29 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     category = "primary",
     relatedField = null,
     useReactQuery = true,
+    pendingFiles = [],
+    onFilesUploaded,
   } = options;
 
   const queryClient = useQueryClient();
   const [fileErrors, setFileErrors] = useState([]);
 
-  const groupedFilesQueryKey = ["filesGrouped", caseId];
-
-  const listFilesQueryKey = ["files", caseId, category];
   const allFilesQueryKey = ["files", caseId];
 
   const {
-    data: groupedFiles,
-    isLoading: groupedLoading,
-    error: groupedError,
-    refetch: refetchGrouped,
-  } = useQuery({
-    queryKey: groupedFilesQueryKey,
-    queryFn: () => fileApi.getFilesGrouped(caseId),
-    enabled: !!caseId && !!relatedField && useReactQuery,
-  });
-
-  const {
-    data: files = [],
+    data: allFiles = [],
     isLoading: loading,
     error,
     refetch,
   } = useQuery({
-    queryKey: listFilesQueryKey,
-    queryFn: async () => {
-      const all = await fileApi.getFiles(caseId);
-      return category === "warranty"
-        ? all.filter((file) => file.category === "warranty")
-        : all.filter((file) => file.category === category);
-    },
-    enabled: !!caseId && !relatedField && useReactQuery,
-    ...(!useReactQuery && { enabled: false }),
+    queryKey: allFilesQueryKey,
+    queryFn: () => fileApi.getFiles(caseId),
+    enabled: !!caseId && useReactQuery,
   });
 
-  const effectiveFiles = relatedField
-    ? groupedFiles?.[relatedField] || []
-    : files;
-
-  const effectiveLoading = relatedField ? groupedLoading : loading;
-  const effectiveError = relatedField ? groupedError : error;
-  const effectiveRefetch = relatedField ? refetchGrouped : refetch;
+  const filterFiles = (files) => files.filter((file) =>
+    file.category === category && (!relatedField || file.related_field === relatedField),
+  );
 
   // Fallback для обычного state management (если useReactQuery = false)
   const [fallbackFiles, setFallbackFiles] = useState([]);
@@ -64,20 +42,12 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     if (!caseId || useReactQuery) return;
 
     try {
-      const response = relatedField
-        ? await fileApi.getWarrantyFiles(caseId, relatedField)
-        : await fileApi.getFiles(caseId);
-
-      const filteredFiles =
-        category === "warranty"
-          ? response.filter((file) => file.category === "warranty")
-          : response.filter((file) => file.category === category);
-
-      setFallbackFiles(filteredFiles);
+      const response = await fileApi.getFiles(caseId);
+      setFallbackFiles(response);
     } catch (error) {
       console.error("Ошибка при загрузке файлов:", error);
     }
-  }, [caseId, category, relatedField, useReactQuery]);
+  }, [caseId, useReactQuery]);
 
   useEffect(() => {
     if (!useReactQuery) {
@@ -86,7 +56,9 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
   }, [fetchFiles, useReactQuery]);
 
   // Валидация файлов
-  const validateFiles = (fileList) => {
+  const validateFiles = (fileList, currentFiles = caseId
+    ? (useReactQuery ? allFiles : fallbackFiles)
+    : pendingFiles) => {
     const errors = [];
     const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 
@@ -124,9 +96,8 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     const currentAllowedExtensions =
       allowedExtensions[category] || allowedExtensions.primary;
 
-    const currentFiles = useReactQuery ? files : fallbackFiles;
     const currentTotalSize = currentFiles.reduce(
-      (acc, f) => acc + (f.size_bytes || 0),
+      (acc, f) => acc + (f.size_bytes ?? f.size ?? 0),
       0,
     );
     let newFilesSize = 0;
@@ -152,8 +123,14 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
 
   // Загрузка файлов через React Query
   const uploadMutation = useMutation({
-    mutationFn: (fileList) => {
-      const errors = validateFiles(fileList);
+    mutationKey: ["case-file-upload", caseId],
+    mutationFn: async (fileList) => {
+      const currentFiles = await queryClient.fetchQuery({
+        queryKey: allFilesQueryKey,
+        queryFn: () => fileApi.getFiles(caseId),
+        staleTime: 0,
+      });
+      const errors = validateFiles(fileList, currentFiles);
       if (errors.length > 0) {
         const err = new Error("FILE_VALIDATION_ERROR");
         err.validationErrors = errors;
@@ -165,11 +142,10 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
         return fileApi.uploadFile(caseId, category, fileList, relatedField);
       }
     },
-    onSuccess: () => {
+    onSuccess: (uploadedFiles) => {
+      onFilesUploaded?.(uploadedFiles);
       setFileErrors([]);
-      queryClient.invalidateQueries({ queryKey: listFilesQueryKey });
       queryClient.invalidateQueries({ queryKey: allFilesQueryKey });
-      queryClient.invalidateQueries({ queryKey: groupedFilesQueryKey });
     },
     onError: (error) => {
       const validationErrors = error?.validationErrors;
@@ -218,14 +194,14 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
 
   // Загрузка файлов обычным способом (fallback)
   const uploadFilesFallback = async (fileList) => {
-    const errors = validateFiles(fileList);
-    if (errors.length > 0) {
-      setFileErrors(errors);
-      return false;
-    }
-
     setUploading(true);
     try {
+      const currentFiles = caseId ? await fileApi.getFiles(caseId) : pendingFiles;
+      const errors = validateFiles(fileList, currentFiles);
+      if (errors.length > 0) {
+        setFileErrors(errors);
+        return false;
+      }
       const response = await fileApi.uploadFile(
         caseId,
         category,
@@ -234,7 +210,8 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
       );
       await fetchFiles();
       setFileErrors([]);
-      return response.data;
+      onFilesUploaded?.(response);
+      return response;
     } catch (error) {
       const serverErrorRaw =
         error.response?.data?.detail || "Ошибка сервера при загрузке";
@@ -271,9 +248,7 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
   const deleteMutation = useMutation({
     mutationFn: (fileId) => fileApi.deleteFile(fileId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: listFilesQueryKey });
       queryClient.invalidateQueries({ queryKey: allFilesQueryKey });
-      queryClient.invalidateQueries({ queryKey: groupedFilesQueryKey });
     },
     onError: (error) => {
       console.error("Ошибка удаления файла:", error);
@@ -285,8 +260,6 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     mutationFn: ({ existingFileId }) =>
       fileApi.linkExistingFile(caseId, existingFileId, category, relatedField),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: listFilesQueryKey });
-      queryClient.invalidateQueries({ queryKey: groupedFilesQueryKey });
       queryClient.invalidateQueries({ queryKey: allFilesQueryKey });
     },
     onError: (error) => {
@@ -339,15 +312,15 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
   };
 
   return {
-    files: useReactQuery ? effectiveFiles : fallbackFiles,
-    loading: useReactQuery ? effectiveLoading : false,
+    files: filterFiles(useReactQuery ? allFiles : fallbackFiles),
+    loading: useReactQuery ? loading : false,
     uploading: useReactQuery ? uploadMutation.isPending : uploading,
     isDeleting: useReactQuery ? deleteMutation.isPending : deleting,
     linkFileAsync: useReactQuery
       ? (id) => linkMutation.mutateAsync({ existingFileId: id })
       : null,
     isLinking: useReactQuery ? linkMutation.isPending : false,
-    error: effectiveError,
+    error,
     fileErrors,
     setFileErrors,
     validateFiles,
@@ -357,6 +330,93 @@ export const useUnifiedFileManagement = (caseId, options = {}) => {
     deleteFileAsync,
     downloadFile,
     downloadArchive,
-    refetch: useReactQuery ? effectiveRefetch : fetchFiles,
+    refetch: useReactQuery ? refetch : fetchFiles,
   };
 };
+
+/** Отслеживает только новые загрузки и подтверждает их удаление при отмене редактирования */
+export function useEditFileUploads({ caseId, editing, disabled = false, onCancel, onClose, onError }) {
+  const queryClient = useQueryClient();
+  const uploadedIds = useRef(new Set());
+  const cancelling = useRef(false);
+  const [action, setAction] = useState(null);
+  const [rollingBack, setRollingBack] = useState(false);
+  const uploading = useIsMutating({ mutationKey: ["case-file-upload", caseId] }) > 0;
+
+  useEffect(() => {
+    if (!editing) uploadedIds.current.clear();
+  }, [editing]);
+
+  const recordUploads = (files) => {
+    if (!caseId || !editing) return;
+    for (const file of Array.isArray(files) ? files : []) {
+      if (file?.id) uploadedIds.current.add(file.id);
+    }
+  };
+
+  const requestExit = async (nextAction) => {
+    if (disabled || cancelling.current) return;
+    if (queryClient.isMutating({ mutationKey: ["case-file-upload", caseId] })) {
+      onError("Дождитесь завершения загрузки файлов");
+      return;
+    }
+    if (editing && uploadedIds.current.size) {
+      setAction(nextAction);
+      return;
+    }
+    await (nextAction === "close" ? onClose() : onCancel());
+  };
+
+  const confirmExit = async () => {
+    if (!action || disabled || cancelling.current) return;
+    if (queryClient.isMutating({ mutationKey: ["case-file-upload", caseId] })) {
+      onError("Дождитесь завершения загрузки файлов");
+      return;
+    }
+    cancelling.current = true;
+    setRollingBack(true);
+    try {
+      const ids = [...uploadedIds.current];
+      const results = await Promise.allSettled(ids.map((id) => fileApi.deleteFile(id)));
+      results.forEach((result, index) => {
+        if (result.status === "fulfilled" || result.reason?.response?.status === 404) {
+          uploadedIds.current.delete(ids[index]);
+        }
+      });
+      await queryClient.invalidateQueries({ queryKey: ["files", caseId] });
+      if (uploadedIds.current.size) {
+        setAction(null);
+        onError("Не удалось удалить часть загруженных файлов. Редактирование не отменено. Повторите отмену.");
+        return;
+      }
+      const completedAction = action;
+      setAction(null);
+      await (completedAction === "close" ? onClose() : onCancel());
+    } catch {
+      setAction(null);
+      onError("Не удалось завершить отмену. Редактирование не закрыто.");
+    } finally {
+      cancelling.current = false;
+      setRollingBack(false);
+    }
+  };
+
+  return {
+    recordUploads,
+    busy: uploading || rollingBack,
+    requestCancel: () => requestExit("cancel"),
+    requestClose: () => requestExit("close"),
+    confirmation: {
+      show: !!action,
+      fileName: null,
+      title: "Выйти из режима редактирования?",
+      message: "Файлы, загруженные в текущем режиме редактирования, будут удалены. Продолжить?",
+      confirmLabel: "Да, выйти",
+      cancelLabel: "Продолжить редактирование",
+      busyLabel: "Удаление файлов...",
+      isDeleting: rollingBack,
+      onCancel: () => { if (!cancelling.current) setAction(null); },
+      onConfirm: confirmExit,
+    },
+  };
+}

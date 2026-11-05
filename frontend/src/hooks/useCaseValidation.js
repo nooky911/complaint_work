@@ -41,6 +41,7 @@ export const useCaseValidation = (
   hierarchy,
   allEquipment = [],
   locomotiveSelection,
+  direction = "loco",
 ) => {
   const equipmentMap = useMemo(() => {
     if (!allEquipment || allEquipment.length === 0) return null;
@@ -49,6 +50,8 @@ export const useCaseValidation = (
 
   return useMemo(() => {
     const d = formData;
+    const train = direction === "train";
+    const t = d?.train || {};
     const w = d?.warranty_work || {};
     const levels = hierarchy?.fullHierarchy || hierarchy || {};
     const rId = Number(d?.repair_type_id || d?.repair_type?.id);
@@ -70,7 +73,10 @@ export const useCaseValidation = (
 
     // Проверка, что даты рекламационной работы не раньше fault_date
     const areOtherDatesEarlierThanFault = otherDates.some(
-      (date) => !isDateNotEarlierThan(date, d?.fault_date),
+      (date) =>
+        isValidDate(date) &&
+        isValidDate(d?.fault_date) &&
+        !isDateNotEarlierThan(date, d?.fault_date),
     );
 
     // TTN даты (можно будущие даты)
@@ -93,11 +99,15 @@ export const useCaseValidation = (
       areTTNDatesInvalid;
 
     // Общие обязательные поля
-    const isSectionMissing = !d?.section_mask;
+    const isSectionMissing = train
+      ? !t.wagon_node_ids?.length
+      : !d?.section_mask;
     const isRegionMissing = !d?.regional_center_id;
-    const isLocoModelMissing = !d?.locomotive_model_id;
-    const identityLocked = !!d?.locomotive_identity_locked;
-    const isLocoNumberMissing = !d?.locomotive_number;
+    const isLocoModelMissing = train
+      ? !t.train_model_id
+      : !d?.locomotive_model_id;
+    const identityLocked = train || !!d?.locomotive_identity_locked;
+    const isLocoNumberMissing = train ? !d?.passport_id : !d?.locomotive_number;
     const selectedLocomotive = locomotiveSelection?.data?.find(
       (item) =>
         item.locomotive_number === d?.locomotive_number &&
@@ -133,13 +143,13 @@ export const useCaseValidation = (
       !d?.component_quantity || Number(d?.component_quantity) < 1;
 
     // Неисправное
-    const hasLvl1 = !!levels.lvl1;
+    const hasLvl1 = train ? !!t.equipment_id : !!levels.lvl1;
     const hasLvl2 = !!levels.lvl2;
-    const hasLvl3 = !!levels.lvl3;
+    const hasLvl3 = train ? !!t.component_id : !!levels.lvl3;
     const hasLvl4 = !!levels.lvl4;
 
     const isType1Blocked = rId === 1 && !hasLvl1;
-    const isType2Blocked = rId === 2 && !hasLvl2;
+    const isType2Blocked = rId === 2 && !(train ? hasLvl3 : hasLvl2);
     const isType3Blocked = rId === 3 && !hasLvl4;
     const isRepairTypeBlocked =
       isType1Blocked || isType2Blocked || isType3Blocked;
@@ -148,8 +158,12 @@ export const useCaseValidation = (
     const isMalfunctionMissing = !d?.malfunction_id;
 
     // Новое оборудование
-    const newCompId = d?.new_component_equipment_id;
-    const newElemId = d?.new_element_equipment_id;
+    const newCompId = train
+      ? rId === 1
+        ? t.new_equipment_id
+        : t.new_component_id
+      : d?.new_component_equipment_id;
+    const newElemId = train ? t.new_element_id : d?.new_element_equipment_id;
 
     const depth = equipmentMap ? getDepth(newCompId, equipmentMap) : 99;
 
@@ -158,7 +172,7 @@ export const useCaseValidation = (
     if (equipmentMap) {
       if (rId === 1) isNewComponentMissing = depth < 1;
       else if (rId === 2) isNewComponentMissing = depth < 2;
-      else if (rId === 8) isNewComponentMissing = !newCompId;
+      else if (rId === 8) isNewComponentMissing = train ? false : !newCompId;
     }
 
     const linkedReplacement =
@@ -179,6 +193,7 @@ export const useCaseValidation = (
       !!linkedReplacement && d?._passport_replacement_invalid !== false;
 
     const errors = {
+      isOwnerMissing: !d?.user_id,
       isPassportInvalid,
       isPassportReplacementInvalid,
       dateError,
@@ -218,5 +233,5 @@ export const useCaseValidation = (
       hasErrors,
       isSaveDisabled: hasErrors,
     };
-  }, [formData, hierarchy, equipmentMap, locomotiveSelection]);
+  }, [formData, hierarchy, equipmentMap, locomotiveSelection, direction]);
 };

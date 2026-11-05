@@ -1,5 +1,4 @@
-"""Разрешённые поля ограниченного просмотра без файлов и служебных данных"""
-
+from datetime import date
 from sqlalchemy import select, func, cast, String, or_
 from sqlalchemy.orm import aliased
 from fastapi import HTTPException
@@ -7,7 +6,7 @@ from fastapi import HTTPException
 from myapp.models.repair_case_equipment import RepairCaseEquipment as Case
 from myapp.models.auxiliaries import RegionalCenter
 from myapp.models.warranty_work import WarrantyWork
-from myapp.services.case_filter_service import CaseFilterService
+from myapp.loco.services.case_filter_service import CaseFilterService
 
 BASIC = {
     "fault_date": "Дата неисправности",
@@ -108,8 +107,6 @@ def apply_filters(stmt, fields, filters):
         if values in (None, "", 0, []):
             continue
         if key in ("date_from", "date_to"):
-            from datetime import date
-
             try:
                 value = date.fromisoformat(values)
             except (TypeError, ValueError):

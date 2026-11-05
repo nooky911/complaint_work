@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { ChevronDown, Check, Search } from "lucide-react";
 import { EMPTY_FILTER_VALUE } from "../../constants/filters";
 import { useDropdown } from "../../hooks/useDropdown";

@@ -4,8 +4,8 @@ import uvicorn
 from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from scripts.openapi_fix import openapi_encoding_fix
 
+from scripts.openapi_fix import openapi_encoding_fix
 from myapp.api import api_router
 from myapp.config import settings
 from myapp.database.base import Base, engine

@@ -1,7 +1,11 @@
-import React from "react";
-import { PassportInstanceSummary } from "../equipment/PassportEquipmentFields";
+import { replacementSerialLabel } from "../../utils/formatters";
+import { PassportInstanceSummary } from "../../loco/equipment/components/PassportEquipmentFields.jsx";
 import { Settings } from "lucide-react";
-import { formatDate, formatEquipmentName } from "../../utils/formatters";
+import {
+  formatSerialNumber,
+  formatDate,
+  formatEquipmentName,
+} from "../../utils/formatters";
 import { DataField } from "../inputs/DataField.jsx";
 import { RepairExecutionEditor } from "../EditableFields";
 import { BLOCK_TITLES, REPAIR_FIELDS_LABELS } from "../../constants/labels";
@@ -17,6 +21,7 @@ export const RepairExecutionBlock = ({
   blockType,
   showError,
   validation,
+  equipmentAdapter,
 }) => {
   const repairTypeId = Number(
     currentData.repair_type?.id || currentData.repair_type_id,
@@ -58,6 +63,7 @@ export const RepairExecutionBlock = ({
       {isEditing ? (
         <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-200/50 p-3 shadow-sm">
           <RepairExecutionEditor
+            equipmentAdapter={equipmentAdapter}
             isEditing={isEditing}
             currentData={currentData}
             updateField={updateField}
@@ -71,7 +77,15 @@ export const RepairExecutionBlock = ({
         </div>
       ) : (
         <div className="space-y-3 rounded-2xl border border-slate-100 bg-slate-200/50 p-3 shadow-sm">
-          <PassportInstanceSummary items={currentData.replacement_items || []} installed />
+          <PassportInstanceSummary
+            items={currentData.replacement_items || []}
+            groupLabel={currentData.direction === "train" ? "Вагон" : "Секция"}
+            installed
+            equipmentReplacement={repairTypeId === 1}
+          />
+          {!!currentData.replacement_items?.length && (
+            <div className="border-t-2 border-slate-300 pt-1" />
+          )}
           {/* Инфо о ремонте */}
           <div className="grid grid-cols-2 gap-4">
             <DataField
@@ -100,6 +114,7 @@ export const RepairExecutionBlock = ({
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <Tooltip
+                  overflowOnly
                   text={formatEquipmentName(
                     getCorrectName(
                       currentData.new_component_equipment_id,
@@ -122,10 +137,19 @@ export const RepairExecutionBlock = ({
                   />
                 </Tooltip>
               </div>
-              <DataField
-                label={REPAIR_FIELDS_LABELS.component_serial_number}
-                value={currentData.component_serial_number_new}
-              />
+              <Tooltip
+                overflowOnly
+                text={formatSerialNumber(
+                  currentData.component_serial_number_new,
+                )}
+              >
+                <DataField
+                  label={replacementSerialLabel(repairTypeId)}
+                  value={formatSerialNumber(
+                    currentData.component_serial_number_new,
+                  )}
+                />
+              </Tooltip>
               <DataField
                 label={REPAIR_FIELDS_LABELS.manufacture_date}
                 value={formatDate(currentData.component_manufacture_date_new)}
@@ -137,6 +161,7 @@ export const RepairExecutionBlock = ({
             <div className="grid grid-cols-3 gap-4">
               <div className="col-span-1">
                 <Tooltip
+                  overflowOnly
                   text={formatEquipmentName(
                     getCorrectName(
                       currentData.new_element_equipment_id,
@@ -159,10 +184,17 @@ export const RepairExecutionBlock = ({
                   />
                 </Tooltip>
               </div>
-              <DataField
-                label={REPAIR_FIELDS_LABELS.element_serial_number}
-                value={currentData.element_serial_number_new}
-              />
+              <Tooltip
+                overflowOnly
+                text={formatSerialNumber(currentData.element_serial_number_new)}
+              >
+                <DataField
+                  label={REPAIR_FIELDS_LABELS.element_serial_number}
+                  value={formatSerialNumber(
+                    currentData.element_serial_number_new,
+                  )}
+                />
+              </Tooltip>
               <DataField
                 label={REPAIR_FIELDS_LABELS.manufacture_date}
                 value={formatDate(currentData.element_manufacture_date_new)}

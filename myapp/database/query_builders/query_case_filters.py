@@ -1,46 +1,26 @@
-from sqlalchemy import select, and_, or_, func, String
+from sqlalchemy import select, and_
 from sqlalchemy.sql import expression
 
+from myapp.database.query_builders.filter_conditions import apply_filter_conditions
 from myapp.database.query_builders.query_case_builders import load_detail_relations
 from myapp.models.waybill_docs import WaybillDoc
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.warranty_work import WarrantyWork
-from myapp.schemas.filters import CaseFilterParams
-from myapp.services.case_status_service import CaseStatusService
-
-
-def apply_filter_conditions(conditions: list, fields_mapping: list, empty_fields=()):
-    for p_val, col in fields_mapping:
-        alternatives = []
-        if col.key in empty_fields and col.nullable:
-            empty_condition = col.is_(None)
-            if isinstance(col.type, String):
-                empty_condition = or_(empty_condition, func.trim(col) == "")
-            alternatives.append(empty_condition)
-
-        if isinstance(p_val, list):
-            clean_list = [v for v in p_val if v is not None and str(v).strip() != ""]
-            if clean_list:
-                alternatives.append(col.in_(clean_list))
-        elif p_val is not None:
-            val_str = str(p_val).strip()
-            if val_str != "" and val_str.lower() != "none":
-                alternatives.append(col == p_val)
-
-        if alternatives:
-            conditions.append(or_(*alternatives))
+from myapp.schemas import CaseFilterParams
+from myapp.loco.services.case_status_service import CaseStatusService
 
 
 def build_repair_case_conditions(
     params: CaseFilterParams,
 ) -> list[expression.ColumnElement]:
     """Условия фильтрации для случая неисправности"""
-    conditions = []
+    conditions = [RepairCaseEquipment.direction == "loco"]
 
     if params.display_number is not None:
         # Общая нумерация по ID до любых фильтров, как ROW_NUMBER в списке
         numbered_case_id = (
             select(RepairCaseEquipment.id)
+            .where(RepairCaseEquipment.direction == "loco")
             .order_by(RepairCaseEquipment.id)
             .offset(params.display_number - 1)
             .limit(1)

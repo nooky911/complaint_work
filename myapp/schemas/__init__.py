@@ -7,7 +7,7 @@ from .cases import (
     SupplierPreviewRequest,
 )
 from .warranty import WarrantyWorkUpdate, WarrantyWorkResponse
-from .filters import FilterOptionsResponse, CaseFilterParams
+from myapp.loco.schemas.filters import FilterOptionsResponse, CaseFilterParams
 from .references import AuxiliaryItem
 from .waybill import WaybillDocUpdate, WaybillDocResponse
 

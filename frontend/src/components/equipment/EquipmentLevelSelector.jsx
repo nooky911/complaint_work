@@ -1,5 +1,4 @@
-import React from "react";
-import { SearchableSelect } from "../inputs";
+import { SearchableSelect } from "../inputs/index.jsx";
 
 export const EquipmentLevelSelector = ({
   index,

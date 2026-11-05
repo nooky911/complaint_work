@@ -91,10 +91,11 @@ class FileService:
         category: FileCategory,
         related_field: str | None = None,
         search_query: str | None = None,
+        direction: str = "loco",
     ) -> list[CaseFile]:
         """Поиск уникальных файлов для переиспользования"""
         return await FileManagementService.search_unique_files(
-            session, category, related_field, search_query
+            session, category, related_field, search_query, direction=direction
         )
 
     @staticmethod

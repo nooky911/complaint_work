@@ -1,6 +1,10 @@
 import { EMPTY_FILTER_VALUE } from "../constants/filters";
 import { DATE_MASK, normalizeDateForInput } from "./formatters.js";
 
+export const EQUIPMENT_NAME_SPACE_ERROR =
+  'В наименовании оборудования используйте "_" вместо пробелов';
+export const hasEquipmentNameSpaces = (name) => /\s/.test(name || "");
+
 export const MANUFACTURE_DATE_FIELDS = [
   "component_manufacture_date_old",
   "element_manufacture_date_old",
@@ -81,8 +85,14 @@ export const validateFilterDates = (filters, dateFields) => {
 export const isDateNotEarlierThan = (dateValue, baseDate) => {
   if (!dateValue || !baseDate) return true;
 
-  const date = new Date(dateValue);
-  const base = new Date(baseDate);
+  const toDate = (value) => {
+    if (value instanceof Date) return value;
+    const normalized = normalizeDateForInput(value);
+    const [day, month, year] = normalized.split(".").map(Number);
+    return new Date(year, month - 1, day);
+  };
+  const date = toDate(dateValue);
+  const base = toDate(baseDate);
 
   if (isNaN(date.getTime()) || isNaN(base.getTime())) return true;
 

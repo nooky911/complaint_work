@@ -31,3 +31,15 @@ frontend/
 
 # исходники
 sources/
+
+# Данные времени выполнения и архив проекта
+storage/
+project.tar.gz
+outputs/
+
+# Материалы разработки
+audit/
+docs/
+tests/
+.pytest_cache/
+.DS_Store

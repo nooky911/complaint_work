@@ -1,4 +1,3 @@
-from pathlib import Path
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -32,19 +31,11 @@ async def get_download_file(
     try:
         file_path, case_file = await FileService.get_for_download(session, file_id)
 
-        # Временный файл для корректной отправки имени
-        temp_file = Path(file_path.parent / f"temp_{case_file.original_name}")
-        temp_file.write_bytes(file_path.read_bytes())
-
-        response = FileResponse(
-            path=temp_file,
+        return FileResponse(
+            path=file_path,
             filename=case_file.original_name,
             media_type=case_file.mime_type,
         )
-
-        background_tasks.add_task(delete_temp_file, temp_file)
-
-        return response
 
     except Exception as e:
         handle_file_not_found(e)
@@ -53,6 +44,7 @@ async def get_download_file(
 @router.post("/cases/{case_id}/archive", summary="Создать архив файлов случая")
 async def create_case_archive(
     case_id: int,
+    background_tasks: BackgroundTasks,
     category: Annotated[
         FileCategory, Form(description="Категория (primary/warranty/waybill)")
     ],
@@ -63,6 +55,7 @@ async def create_case_archive(
     try:
         archive_path = await FileService.create_archive(session, case_id, category)
 
+        background_tasks.add_task(delete_temp_file, archive_path)
         return FileResponse(
             path=archive_path,
             filename=archive_path.name,

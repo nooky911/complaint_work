@@ -26,6 +26,8 @@ class AdminUserService:
                 login=u.login,
                 full_name=u.full_name,
                 role=u.role,
+                direction=u.direction,
+                can_manage_equipment=u.can_manage_equipment,
                 is_active=u.is_active,
                 created_at=u.created_at,
                 partner_ids=sorted(partners[u.id]),
@@ -57,6 +59,8 @@ class AdminUserService:
     @staticmethod
     def validate_change(users, data, target_id):
         """Проверяет логин, напарников и наличие активного администратора"""
+        if data.role != "editor":
+            data.can_manage_equipment = False
         if data.restricted_access and (
             data.role != "viewer" or not data.allowed_rc_names
         ):
@@ -122,6 +126,10 @@ class AdminUserService:
             login=data.login,
             full_name=data.full_name,
             role=data.role,
+            direction=data.direction,
+            can_manage_equipment=(
+                data.can_manage_equipment if data.role == "editor" else False
+            ),
             is_active=data.is_active,
             hashed_password=get_password_hash(
                 settings.ADMIN_DEFAULT_PASSWORD.get_secret_value()
@@ -148,7 +156,9 @@ class AdminUserService:
             raise LookupError("Пользователь не найден")
         cls.validate_change(users, data, user_id)
         if (
-            user.restricted_access != data.restricted_access
+            user.can_manage_equipment != data.can_manage_equipment
+            or user.direction != data.direction
+            or user.restricted_access != data.restricted_access
             or user.allowed_rc_names != data.allowed_rc_names
             or user.role != data.role
             or user.is_active != data.is_active
@@ -156,6 +166,8 @@ class AdminUserService:
         ):
             user.auth_version += 1
         for field in (
+            "can_manage_equipment",
+            "direction",
             "login",
             "full_name",
             "role",

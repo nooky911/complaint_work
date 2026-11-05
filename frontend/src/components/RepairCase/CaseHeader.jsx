@@ -1,4 +1,5 @@
-import React from "react";
+import { useLayoutEffect, useRef } from "react";
+import { canAssignCaseOwner } from "../../utils/userSections";
 import { Building2, UserCheck, Calendar, X } from "lucide-react";
 import { getText, formatFullName, formatDate } from "../../utils/formatters";
 
@@ -15,9 +16,55 @@ export const CaseHeader = ({
   updateField,
 }) => {
   const StatusIcon = status?.icon;
+  const direction = repairCase.direction === "train" ? "train" : "loco";
+  const owners = (users || []).filter((user) =>
+    canAssignCaseOwner(user, direction),
+  );
+
+  const headerRef = useRef(null);
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const dialog = header?.closest("[data-case-window]");
+    if (!header || !dialog) return;
+    /** Расширяет окно до естественной ширины шапки в пределах экрана */
+    const resize = () => {
+      const measure = header.cloneNode(true);
+      measure.removeAttribute("id");
+      measure.setAttribute("aria-hidden", "true");
+      measure.inert = true;
+      Object.assign(measure.style, {
+        position: "fixed",
+        visibility: "hidden",
+        pointerEvents: "none",
+        width: "max-content",
+        maxWidth: "none",
+        whiteSpace: "nowrap",
+        left: "-100000px",
+        top: "0",
+      });
+      header.parentElement.appendChild(measure);
+      const width = Math.ceil(measure.getBoundingClientRect().width) + 2;
+      measure.remove();
+      dialog.style.width = `min(max(56rem, ${width}px), calc(100vw - 2rem))`;
+      dialog.style.maxWidth = "calc(100vw - 2rem)";
+    };
+    resize();
+    globalThis.addEventListener("resize", resize);
+    let active = true;
+    document.fonts?.ready.then(() => {
+      if (active) resize();
+    });
+    return () => {
+      active = false;
+      globalThis.removeEventListener("resize", resize);
+    };
+  });
 
   return (
-    <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-2">
+    <div
+      ref={headerRef}
+      className="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-2"
+    >
       <div className="flex items-center gap-4">
         <span className="text-[16px] font-black tracking-tight text-slate-800">
           #{displayId}
@@ -69,7 +116,12 @@ export const CaseHeader = ({
                     }
                     className="cursor-pointer bg-transparent outline-none focus:ring-0"
                   >
-                    {users?.map((u) => (
+                    {!owners.some((user) => user.id === editData?.user_id) && (
+                      <option value={editData?.user_id || ""} disabled>
+                        Выберите
+                      </option>
+                    )}
+                    {owners.map((u) => (
                       <option key={u.id} value={u.id}>
                         {formatFullName(u.full_name)}{" "}
                         {u.id === currentUser?.id ? "(ВЫ)" : ""}

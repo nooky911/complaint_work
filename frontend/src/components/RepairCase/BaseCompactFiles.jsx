@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Plus, X, UploadCloud, Download, Link as LinkIcon } from "lucide-react";
 import { useUnifiedFileManagement } from "../../hooks/useUnifiedFileManagement";
@@ -12,10 +12,12 @@ export const BaseCompactFiles = ({
   isEditing,
   relatedField,
   category,
+  onFilesUploaded,
 }) => {
   const fileApi = useUnifiedFileManagement(caseId, {
     category: category,
     relatedField,
+    onFilesUploaded,
     useReactQuery: !!caseId,
   });
 

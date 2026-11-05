@@ -1,14 +1,15 @@
 from fastapi import APIRouter
+from .catalog_routes import router as catalog_router
 
-from .case_routes import router as case_router
+from myapp.loco.api.case_routes import router as case_router
 from .references_routes import router as references_router
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
 from .files_routes import router as files_router
 from .warranty_routes import router as warranty_router
-from .equipment_routes import router as equipment_router
-from .product_passport_routes import router as product_passport_router
-from .omega_stock_routes import router as omega_stock_router
+from myapp.loco.api.equipment_routes import router as equipment_router
+from .omega.product_passport_routes import router as product_passport_router
+from .omega.omega_stock_routes import router as omega_stock_router
 from .restricted_view_routes import router as restricted_view_router
 
 endpoints_router = APIRouter()
@@ -23,3 +24,8 @@ endpoints_router.include_router(references_router)  # /references/**
 endpoints_router.include_router(equipment_router)  # /equipment/**
 endpoints_router.include_router(product_passport_router)  # /product-passports/**
 endpoints_router.include_router(omega_stock_router)  # /omega-stock/**
+
+from myapp.train.api.case_routes import router as train_router
+endpoints_router.include_router(train_router)  # /train/**
+
+endpoints_router.include_router(catalog_router)  # /catalog/**

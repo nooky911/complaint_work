@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import { replacementSerialLabel } from "../../utils/formatters";
+import { useState } from "react";
 
-import { PassportEquipmentSelector } from "./PassportEquipmentFields";
-import { EditableField } from "../inputs";
-import { REPAIR_FIELDS_LABELS } from "../../constants/labels";
+import { PassportEquipmentSelector } from "../../loco/equipment/components/PassportEquipmentFields.jsx";
+import { EditableField } from "../inputs/index.jsx";
+import { REPAIR_FIELDS_LABELS } from "../../constants/labels.js";
 import {
   MANUFACTURE_DATE_ERROR,
   isValidManufactureDate,
-} from "../../utils/validators";
+} from "../../utils/validators.js";
 
 /** Показывает паспортный выбор или ручные поля для оборудования без паспорта */
 export const EquipmentFields = ({
@@ -16,13 +17,14 @@ export const EquipmentFields = ({
   updateField,
   isEditing,
   passportQuery,
+  managedRoles: suppliedManagedRoles,
 }) => {
   const hasPassport =
     mode === "old" &&
     !!(currentData?.passport_id && currentData?.component_equipment_id);
-  const managedRoles = hasPassport
-    ? passportQuery.data?.required_roles || []
-    : [];
+  const managedRoles =
+    suppliedManagedRoles ??
+    (hasPassport ? passportQuery.data?.required_roles || [] : []);
   const loadingPassport =
     hasPassport && (!passportQuery.data || passportQuery.isError);
   const sfx = mode === "old" ? "_old" : "_new";
@@ -63,6 +65,10 @@ export const EquipmentFields = ({
       updateField(field, Number(val));
     }
   };
+
+  if (!hasPassport &&
+      (!showComponent || loadingPassport || managedRoles.includes("component")) &&
+      (!showElement || loadingPassport || managedRoles.includes("element"))) return null;
 
   return (
     <div className="space-y-3 pt-2">
@@ -106,7 +112,7 @@ export const EquipmentFields = ({
             </div>
             <div className="flex-1">
               <EditableField
-                label={REPAIR_FIELDS_LABELS.component_serial_number}
+                label={replacementSerialLabel(mode === "old" ? 2 : currentData?.repair_type_id || currentData?.repair_type?.id)}
                 value={
                   mode === "old"
                     ? currentData?.component_serial_number_old

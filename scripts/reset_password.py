@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""
-Скрипт для сброса пароля пользователя
-Использование: python reset_password.py <user_id> [new_password]
-"""
 
 import sys
 import asyncio
+from sqlalchemy import select
 
 from myapp.database.base import get_db
 from myapp.models.user import User
 from myapp.auth.security import get_password_hash
-from sqlalchemy import select
 
 sys.path.append("/")
 

@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict
 from datetime import date
 
+from myapp.services import CaseValidationError
 from .references import AuxiliaryItem
 
 
@@ -37,7 +38,19 @@ class WarrantyWorkBase(BaseModel):
 class WarrantyWorkUpdate(WarrantyWorkBase):
     """Схема для редактирования рекламационной работы"""
 
-    pass
+    def validate_dates(self, fault_date=None, existing=None, *, validate_existing=False) -> None:
+        """Проверяет изменяемые даты и их связь с датой неисправности"""
+        changed = self.model_dump(exclude_unset=True)
+        for field in ("notification_date", "re_notification_date", "response_letter_date", "claim_act_date", "work_completion_act_date"):
+            if not validate_existing and field not in changed:
+                continue
+            value = changed[field] if field in changed else getattr(existing, field, None)
+            if value is None:
+                continue
+            if value.year < 2000 or value > date.today():
+                raise CaseValidationError(field, "Дата документа должна быть с 2000 года и не позже сегодняшней")
+            if fault_date is not None and value < fault_date:
+                raise CaseValidationError(field, "Дата рекламационного документа не может быть раньше даты неисправности")
 
 
 class WarrantyWorkResponse(WarrantyWorkBase):

@@ -1,4 +1,3 @@
-import React from "react";
 import { useEditableField } from "../../hooks/useEditableField";
 
 export const EditableField = ({

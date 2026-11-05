@@ -28,7 +28,9 @@ class StorageService:
         case_id: int, category: FileCategory, files: list[CaseFile]
     ) -> Path:
         """Создание ZIP-архива"""
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        timestamp = (
+            datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:12]
+        )
 
         if category == FileCategory.primary:
             archive_name = f"Первичные_документы_случая_{case_id}_{timestamp}.zip"
@@ -49,7 +51,9 @@ class StorageService:
                     file_path = StorageService.get_full_path(case_file)
 
                     if file_path.exists():
-                        original_name = case_file.original_name
+                        original_name = Path(
+                            case_file.original_name.replace("\\", "/")
+                        ).name
                         arc_name = original_name
                         counter = 1
 
@@ -94,11 +98,14 @@ class StorageService:
         category: FileCategory,
         stored_name: str,
         related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
+        *,
+        direction: str,
     ) -> str:
         """Относительный путь для хранения файла"""
+        if direction not in ("loco", "train") or case_id <= 0:
+            raise ValueError("Некорректное направление или ID случая")
         case_id_str = str(case_id)
-
-        relative_path_base = Path("cases") / case_id_str
+        relative_path_base = Path("cases") / direction / case_id_str
 
         if category == FileCategory.primary:
             relative_path = relative_path_base / "primary" / stored_name
@@ -126,7 +133,10 @@ class StorageService:
         else:
             relative_path_str = path_or_model
 
-        full_path = BASE_STORAGE_PATH / relative_path_str
+        base = BASE_STORAGE_PATH.resolve()
+        full_path = (base / relative_path_str).resolve()
+        if not full_path.is_relative_to(base) or full_path == base:
+            raise ValueError("Путь выходит за пределы хранилища")
 
         full_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -136,9 +146,10 @@ class StorageService:
     async def save_file_to_disk(file: UploadFile, relative_path: str) -> None:
         """Сохранение загруженного файла на диск"""
         try:
-            content = await file.read()
             full_path = StorageService.get_full_path(relative_path)
-            await asyncio.to_thread(full_path.write_bytes, content)
+            with full_path.open("wb") as destination:
+                while chunk := await file.read(1024 * 1024):
+                    await asyncio.to_thread(destination.write, chunk)
         finally:
             await file.close()
 

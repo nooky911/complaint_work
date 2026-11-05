@@ -1,3 +1,4 @@
+import { SHARED_LABELS } from "../../constants/labels";
 import { useMemo, useState } from "react";
 import {
   Box,
@@ -14,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { PassportPositionHistory } from "./PassportPositionHistory";
-import { MultiSelectField } from "../inputs/MultiSelectField";
+import { MultiSelectField } from "../inputs/index.jsx";
 import { formatDate, sortOptionsByName } from "../../utils/formatters";
 import { exportProductPassport } from "../../api/productPassports";
 
@@ -100,9 +101,13 @@ export function PassportTree({ passport }) {
 
     // Меняем только порядок секций под локомотивом, сохраняя их состав
     if (rootNode) {
-      children
-        .get(String(rootNode.id))
-        ?.sort((left, right) => sectionOrder(left) - sectionOrder(right));
+      children.get(String(rootNode.id))?.sort((left, right) =>
+        passport.direction === "train"
+          ? left.tree_name.localeCompare(right.tree_name, "ru", {
+              numeric: true,
+            })
+          : sectionOrder(left) - sectionOrder(right),
+      );
     }
 
     return {
@@ -110,17 +115,21 @@ export function PassportTree({ passport }) {
       childrenByParent: children,
       nodesById: new Map(passport.nodes.map((node) => [node.id, node])),
     };
-  }, [passport.nodes]);
+  }, [passport.nodes, passport.direction]);
 
   const numberedEquipment = useMemo(
     () =>
       passport.nodes.filter(
         (node) =>
           node.id !== root?.id &&
+          !(
+            passport.direction === "train" &&
+            /^Вагон\s*(?:№\s*)?\d+$/i.test(node.tree_name.trim())
+          ) &&
           sectionOrder(node) === 3 &&
           String(node.serial_number ?? "").trim(),
       ),
-    [passport.nodes, root],
+    [passport.nodes, root, passport.direction],
   );
   const equipmentOptions = useMemo(
     () =>
@@ -316,7 +325,7 @@ export function PassportTree({ passport }) {
               <>
                 <div className="w-64 max-w-full">
                   <MultiSelectField
-                    label="Оборудование"
+                    label={SHARED_LABELS.equipment}
                     placeholder="Выберите оборудование"
                     options={equipmentOptions}
                     selectedValues={equipmentNames}
@@ -388,7 +397,8 @@ export function PassportTree({ passport }) {
                 {exporting ? "Создание файла…" : "Скачать Excel"}
               </button>
               <div className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-black text-indigo-600">
-                {passport.locomotive_model_name} №{passport.product_number}
+                {passport.train_model_name || passport.locomotive_model_name} №
+                {passport.product_number}
               </div>
             </div>
           </div>

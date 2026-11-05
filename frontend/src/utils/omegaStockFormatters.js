@@ -11,3 +11,15 @@ export const formatOmegaStockValue = (value, format) => {
   }
   return String(value);
 };
+
+/** Определяет раздел склада по переходу, при прямом входе использует раздел пользователя */
+export const getStockDirection = (location, user) => {
+  if (location.state?.returnTo === "/train") return "train";
+  if (location.state?.returnTo === "/dashboard") return "loco";
+  return user?.direction === "train" ? "train" : "loco";
+};
+
+/** Разрешает привязку из собственного раздела, администратору из любого */
+export const canLinkStockCases = (user, direction) =>
+  user?.role === "superadmin" ||
+  (user?.role === "editor" && user.direction === direction);

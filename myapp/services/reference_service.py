@@ -15,7 +15,8 @@ from myapp.models.auxiliaries import (
     RepairType,
     Supplier,
 )
-from myapp.models.equipment_malfunctions import EquipmentMalfunction, Malfunction
+from myapp.loco.models.equipment import EquipmentMalfunction
+from myapp.models.malfunctions import Malfunction
 from myapp.models.product_passports import ProductPassport
 from myapp.models.warranty_work import (
     DecisionSummary,
@@ -34,7 +35,18 @@ from myapp.services.omega_services.product_passport_service import (
 class ReferenceService:
     """Сервис для работы со справочниками"""
 
+    TRAIN_INSPECTIONS = ("Инспекция Ⅵ", "Инспекция Ⅰ1", "Инспекция Ⅰ2", "Инспекция Ⅰ3")
     _db_semaphore = asyncio.Semaphore(DB_SEMAPHORE_LIMIT)
+
+    @classmethod
+    def discovery_allowed(cls, name: str, direction: str) -> bool:
+        """Разрешает эксплуатацию обоим направлениям, инспекции только поездам"""
+        if direction == "train":
+            return name in cls.TRAIN_INSPECTIONS or name.casefold().strip() in (
+                "эксплуатация",
+                "эксплуатации",
+            )
+        return not name.casefold().strip().startswith("инспекция")
 
     @staticmethod
     async def get_locomotive_numbers(
@@ -123,6 +135,8 @@ class ReferenceService:
                 select(
                     FaultDiscoveryPlace.id,
                     FaultDiscoveryPlace.fault_discovery_places_name,
+                ).where(
+                    ~FaultDiscoveryPlace.fault_discovery_places_name.ilike("инспекция%")
                 ),
             ),
             (

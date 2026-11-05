@@ -1,12 +1,13 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+import { passportAllowedIds } from "../utils/equipmentHierarchy";
 
-import { useEquipmentHierarchy } from "../hooks/useEquipmentHierarchy";
-import { usePassportEquipment } from "../hooks/usePassportEquipment";
+import { useEquipmentHierarchy } from "../hooks/equipment/useEquipmentHierarchy.js";
+import { usePassportEquipment } from "../loco/equipment/hooks/usePassportEquipment.js";
 import {
   EquipmentLevelSelector,
   EquipmentFields,
   EquipmentMalfunctionSelector,
-} from "./equipment";
+} from "./equipment/index.jsx";
 
 /** Выбор оборудования с учётом классификатора и состава выбранных секций */
 export const EquipmentHierarchyEditor = ({
@@ -35,19 +36,11 @@ export const EquipmentHierarchyEditor = ({
       passportQuery.isError);
   const allowedIds = useMemo(() => {
     if (!passportScope || !passportQuery.data) return null;
-    const allowed = new Set(passportQuery.data.allowed_equipment_ids);
-    // Прежний выбор старого случая остаётся видимым при редактировании
-    if (currentData?.id && currentId) {
-      const byId = new Map(allEquipment.map((item) => [item.id, item]));
-      let id = Number(currentId);
-      const seen = new Set();
-      while (byId.has(id) && !seen.has(id)) {
-        seen.add(id);
-        allowed.add(id);
-        id = byId.get(id).parent_id;
-      }
-    }
-    return allowed;
+    return passportAllowedIds(
+      passportQuery.data.allowed_equipment_ids,
+      currentData?.id ? currentId : null,
+      new Map(allEquipment.map((item) => [item.id, item])),
+    );
   }, [
     passportScope,
     passportQuery.data,

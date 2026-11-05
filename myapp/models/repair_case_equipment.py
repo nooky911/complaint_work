@@ -1,4 +1,14 @@
-from sqlalchemy import Boolean, Integer, String, Date, Text, ForeignKey, TIMESTAMP, text, Index
+from sqlalchemy import (
+    Boolean,
+    Integer,
+    String,
+    Date,
+    Text,
+    ForeignKey,
+    TIMESTAMP,
+    text,
+    Index,
+)
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from datetime import date, datetime
 
@@ -37,17 +47,30 @@ class RepairCaseEquipment(Base):
             "malfunction_id",
             postgresql_where=text("passport_selection_key IS NULL"),
         ),
-        Index("idx_unique_repair_case_positions", "fault_date", "passport_id", "mileage",
-              "malfunction_id", "passport_selection_key", unique=True,
-              postgresql_nulls_not_distinct=True,
-              postgresql_where=text("passport_selection_key IS NOT NULL")),
+        Index(
+            "idx_unique_repair_case_positions",
+            "fault_date",
+            "passport_id",
+            "mileage",
+            "malfunction_id",
+            "passport_selection_key",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+            postgresql_where=text("passport_selection_key IS NOT NULL"),
+        ),
     )
 
-    created_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL")
+    )
     created_by_name: Mapped[str | None] = mapped_column(Text)
     creator_source: Mapped[str | None] = mapped_column(String(20))
     revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     passport_selection_key: Mapped[str | None] = mapped_column(String(64))
+
+    direction: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="loco", server_default="loco", index=True
+    )
 
     # Основные поля
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -55,7 +78,7 @@ class RepairCaseEquipment(Base):
         TIMESTAMP(timezone=True), nullable=False
     )
     fault_date: Mapped[date] = mapped_column(Date, nullable=False)
-    section_mask: Mapped[int] = mapped_column(Integer, nullable=False)
+    section_mask: Mapped[int | None] = mapped_column(Integer, nullable=True)
     locomotive_number: Mapped[str | None] = mapped_column(String(50))
     passport_id: Mapped[int | None] = mapped_column(
         ForeignKey("product_passports.id", ondelete="RESTRICT"), index=True
@@ -82,24 +105,26 @@ class RepairCaseEquipment(Base):
     regional_center_id: Mapped[int] = mapped_column(
         ForeignKey("regional_centers.id"), nullable=False
     )
-    locomotive_model_id: Mapped[int] = mapped_column(
-        ForeignKey("locomotive_models.id"), nullable=False
+    locomotive_model_id: Mapped[int | None] = mapped_column(
+        ForeignKey("locomotive_models.id"), nullable=True
     )
     fault_discovered_at_id: Mapped[int] = mapped_column(
         ForeignKey("fault_discovery_places.id"), nullable=False
     )
-    component_equipment_id: Mapped[int] = mapped_column(
-        ForeignKey("equipment.id"), nullable=False
+    component_equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("loco_equipment.id"), nullable=True
     )
-    element_equipment_id: Mapped[int | None] = mapped_column(ForeignKey("equipment.id"))
+    element_equipment_id: Mapped[int | None] = mapped_column(
+        ForeignKey("loco_equipment.id")
+    )
     malfunction_id: Mapped[int] = mapped_column(
         ForeignKey("malfunctions.id"), nullable=False
     )
     new_component_equipment_id: Mapped[int | None] = mapped_column(
-        ForeignKey("equipment.id")
+        ForeignKey("loco_equipment.id")
     )
     new_element_equipment_id: Mapped[int | None] = mapped_column(
-        ForeignKey("equipment.id")
+        ForeignKey("loco_equipment.id")
     )
     repair_type_id: Mapped[int] = mapped_column(
         ForeignKey("repair_types.id"), nullable=False

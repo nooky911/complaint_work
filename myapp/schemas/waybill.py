@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, field_validator
 from datetime import date
 
+from myapp.services import CaseValidationError
 from .references import AuxiliaryItem
 
 
@@ -29,7 +30,12 @@ class WaybillDocBase(BaseModel):
 class WaybillDocUpdate(WaybillDocBase):
     """Схема для обновления данных о ТТН"""
 
-    pass
+    def validate_dates(self) -> None:
+        """Проверяет даты ТТН, сохраняя возможность указывать будущую дату"""
+        for field in ("ttn_replacement_date", "ttn_from_rc_date", "ttn_to_supplier_date", "ttn_from_supplier_date"):
+            value = getattr(self, field)
+            if value is not None and value.year < 2000:
+                raise CaseValidationError(field, "Дата ТТН должна быть с 2000 года")
 
 
 class WaybillDocResponse(WaybillDocBase):

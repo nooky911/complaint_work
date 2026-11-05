@@ -6,10 +6,17 @@ import {
   Settings,
   Warehouse,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
-export function SectionsMenu({ isSuperadmin }) {
+export function SectionsMenu({ isSuperadmin, direction = "loco" }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManage =
+    isSuperadmin ||
+    (user?.role === "editor" &&
+      user?.direction === direction &&
+      user?.can_manage_equipment);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -31,7 +38,9 @@ export function SectionsMenu({ isSuperadmin }) {
 
   const openSection = (path) => {
     setIsOpen(false);
-    navigate(path);
+    navigate(path, {
+      state: { returnTo: direction === "train" ? "/train" : "/dashboard" },
+    });
   };
 
   return (
@@ -58,7 +67,13 @@ export function SectionsMenu({ isSuperadmin }) {
           <button
             type="button"
             role="menuitem"
-            onClick={() => openSection("/product-passports")}
+            onClick={() =>
+              openSection(
+                direction === "train"
+                  ? "/train/product-passports"
+                  : "/product-passports",
+              )
+            }
             className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
           >
             <BookOpenText className="h-4 w-4" />
@@ -73,11 +88,17 @@ export function SectionsMenu({ isSuperadmin }) {
             <Warehouse className="h-4 w-4" />
             Склад
           </button>
-          {isSuperadmin && (
+          {canManage && (
             <button
               type="button"
               role="menuitem"
-              onClick={() => openSection("/equipment-management")}
+              onClick={() =>
+                openSection(
+                  direction === "train"
+                    ? "/train/equipment-management"
+                    : "/equipment-management",
+                )
+              }
               className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-semibold text-slate-700 hover:bg-indigo-50 hover:text-indigo-700"
             >
               <Settings className="h-4 w-4" />

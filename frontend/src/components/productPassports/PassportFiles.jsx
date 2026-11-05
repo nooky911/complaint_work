@@ -32,7 +32,9 @@ export function PassportFiles({
   const data = eventId == null ? query.data : context;
   const loading = eventId == null ? query.isLoading : historyLoading;
   const error = eventId == null ? query.isError : historyError;
-  const canEdit = ["editor", "superadmin"].includes(user?.role);
+  const canEdit =
+    user?.role === "superadmin" ||
+    (user?.role === "editor" && user.direction === (data?.direction || "loco"));
   const upload = useMutation({
     mutationFn: async (files) => {
       const body = new FormData();

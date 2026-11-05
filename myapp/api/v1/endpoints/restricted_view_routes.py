@@ -1,10 +1,9 @@
-"""Отдельные маршруты ограниченного просмотра"""
-
 import json
 from typing import Literal
 from sqlalchemy import cast, String
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from myapp.auth.dependencies import get_current_user
 from myapp.database.base import get_db
 from myapp.models.user import User

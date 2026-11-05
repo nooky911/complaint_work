@@ -1,15 +1,14 @@
 import asyncio
-from datetime import date
 import re
-
+from datetime import date
 from sqlalchemy import select
 
 from myapp.config import settings
 from myapp.database.base import async_session_maker
 from myapp.models.auxiliaries import OmegaStockSupplierName, RegionalCenter, Supplier
-from myapp.omega.stock_client import OmegaStockClient
-from myapp.omega.stock_queries import DOCUMENT_FILTER_COLUMNS
-from myapp.schemas.omega_stock import OmegaStockColumnFilter
+from myapp.integrations.omega.stock_client import OmegaStockClient
+from myapp.integrations.omega.stock_queries import DOCUMENT_FILTER_COLUMNS
+from myapp.schemas.omega.omega_stock import OmegaStockColumnFilter
 
 
 class OmegaStockService:

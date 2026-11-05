@@ -3,6 +3,8 @@ from datetime import date, datetime, timezone
 from typing import Any
 from sqlalchemy import func, select
 
+from myapp.services.omega_services.passport_file_service import PassportFileService
+from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.database.transactional import transactional
 from myapp.models.product_passports import (
     ProductPassport,
@@ -10,7 +12,7 @@ from myapp.models.product_passports import (
     ProductPassportEventItem,
     ProductPassportNode,
 )
-from myapp.services.case_filter_service import CaseFilterService
+from myapp.loco.services.case_filter_service import CaseFilterService
 from myapp.services.omega_services.passport_position_service import (
     PassportPositionService,
 )
@@ -67,6 +69,16 @@ class PassportHistoryService:
         await session.flush()
         for item in (await session.scalars(stmt)).all():
             changes[item.node_id].append(item)
+        train_ids = set(
+            (
+                await session.scalars(
+                    select(ProductPassport.id).where(
+                        ProductPassport.train_model_id.is_not(None),
+                        ProductPassport.id.in_({n.passport_id for n in nodes}),
+                    )
+                )
+            ).all()
+        )
         for n in nodes:
             state = PassportPositionService.compose(n.baseline_state, changes[n.id])
             for field in PassportPositionService.INSTANCE_FIELDS + ("is_present",):
@@ -75,7 +87,15 @@ class PassportHistoryService:
                 value = state.get(field)
                 if field in ("manufacture_date", "install_date") and value:
                     value = date.fromisoformat(value)
-                setattr(n, field, value)
+                setattr(
+                    n,
+                    (
+                        "train_equipment_id"
+                        if field == "equipment_id" and n.passport_id in train_ids
+                        else field
+                    ),
+                    value,
+                )
             n.version += 1
         await session.flush()
 
@@ -85,7 +105,19 @@ class PassportHistoryService:
         node = await session.get(ProductPassportNode, node_id)
         if not node or node.passport_id != passport_id:
             PassportPositionService.fail("Позиция не найдена")
-        numbered = CaseFilterService._numbered_cases()
+        passport = await session.get(ProductPassport, passport_id)
+        numbered = (
+            select(
+                RepairCaseEquipment.id,
+                func.row_number()
+                .over(order_by=RepairCaseEquipment.id)
+                .label("display_number"),
+            )
+            .where(RepairCaseEquipment.direction == "train")
+            .cte("train_history_numbers")
+            if passport.train_model_id is not None
+            else CaseFilterService._numbered_cases()
+        )
         stmt = (
             select(
                 ProductPassportEvent,
@@ -221,6 +253,12 @@ class PassportHistoryService:
             changed.append(field)
         if not changed:
             return
+        preserve_files = data.get("preserve_existing_files")
+        compatible = PassportFileService.can_preserve_files(old, new)
+        if preserve_files is True and not compatible:
+            PassportPositionService.fail(
+                "Номер или дата изменены: нельзя перенести сканы прежнего экземпляра"
+            )
         if node.baseline_state is None:
             node.baseline_state = PassportPositionService.snapshot(node, equipment)
             node.baseline_source = "reviewed_import"
@@ -248,6 +286,8 @@ class PassportHistoryService:
         )
         session.add(event)
         await session.flush()
+        if preserve_files is False or not compatible:
+            new["passport_files_instance_key"] = f"event:{event.id}"
         session.add(
             ProductPassportEventItem(
                 event_id=event.id,

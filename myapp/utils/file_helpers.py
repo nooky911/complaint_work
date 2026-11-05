@@ -6,6 +6,8 @@ from typing import NoReturn
 
 def handle_file_not_found(e: Exception) -> NoReturn:
     """Преобразует исключение FileNotFoundError в HTTP 404, остальное 500 с логированием"""
+    if isinstance(e, HTTPException):
+        raise e
     if isinstance(e, FileNotFoundError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     if isinstance(e, ValueError):

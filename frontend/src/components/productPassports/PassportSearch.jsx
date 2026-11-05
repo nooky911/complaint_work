@@ -6,6 +6,7 @@ import { useDebouncedValue } from "../../hooks/useDebounce";
 
 export function PassportSearch({
   models,
+  direction = "loco",
   selectedModelId,
   onModelChange,
   onPassportSelect,
@@ -17,6 +18,7 @@ export function PassportSearch({
   const { data: passports = [], isFetching } = useProductPassportSearch(
     selectedModelId,
     debouncedNumber,
+    direction,
   );
 
   useEffect(() => {
@@ -50,13 +52,13 @@ export function PassportSearch({
     <div className="grid gap-5 md:grid-cols-2">
       <div className="flex flex-col gap-1">
         <label className="ml-1 text-xs font-bold tracking-wider text-slate-500 uppercase">
-          Модель локомотива
+          Модель {direction === "train" ? "электропоезда" : "локомотива"}
         </label>
         <div className="relative">
           <select
             value={selectedModelId || ""}
             onChange={handleModelChange}
-            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-10 text-sm font-bold text-slate-900 shadow-sm transition-all outline-none focus:border-indigo-500"
+            className="w-full appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2 pr-10 text-sm font-bold text-slate-900 shadow-sm transition-all outline-none focus:border-indigo-500"
           >
             <option value="">Выберите модель</option>
             {models.map((model) => (
@@ -71,7 +73,7 @@ export function PassportSearch({
 
       <div className="relative flex flex-col gap-1" ref={containerRef}>
         <label className="ml-1 text-xs font-bold tracking-wider text-slate-500 uppercase">
-          Номер локомотива
+          Номер {direction === "train" ? "электропоезда" : "локомотива"}
         </label>
         <div className="relative">
           <input
@@ -86,7 +88,7 @@ export function PassportSearch({
                 : "Сначала выберите модель"
             }
             autoComplete="off"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2.5 pr-10 text-sm font-bold text-slate-900 shadow-sm transition-all outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
+            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-10 text-sm font-bold text-slate-900 shadow-sm transition-all outline-none placeholder:font-normal placeholder:text-slate-400 focus:border-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400"
           />
           {isFetching ? (
             <div className="absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
@@ -103,7 +105,7 @@ export function PassportSearch({
                   key={passport.id}
                   type="button"
                   onClick={() => handleSelect(passport)}
-                  className="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-indigo-50"
+                  className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left transition-colors hover:bg-indigo-50"
                 >
                   <span className="text-sm font-black text-slate-900">
                     №{passport.product_number}

@@ -2,10 +2,10 @@ from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
+from myapp.services.user_access_service import lock_case_for_change
 from myapp.database.transactional import transactional
-from myapp.validators.file_validator import FileValidator, MAX_CASE_SIZE
+from myapp.validators.file_validator import FileValidator, MAX_CASE_SIZE, MAX_FILE_SIZE
 from myapp.services.storage_service import StorageService
-from myapp.services.case_service import CaseService
 from myapp.models.case_files import (
     CaseFile,
     FileCategory,
@@ -31,31 +31,37 @@ class FileUploadService:
         category: FileCategory,
         file: UploadFile,
         related_field: WarrantyDocumentField | WaybillDocumentField | None = None,
+        *,
+        direction: str,
     ) -> CaseFile:
         """Внутренний метод для обработки одного файла: сохранение на диск и запись в БД"""
         # Генерация имен и путей
         stored_name = StorageService.generate_stored_name(file.filename)
         relative_file_path = StorageService.get_relative_path(
-            case_id, category, stored_name, related_field
+            case_id, category, stored_name, related_field, direction=direction
         )
 
-        # Сохранение файла на сервер
-        await StorageService.save_file_to_disk(file, relative_file_path)
+        try:
+            # Сохранение файла на сервер
+            await StorageService.save_file_to_disk(file, relative_file_path)
 
-        # Создание записи в БД
-        case_file = CaseFile(
-            case_id=case_id,
-            category=category,
-            related_field=related_field,
-            original_name=file.filename,
-            stored_name=stored_name,
-            file_path=relative_file_path,
-            mime_type=file.content_type,
-            size_bytes=file.size,
-        )
+            # Создание записи в БД
+            case_file = CaseFile(
+                case_id=case_id,
+                category=category,
+                related_field=related_field,
+                original_name=file.filename,
+                stored_name=stored_name,
+                file_path=relative_file_path,
+                mime_type=file.content_type,
+                size_bytes=file.size,
+            )
 
-        session.add(case_file)
-        await session.flush()
+            session.add(case_file)
+            await session.flush()
+        except Exception:
+            StorageService.get_full_path(relative_file_path).unlink(missing_ok=True)
+            raise
 
         return case_file
 
@@ -86,7 +92,7 @@ class FileUploadService:
         if related_field == "" or related_field == "string":
             related_field = None
 
-        case = await CaseService.get_case(session, case_id)
+        case = await lock_case_for_change(session, case_id)
         if not case:
             raise ValueError(f"Случай с ID {case_id} не найден")
 
@@ -101,8 +107,12 @@ class FileUploadService:
         total_case_size = await FileUploadService._get_total_case_size(session, case_id)
         total_new_size = 0
         for file in files:
-            content = await file.read()
-            f_size = len(content)
+            FileValidator.validate_file(file, category)
+            f_size = 0
+            while chunk := await file.read(1024 * 1024):
+                f_size += len(chunk)
+                if f_size > MAX_FILE_SIZE:
+                    raise ValueError("Превышен размер файла")
             await file.seek(0)
             total_new_size += f_size
 
@@ -118,7 +128,12 @@ class FileUploadService:
                 FileValidator.validate_file(file, category)
 
                 case_file = await FileUploadService._process_single_file(
-                    session, case_id, category, file, related_field
+                    session,
+                    case_id,
+                    category,
+                    file,
+                    related_field,
+                    direction=case.direction,
                 )
                 uploaded_files.append(case_file)
 

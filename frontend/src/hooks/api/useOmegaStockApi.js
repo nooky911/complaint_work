@@ -29,6 +29,7 @@ export const useOmegaStockFilterOptions = (
   filters,
   enabled,
   caseSelection = false,
+  direction = "loco",
 ) => {
   const { user } = useAuth();
   return useQuery({
@@ -40,10 +41,11 @@ export const useOmegaStockFilterOptions = (
       filters,
       caseSelection,
       caseSelection ? user?.id : null,
+      caseSelection ? direction : null,
     ],
     queryFn: () =>
       caseSelection
-        ? getStockLinkCaseFilterOptions(column, filters)
+        ? getStockLinkCaseFilterOptions(column, filters, direction)
         : getOmegaStockFilterOptions(kind, column, filters),
     enabled: Boolean(kind && column && enabled),
     staleTime: 0,

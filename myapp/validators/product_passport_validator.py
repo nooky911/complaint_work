@@ -1,6 +1,6 @@
 from collections import Counter
 
-from myapp.schemas.omega import OmegaPassportNodeData
+from myapp.schemas.omega.source import OmegaPassportNodeData
 
 
 class ProductPassportValidator:
@@ -19,8 +19,7 @@ class ProductPassportValidator:
         if duplicate_codes:
             duplicate_codes_text = ", ".join(map(str, duplicate_codes[:20]))
             raise ValueError(
-                "В дереве Omega найдены повторяющиеся узлы: "
-                f"{duplicate_codes_text}"
+                "В дереве Omega найдены повторяющиеся узлы: " f"{duplicate_codes_text}"
             )
 
         node_codes = set(code_counts)

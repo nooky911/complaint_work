@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import re
+from datetime import datetime
 from pathlib import Path
 from sqlalchemy import select, func
 
@@ -13,7 +14,7 @@ from myapp.models.product_passports import (
     ProductPassportEventItem,
     ProductPassportFile,
 )
-from myapp.omega.stock_client import OmegaStockClient
+from myapp.integrations.omega.stock_client import OmegaStockClient
 from myapp.schemas.files import FileCategory
 from myapp.services.storage_service import StorageService
 from myapp.validators.file_validator import FileValidator, MAX_FILE_SIZE, MAX_CASE_SIZE
@@ -67,6 +68,46 @@ class PassportFileService:
             str(state.get("serial_number") or "").strip().casefold(),
         )
 
+    @staticmethod
+    def can_preserve_files(before, after):
+        """Разрешает сохранение сканов при уточнении типа и дополнении неизвестных реквизитов"""
+
+        def normalized(value, date_field=False):
+            """Сравнивает реквизиты без различий пустых значений и форматов полной даты"""
+            value = str(value or "").strip().casefold()
+            if value in ("", "б/н", "-", "—"):
+                return ""
+            if date_field:
+                for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+                    try:
+                        return datetime.strptime(value, fmt).date().isoformat()
+                    except ValueError:
+                        pass
+            return value
+
+        for field in ("serial_number", "manufacture_date_text"):
+            old = normalized(
+                before.get(field)
+                or (
+                    before.get("manufacture_date")
+                    if field == "manufacture_date_text"
+                    else None
+                ),
+                field == "manufacture_date_text",
+            )
+            new = normalized(
+                after.get(field)
+                or (
+                    after.get("manufacture_date")
+                    if field == "manufacture_date_text"
+                    else None
+                ),
+                field == "manufacture_date_text",
+            )
+            if old and old != new:
+                return False
+        return True
+
     @classmethod
     def instance_targets(cls, node, rows):
         """Сохраняет принадлежность сканов при отмене прежних замен"""
@@ -105,7 +146,13 @@ class PassportFileService:
                         else f"removed-event:{event.id}"
                     )
                 )
-            key = cls.next_instance(event, key)
+            if (
+                event.kind == "manual_correction"
+                and "passport_files_instance_key" in item.after_state
+            ):
+                key = item.after_state["passport_files_instance_key"]
+            else:
+                key = cls.next_instance(event, key)
             targets[event.id] = (before, key)
             previous = item.after_state
         return targets, key
@@ -167,8 +214,11 @@ class PassportFileService:
                 .order_by(ProductPassportFile.uploaded_at, ProductPassportFile.id)
             )
         ).all()
+        passport = await session.get(ProductPassport, node.passport_id)
+        direction = "train" if passport.train_model_id is not None else "loco"
         result = {
-            key: dict(instance_key=key, files=[], omega_error=None) for key in keys
+            key: dict(instance_key=key, files=[], omega_error=None, direction=direction)
+            for key in keys
         }
         for file in local:
             result[file.instance_key]["files"].append(cls.local_description(file))

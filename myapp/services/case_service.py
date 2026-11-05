@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from fastapi import HTTPException
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -13,15 +14,17 @@ from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.models.warranty_work import WarrantyWork
 from myapp.schemas.cases import CaseCreate, CaseUpdate
+from myapp.schemas.warranty import WarrantyWorkUpdate
 from myapp.services import CaseValidationError
-from myapp.services.case_status_service import CaseStatusService
-from myapp.services.equipment_service import EquipmentService
+from myapp.loco.services.case_status_service import CaseStatusService
+from myapp.loco.services.equipment_service import EquipmentService
 from myapp.services.files.file_management_service import FileManagementService
 from myapp.services.omega_services.passport_case_service import PassportCaseService
 from myapp.services.omega_services.product_passport_service import (
     ProductPassportService,
 )
 from myapp.services.warranty_service import WarrantyService
+from myapp.services.user_access_service import UserAccessService
 from myapp.services.waybill_service import WaybillService
 
 
@@ -118,18 +121,17 @@ class CaseService:
         )
 
     @staticmethod
-    def _validate_manufacture_dates(case_data: CaseCreate | CaseUpdate) -> None:
-        """Проверяет отсутствие букв в датах изготовления"""
-        data = case_data.model_dump(exclude_unset=True)
-        for field in (
-            "component_manufacture_date_old",
-            "element_manufacture_date_old",
-            "component_manufacture_date_new",
-            "element_manufacture_date_new",
+    def _normalize_optional_quantities(data: dict, case=None) -> None:
+        """Очищает количество отсутствующего элемента или установленной замены"""
+        for quantity, equipment in (
+            ("element_quantity", "element_equipment_id"),
+            ("new_component_quantity", "new_component_equipment_id"),
+            ("new_element_quantity", "new_element_equipment_id"),
         ):
-            value = data.get(field)
-            if value is not None and any(character.isalpha() for character in value):
-                raise CaseValidationError(field)
+            if case is not None and quantity not in data and equipment not in data:
+                continue
+            if not data.get(equipment, getattr(case, equipment, None)):
+                data[quantity] = None
 
     @staticmethod
     def _normalize_installed_serials(
@@ -171,7 +173,11 @@ class CaseService:
     ) -> RepairCaseEquipment:
         """Создание случая"""
 
-        CaseService._validate_manufacture_dates(case_data)
+        case_data.validate_write()
+        try:
+            await UserAccessService.validate_case_owner(session, user_id, "loco")
+        except ValueError as error:
+            raise CaseValidationError("user_id", str(error)) from error
         case_creation_data = case_data.model_dump(
             exclude={
                 "warranty_work",
@@ -182,6 +188,7 @@ class CaseService:
                 "expected_revision",
             }
         )
+        CaseService._normalize_optional_quantities(case_creation_data)
         CaseService._normalize_installed_serials(case_creation_data)
         await CaseService._prepare_locomotive(session, case_creation_data)
 
@@ -256,7 +263,7 @@ class CaseService:
         current_user_id: int | None = None,
     ) -> RepairCaseEquipment | None:
         """Обновление случая и автоматическое определение обоих поставщиков"""
-        CaseService._validate_manufacture_dates(case_data)
+        case_data.validate_write()
         case = await session.scalar(
             select(RepairCaseEquipment)
             .where(RepairCaseEquipment.id == case_id)
@@ -288,6 +295,14 @@ class CaseService:
             raise CaseValidationError(
                 "revision", "Случай изменён другим пользователем. Обновите карточку."
             )
+        if "fault_date" in update_data or case_data.warranty_work is not None:
+            warranty = await WarrantyService.get_warranty_by_case(session, case_id)
+            (case_data.warranty_work or WarrantyWorkUpdate()).validate_dates(
+                update_data.get("fault_date", case.fault_date),
+                warranty,
+                validate_existing="fault_date" in update_data,
+            )
+        CaseService._normalize_optional_quantities(update_data, case)
         old_passport_id = case.passport_id
         await CaseService._prepare_locomotive(session, update_data, case)
         if update_data.get("passport_id", old_passport_id) != old_passport_id:
@@ -302,9 +317,28 @@ class CaseService:
                     "У случая есть паспортные связи. Смена локомотива требует отдельного переноса связей.",
                 )
 
-        # Автоматическая смена владельца после проверки входных данных
-        if current_user_id and case.user_id != current_user_id:
-            case.user_id = current_user_id
+        # Редактор принимает случай напарника, администратор назначает явно
+        if "user_id" in update_data and not update_data["user_id"]:
+            raise CaseValidationError(
+                "user_id", "Выберите ответственного своего раздела"
+            )
+        target_owner = update_data.get("user_id") or case.user_id
+        if (
+            "user_id" not in update_data
+            and current_user_id
+            and case.user_id != current_user_id
+        ):
+            actor = await session.get(User, current_user_id)
+            if actor and actor.role != "superadmin":
+                target_owner = current_user_id
+        if target_owner != case.user_id:
+            try:
+                await UserAccessService.validate_case_owner(
+                    session, target_owner, "loco"
+                )
+            except ValueError as error:
+                raise CaseValidationError("user_id", str(error)) from error
+            case.user_id = target_owner
 
         eq_changed = "component_equipment_id" in update_data
         el_changed = "element_equipment_id" in update_data
@@ -439,7 +473,7 @@ class CaseService:
         # Обновление WarrantyWork
         if case_data.warranty_work:
             await WarrantyService.update_warranty_work(
-                session, case_id, case_data.warranty_work
+                session, case_id, case_data.warranty_work, bump_revision=False
             )
 
         # Обновление WaybillDoc
@@ -533,7 +567,10 @@ class CaseService:
     @staticmethod
     @transactional
     async def delete_case(
-        session: AsyncSession, case_id: int, actor_id: int | None = None
+        session: AsyncSession,
+        case_id: int,
+        actor_id: int | None = None,
+        direction: str | None = None,
     ) -> int:
         """Удаление случая со всеми его данными"""
         stmt = (
@@ -549,7 +586,19 @@ class CaseService:
         if not case:
             return 1
 
+        if direction is not None and case.direction != direction:
+            raise HTTPException(404, "Случай не найден в этом разделе")
         actor = await session.get(User, actor_id or case.user_id)
+        if (
+            not actor
+            or not actor.is_active
+            or actor.restricted_access
+            or (actor.role != "superadmin" and actor.direction != case.direction)
+            or not await UserAccessService.can_edit_owner(session, actor, case.user_id)
+        ):
+            raise HTTPException(403, "Недостаточно прав для удаления случая")
+        if is_case_lock_active(case) and case.locked_by_id != actor.id:
+            raise HTTPException(423, "Случай редактируется другим пользователем")
         await PassportCaseService.delete_case(session, case, actor)
 
         if case.files:

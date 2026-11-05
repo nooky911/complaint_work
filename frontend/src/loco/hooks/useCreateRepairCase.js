@@ -1,0 +1,273 @@
+import { uploadPendingCaseFiles } from "../../api/pendingCaseFiles";
+import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { canAssignCaseOwner } from "../../utils/userSections";
+import api from "../../api/api";
+import {
+  getInitialCaseData,
+  formatApiError,
+  hasPassportScopeChanged,
+  normalizeInstalledSerials,
+} from "../../utils/formatters";
+import { useCaseValidation } from "../../hooks/useCaseValidation";
+import { useFormReferences } from "../../hooks/api/index";
+import { useLocomotiveNumbers } from "../../hooks/api/useReferencesApi";
+import { logger } from "../../utils/logger";
+
+/** Управляет заполнением и сохранением нового случая */
+export const useCreateRepairCase = (onSuccess, currentUser) => {
+  const queryClient = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [uploading, setUploading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    ...getInitialCaseData(),
+    user_id: null,
+  });
+
+  const [faultyHierarchy, setFaultyHierarchy] = useState(null);
+  const [showError, setShowError] = useState(false);
+  const [serverError, setServerError] = useState({ show: false, message: "" });
+
+  const {
+    data: referencesData,
+    isLoading: loading,
+    error: referencesError,
+  } = useFormReferences(currentUser?.role);
+
+  const locomotiveSelection = useLocomotiveNumbers(
+    formData.locomotive_model_id,
+    formData.locomotive_number || "",
+    !!formData.locomotive_number,
+  );
+  const validation = useCaseValidation(
+    formData,
+    faultyHierarchy,
+    referencesData?.equipment || [],
+    locomotiveSelection,
+  );
+
+  // Обработка ошибок
+  useEffect(() => {
+    if (referencesError) {
+      logger.error("Ошибка загрузки справочников:", referencesError);
+    }
+  }, [referencesError]);
+
+  const addPendingFiles = (fileList) => {
+    const newFiles = Array.from(fileList).map((f) => {
+      if (f.size_bytes !== undefined) return f;
+
+      const fileSize = f.size || f.file?.size || 0;
+
+      return {
+        file: f,
+        category: "primary",
+        name: f.name || f.file?.name,
+        original_name: f.name || f.file?.name,
+        size: fileSize,
+        size_bytes: fileSize,
+        file_size: fileSize,
+        type: f.type || f.file?.type,
+        mime_type: f.type || f.file?.type,
+      };
+    });
+    setPendingFiles((prev) => [...prev, ...newFiles]);
+  };
+
+  const addPendingLink = (selectedFile) => {
+    const newLink = {
+      id: Math.random().toString(36).slice(2, 11),
+      name: selectedFile.original_name,
+      existingFileId: selectedFile.id,
+      mime_type: selectedFile.mime_type,
+      isPending: true,
+      isLink: true,
+    };
+    setPendingFiles((prev) => [...prev, newLink]);
+  };
+
+  const removePendingFile = (fileToRemove) => {
+    setPendingFiles((prev) => prev.filter((item) => item !== fileToRemove));
+  };
+
+  useEffect(() => {
+    if (canAssignCaseOwner(currentUser, "loco") && formData.user_id === null) {
+      setFormData((prev) => ({
+        ...prev,
+        user_id: currentUser.id,
+      }));
+    }
+  }, [currentUser, formData.user_id]);
+
+  const updateField = (field, value, relatedFields = {}) => {
+    setFormData((prev) => {
+      const scopeChanged = hasPassportScopeChanged(prev, field, value);
+      return {
+        ...prev,
+        ...(scopeChanged
+          ? {
+              passport_links: [],
+              replacement_items: [],
+              _passport_status: "loading",
+            }
+          : {}),
+        ...relatedFields,
+        [field]: value,
+      };
+    });
+  };
+
+  const updateTtnField = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      waybill_doc: { ...prev.waybill_doc, [field]: value },
+    }));
+  };
+
+  const updateWarrantyField = (field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      warranty_work: { ...prev.warranty_work, [field]: value },
+    }));
+  };
+
+  const updateSupplierPreview = async (eqId, locoNum, modelId) => {
+    // Если оборудование сброшено (eqId == null)
+    if (!eqId) {
+      setFormData((prev) =>
+        prev.supplier_id !== null ? { ...prev, supplier_id: null } : prev,
+      );
+      return;
+    }
+
+    try {
+      const response = await api.post("/cases/resolve-supplier-preview", {
+        equipment_id: eqId,
+        locomotive_number: locoNum,
+        locomotive_model_id: modelId,
+      });
+
+      const newSupplierId = response.data.supplier_id;
+
+      setFormData((prev) => {
+        if (prev.supplier_id !== newSupplierId) {
+          return { ...prev, supplier_id: newSupplierId };
+        }
+        return prev;
+      });
+    } catch (error) {
+      console.error("Ошибка предиктивного расчета поставщика:", error);
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const targetId =
+        formData.element_equipment_id || formData.component_equipment_id;
+
+      updateSupplierPreview(
+        targetId,
+        formData.locomotive_number,
+        formData.locomotive_model_id,
+      );
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [
+    formData.component_equipment_id,
+    formData.element_equipment_id,
+    formData.locomotive_number,
+    formData.locomotive_model_id,
+  ]);
+
+  const handleEquipmentSelect = (data) => {
+    setFaultyHierarchy(data);
+    setFormData((prev) => ({
+      ...prev,
+      component_equipment_id: data.component,
+      element_equipment_id: data.element,
+      malfunction_id: null,
+      passport_links: [],
+      replacement_items: [],
+      _passport_status: "loading",
+    }));
+  };
+
+  const handleCreate = async () => {
+    if (validation.hasErrors) {
+      setShowError(true);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = normalizeInstalledSerials(formData);
+      delete payload.locomotive_identity_locked;
+      Object.keys(payload)
+        .filter((k) => k.startsWith("_"))
+        .forEach((k) => delete payload[k]);
+      const response = await api.post("/cases/", payload);
+      const newCaseId = response.data.id;
+
+      if (pendingFiles.length > 0) {
+        setUploading(true);
+
+        await uploadPendingCaseFiles(newCaseId, pendingFiles);
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["cases"] });
+
+      setShowError(false);
+      onSuccess();
+    } catch (error) {
+      console.error("Ошибка при создании случая или загрузке файлов:", error);
+
+      if (error.response?.status === 409) {
+        setServerError({
+          show: true,
+          message: formatApiError(
+            error,
+            "Этот случай уже имеется в базе. Проверьте список записей",
+          ),
+        });
+      } else {
+        setServerError({
+          show: true,
+          message: formatApiError(error, "Не удалось сохранить данные"),
+        });
+      }
+    } finally {
+      setSaving(false);
+      setUploading(false);
+    }
+  };
+
+  return {
+    loading,
+    saving,
+    users: referencesData?.users || [],
+    formData,
+    references: referencesData?.references,
+    allEquipment: referencesData?.equipment || [],
+    faultyHierarchy,
+    validation,
+    showError,
+    serverError,
+    pendingFiles,
+    uploading,
+    addPendingFiles,
+    removePendingFile,
+    handleCreate,
+    setShowError,
+    updateField,
+    updateTtnField,
+    updateWarrantyField,
+    handleEquipmentSelect,
+    updateSupplierPreview,
+    addPendingLink,
+    closeServerError: () => setServerError({ show: false, message: "" }),
+  };
+};

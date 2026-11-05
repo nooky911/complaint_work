@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime, timedelta
 
+from myapp.train.services.passport_sync_service import sync_new_train_passports
 from myapp.config import settings
 from myapp.services.omega_services.product_passport_sync_service import (
     ProductPassportSyncService,
@@ -25,6 +26,13 @@ async def run_product_passport_sync_scheduler() -> None:
             raise
         except Exception:
             logger.exception("Не удалось выполнить синхронизацию паспортов")
+        try:
+            train_result = await sync_new_train_passports()
+            logger.info("Результат синхронизации поездных паспортов: %s", train_result)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Не удалось выполнить синхронизацию поездных паспортов")
         delay = _seconds_until_next_run()
         next_run = datetime.now().astimezone() + timedelta(seconds=delay)
         logger.info("Следующая синхронизация паспортов: %s", next_run.isoformat())

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException, Path
+from fastapi import APIRouter, Depends, status, HTTPException, Path, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
@@ -6,6 +6,7 @@ from myapp.auth.dependencies import require_can_edit_case, require_viewer_or_hig
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.user import User
 from myapp.schemas.warranty import WarrantyWorkUpdate, WarrantyWorkResponse
+from myapp.services import CaseValidationError
 from myapp.services.warranty_service import WarrantyService
 from myapp.database.base import get_db
 
@@ -40,6 +41,7 @@ async def get_warranty_work_data(
 )
 async def update_warranty_work_data(
     warranty_data: WarrantyWorkUpdate,
+    expected_revision: Annotated[int, Query(ge=1)],
     case_id: Annotated[int, Path(description="ID случая", ge=1)],
     session: Annotated[AsyncSession, Depends(get_db)],
     _user_and_case: Annotated[
@@ -47,9 +49,12 @@ async def update_warranty_work_data(
     ],
 ):
     """Позволяет редактировать поля рекламационной работы"""
-    updated_warranty = await WarrantyService.update_warranty_work(
-        session, case_id, warranty_data
-    )
+    try:
+        updated_warranty = await WarrantyService.update_warranty_work(
+            session, case_id, warranty_data, expected_revision=expected_revision
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(409 if exc.field == "revision" else 422, str(exc)) from exc
 
     if not updated_warranty:
         raise HTTPException(

@@ -1,13 +1,20 @@
-import React, { useEffect } from "react";
+import { useEffect } from "react";
 import { AlertCircle, X } from "lucide-react";
 
-export const CaseValidationToast = ({ show, onClose, validation }) => {
+export const CaseValidationToast = ({
+  show,
+  onClose,
+  validation,
+  train = false,
+}) => {
   useEffect(() => {
     if (show) {
       const timer = setTimeout(() => onClose(), 6000);
       return () => clearTimeout(timer);
     }
   }, [show, onClose]);
+
+  if (!show) return null;
 
   return (
     <div
@@ -25,33 +32,73 @@ export const CaseValidationToast = ({ show, onClose, validation }) => {
           Не все поля заполнены:
         </p>
         <ul className="mt-1 list-disc pl-4 text-[11px] leading-tight font-medium text-slate-500">
-          {validation.isPassportInvalid && <li>Выберите экземпляры паспорта или дождитесь загрузки</li>}
-          {validation.isPassportReplacementInvalid && <li>Проверьте установленный состав и обязательные номера КП/ТЭД</li>}
+          {validation.isOwnerMissing && (
+            <li>Выберите ответственного своего раздела</li>
+          )}
+          {validation.isPassportInvalid && (
+            <li>Выберите экземпляры паспорта или дождитесь загрузки</li>
+          )}
+          {validation.isPassportReplacementInvalid && (
+            <li>Проверьте установленный состав и обязательные номера КП/ТЭД</li>
+          )}
           {validation.isFaultDateMissing && <li>Укажите дату неисправности</li>}
-          {validation.isFaultDateInvalid && <li>Некорректная дата неисправности</li>}
-          {validation.areOtherDatesInvalid && <li>Некорректная дата в рекламационной работе</li>}
-          {validation.areOtherDatesEarlierThanFault && <li>Даты рекламационной работы не могут быть раньше даты неисправности</li>}
+          {validation.isFaultDateInvalid && (
+            <li>Некорректная дата неисправности</li>
+          )}
+          {validation.areOtherDatesInvalid && (
+            <li>Некорректная дата в рекламационной работе</li>
+          )}
+          {validation.areOtherDatesEarlierThanFault && (
+            <li>
+              Даты рекламационной работы не могут быть раньше даты неисправности
+            </li>
+          )}
+          {validation.areManufactureDatesInvalid && (
+            <li>Дата изготовления не должна содержать буквы</li>
+          )}
           {validation.areTTNDatesInvalid && <li>Некорректная дата в ТТН</li>}
-          {validation.isSectionMissing && <li>Укажите секцию</li>}
+          {validation.isSectionMissing && (
+            <li>Укажите {train ? "вагон" : "секцию"}</li>
+          )}
           {validation.isRegionMissing && <li>Выберите региональный центр</li>}
-          {validation.isLocoModelMissing && <li>Выберите модель локомотива</li>}
-          {validation.isLocoNumberMissing && <li>Выберите номер локомотива из списка</li>}
-          {validation.isLocoNumberInvalid && <li>Выберите доступный номер для этой модели</li>}
-          {validation.isSectionInvalid && <li>Выбранные секции отсутствуют у локомотива</li>}
-          {validation.isLocomotiveLoading && <li>Дождитесь проверки номера локомотива</li>}
-          {validation.isLocomotiveLoadError && <li>Не удалось проверить номер. Повторите загрузку</li>}
+          {validation.isLocoModelMissing && (
+            <li>Выберите {train ? "тип поезда" : "модель локомотива"}</li>
+          )}
+          {validation.isLocoNumberMissing && (
+            <li>
+              Выберите номер {train ? "электропоезда" : "локомотива"} из списка
+            </li>
+          )}
+          {validation.isLocoNumberInvalid && (
+            <li>Выберите доступный номер для этой модели</li>
+          )}
+          {validation.isSectionInvalid && (
+            <li>Выбранные секции отсутствуют у локомотива</li>
+          )}
+          {validation.isLocomotiveLoading && (
+            <li>Дождитесь проверки номера локомотива</li>
+          )}
+          {validation.isLocomotiveLoadError && (
+            <li>Не удалось проверить номер. Повторите загрузку</li>
+          )}
           {validation.isDiscoveredAtMissing && <li>Укажите, где выявлено</li>}
           {validation.isRepairTypeMissing && <li>Укажите тип ремонта</li>}
           {validation.isQuantityInvalid && <li>Кол-во должно быть ≥ 1</li>}
           {validation.isDesignationMissing && (
-            <li>Выберите оборудование (до Обозначения)</li>
+            <li>
+              Выберите оборудование{" "}
+              {train ? "нужного уровня" : "(до Обозначения)"}
+            </li>
           )}
           {validation.isMalfunctionMissing && <li>Выберите неисправность</li>}
           {validation.isRepairTypeBlocked && (
             <li>Тип ремонта не подходит к оборудованию</li>
           )}
           {validation.isNewComponentMissing && (
-            <li>Укажите новое оборудование (Обозначение)</li>
+            <li>
+              Укажите новое оборудование{" "}
+              {train ? "нужного уровня" : "(Обозначение)"}
+            </li>
           )}
           {validation.isNewElementMissing && (
             <li>Укажите новый элемент оборудования</li>

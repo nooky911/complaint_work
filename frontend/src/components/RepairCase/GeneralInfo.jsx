@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Train } from "lucide-react";
 import {
   formatDate,
@@ -26,6 +26,8 @@ export const GeneralInfo = ({
   references,
   validation,
   showError,
+  identityFields,
+  title = BLOCK_TITLES.locomotive_block,
 }) => {
   const [numberSearch, setNumberSearch] = useState("");
   const debouncedSearch = useDebouncedValue(numberSearch, 300);
@@ -33,7 +35,7 @@ export const GeneralInfo = ({
   const numbers = useLocomotiveNumbers(
     currentData?.locomotive_model_id,
     debouncedSearch,
-    isEditing && !identityLocked,
+    isEditing && !identityLocked && !identityFields,
   );
   const searchPending = numberSearch !== debouncedSearch;
   const numberOptions = (searchPending ? [] : numbers.data || []).map(
@@ -76,7 +78,7 @@ export const GeneralInfo = ({
         <div className="absolute top-0 bottom-0 left-0 w-1 rounded-l-lg bg-[#6766cc]"></div>
         <Train className="h-4 w-4 text-[#6766ca]" />
         <h3 className="text-xs font-bold tracking-wider text-[#6169ac] uppercase">
-          {BLOCK_TITLES.locomotive_block}
+          {title}
         </h3>
       </div>
 
@@ -89,7 +91,11 @@ export const GeneralInfo = ({
               value={currentData?.fault_date}
               isEditing={true}
               onChange={(value) => updateField("fault_date", value)}
-              error={showError && validation?.isFaultDateMissing}
+              error={
+                showError &&
+                (validation?.isFaultDateMissing ||
+                  validation?.isFaultDateInvalid)
+              }
             />
           ) : (
             <DataField
@@ -102,82 +108,86 @@ export const GeneralInfo = ({
 
         {/* Ряд 2: Модель, Номер, Секция */}
         <div className="grid grid-cols-3 gap-4 pt-2">
-          {isEditing ? (
-            <>
-              <SelectField
-                label={REPAIR_FIELDS_LABELS.locomotive_model}
-                value={currentData?.locomotive_model_id}
-                options={references?.locomotive_models}
-                isEditing={true}
-                onChange={(value) => {
-                  setNumberSearch("");
-                  updateField("locomotive_model_id", value, {
-                    locomotive_number: "",
-                    passport_id: null,
-                    section_mask: null,
-                  });
-                }}
-                disabled={identityLocked}
-                className="col-span-1"
-                error={showError && validation?.isLocoModelMissing}
-              />
-              <SearchableSelect
-                label={REPAIR_FIELDS_LABELS.locomotive_number}
-                value={currentData?.locomotive_number}
-                options={numberOptions}
-                onChange={selectNumber}
-                onSearchChange={clearNumber}
-                onOpen={() => setNumberSearch("")}
-                isDisabled={identityLocked || !currentData?.locomotive_model_id}
-                placeholder={
-                  currentData?.locomotive_model_id
-                    ? "Выберите номер или найдите его"
-                    : "Сначала выберите модель"
-                }
-                isLoading={numbers.isFetching || searchPending}
-                loadError={numbers.isError}
-                onRetry={numbers.refetch}
-                error={
-                  showError &&
-                  (validation?.isLocoNumberMissing ||
-                    validation?.isLocoNumberInvalid)
-                }
-                className="col-span-1"
-              />
-              <SectionSelect
-                label={REPAIR_FIELDS_LABELS.section}
-                isEditing={true}
-                mask={currentData?.section_mask}
-                onChange={(value) => updateField("section_mask", value)}
-                isDisabled={
-                  identityLocked ||
-                  !currentData?.locomotive_number ||
-                  !validation?.availableSectionMask
-                }
-                availableMask={validation?.availableSectionMask || 0}
-                error={
-                  showError &&
-                  (validation?.isSectionMissing || validation?.isSectionInvalid)
-                }
-                className="col-span-1"
-              />
-            </>
-          ) : (
-            <>
-              <DataField
-                label={REPAIR_FIELDS_LABELS.locomotive_model}
-                value={getText(repairCase.locomotive_model)}
-              />
-              <DataField
-                label={REPAIR_FIELDS_LABELS.locomotive_number}
-                value={repairCase.locomotive_number}
-              />
-              <DataField
-                label={REPAIR_FIELDS_LABELS.section}
-                value={formatSectionMask(repairCase.section_mask)}
-              />
-            </>
-          )}
+          {identityFields ||
+            (isEditing ? (
+              <>
+                <SelectField
+                  label={REPAIR_FIELDS_LABELS.locomotive_model}
+                  value={currentData?.locomotive_model_id}
+                  options={references?.locomotive_models}
+                  isEditing={true}
+                  onChange={(value) => {
+                    setNumberSearch("");
+                    updateField("locomotive_model_id", value, {
+                      locomotive_number: "",
+                      passport_id: null,
+                      section_mask: null,
+                    });
+                  }}
+                  disabled={identityLocked}
+                  className="col-span-1"
+                  error={showError && validation?.isLocoModelMissing}
+                />
+                <SearchableSelect
+                  label={REPAIR_FIELDS_LABELS.locomotive_number}
+                  value={currentData?.locomotive_number}
+                  options={numberOptions}
+                  onChange={selectNumber}
+                  onSearchChange={clearNumber}
+                  onOpen={() => setNumberSearch("")}
+                  isDisabled={
+                    identityLocked || !currentData?.locomotive_model_id
+                  }
+                  placeholder={
+                    currentData?.locomotive_model_id
+                      ? "Выберите номер или найдите его"
+                      : "Сначала выберите модель"
+                  }
+                  isLoading={numbers.isFetching || searchPending}
+                  loadError={numbers.isError}
+                  onRetry={numbers.refetch}
+                  error={
+                    showError &&
+                    (validation?.isLocoNumberMissing ||
+                      validation?.isLocoNumberInvalid)
+                  }
+                  className="col-span-1"
+                />
+                <SectionSelect
+                  label={REPAIR_FIELDS_LABELS.section}
+                  isEditing={true}
+                  mask={currentData?.section_mask}
+                  onChange={(value) => updateField("section_mask", value)}
+                  isDisabled={
+                    identityLocked ||
+                    !currentData?.locomotive_number ||
+                    !validation?.availableSectionMask
+                  }
+                  availableMask={validation?.availableSectionMask || 0}
+                  error={
+                    showError &&
+                    (validation?.isSectionMissing ||
+                      validation?.isSectionInvalid)
+                  }
+                  className="col-span-1"
+                />
+              </>
+            ) : (
+              <>
+                <DataField
+                  label={REPAIR_FIELDS_LABELS.locomotive_model}
+                  value={getText(repairCase.locomotive_model)}
+                />
+                <DataField
+                  label={REPAIR_FIELDS_LABELS.locomotive_number}
+                  value={repairCase.locomotive_number}
+                />
+                <DataField
+                  label={REPAIR_FIELDS_LABELS.section}
+                  value={formatSectionMask(repairCase.section_mask)}
+                />
+              </>
+            ))}
         </div>
 
         {/* Ряд 3: РЦ, Пробег, Выявлено при */}

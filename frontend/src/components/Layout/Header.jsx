@@ -1,12 +1,15 @@
+import trainIcon from "../../assets/icons/train.png";
+import electricTrainIcon from "../../assets/icons/electric-train.png";
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, KeyRound, LogOut, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ulLogo from "../../assets/logo/ul-logo.svg";
 
 export default function Header({ onChangePassword }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -61,6 +64,32 @@ export default function Header({ onChangePassword }) {
 
           {isOpen && (
             <div className="animate-in fade-in zoom-in absolute top-full right-0 z-50 mt-2 w-48 rounded-md border border-gray-100 bg-white py-1 shadow-lg duration-100">
+              {!user.restricted_access && (
+                <button
+                  onClick={() => {
+                    navigate(
+                      location.pathname.startsWith("/train")
+                        ? "/dashboard"
+                        : "/train",
+                    );
+                    setIsOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <img
+                    src={
+                      location.pathname.startsWith("/train")
+                        ? electricTrainIcon
+                        : trainIcon
+                    }
+                    alt=""
+                    className="h-4 w-4 shrink-0 object-contain"
+                  />
+                  {location.pathname.startsWith("/train")
+                    ? "Локомотивы"
+                    : "Электропоезда"}
+                </button>
+              )}
               {user.role === "superadmin" && (
                 <button
                   onClick={() => {

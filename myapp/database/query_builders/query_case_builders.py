@@ -1,6 +1,6 @@
 from sqlalchemy.orm import joinedload
 
-from myapp.models.equipment_malfunctions import Equipment
+from myapp.loco.models.equipment import Equipment
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.waybill_docs import WaybillDoc
 from myapp.models.warranty_work import WarrantyWork

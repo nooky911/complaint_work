@@ -1,3 +1,4 @@
+import { REPAIR_FIELDS_LABELS, SHARED_LABELS } from "../../constants/labels";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PassportFiles } from "./PassportFiles";
@@ -19,6 +20,7 @@ export function PassportPositionHistory({ passportId, node }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [keepScans, setKeepScans] = useState(true);
   const dialogRef = useRef(null);
   const historyTitleId = useId();
 
@@ -69,14 +71,41 @@ export function PassportPositionHistory({ passportId, node }) {
         .data,
     enabled: editing,
   });
+  const emptyValue = (value) =>
+    ["", "б/н", "—", "-"].includes(
+      String(value || "")
+        .trim()
+        .toLowerCase(),
+    );
+  const sameOrAdded = (before, after) =>
+    emptyValue(before) || String(before).trim() === String(after || "").trim();
+  const canKeepScans =
+    sameOrAdded(node.serial_number, form.serial_number) &&
+    sameOrAdded(node.manufacture_date, form.manufacture_date_text);
+  const currentFiles = useQuery({
+    queryKey: ["passport-files", passportId, node.id, "current"],
+    queryFn: async ({ signal }) =>
+      (
+        await api.get(
+          `/product-passports/${passportId}/nodes/${node.id}/files`,
+          { signal },
+        )
+      ).data,
+    enabled: editing,
+    staleTime: 30000,
+  });
   const save = useMutation({
     mutationFn: () =>
       api.patch(`/product-passports/${passportId}/nodes/${node.id}`, {
         ...form,
+        preserve_existing_files: canKeepScans ? keepScans : undefined,
         expected_version: node.version,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["product-passports"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["passport-files", passportId, node.id],
+      });
       setEditing(false);
     },
   });
@@ -90,10 +119,23 @@ export function PassportPositionHistory({ passportId, node }) {
         >
           История
         </button>
-        {["editor", "superadmin"].includes(user?.role) && (
+        {(user?.role === "superadmin" ||
+          (user?.role === "editor" &&
+            user.direction === (node.direction || "loco"))) && (
           <button
             type="button"
-            onClick={() => setEditing(!editing)}
+            onClick={() => {
+              if (!editing) {
+                setForm({
+                  equipment_id: node.equipment_id,
+                  serial_number: node.serial_number || "",
+                  manufacture_date_text: node.manufacture_date || "",
+                  reason: "",
+                });
+              }
+              setKeepScans(true);
+              setEditing(!editing);
+            }}
             className="rounded-lg border border-slate-200 px-3 py-2"
           >
             {editing ? "Отмена" : "Исправить паспорт"}
@@ -105,21 +147,21 @@ export function PassportPositionHistory({ passportId, node }) {
         <div className="space-y-3 rounded-lg bg-slate-50 p-3">
           {!!types.data?.length && (
             <SearchableSelect
-              label="Тип оборудования"
+              label={SHARED_LABELS.equipment_type}
               value={form.equipment_id}
               options={types.data}
               onChange={(equipment_id) => setForm({ ...form, equipment_id })}
             />
           )}
           <EditableField
-            label="Заводской номер"
+            label={SHARED_LABELS.factory_number}
             maxLength={255}
             value={form.serial_number}
             isEditing
             onChange={(serial_number) => setForm({ ...form, serial_number })}
           />
           <EditableField
-            label="Дата изготовления"
+            label={REPAIR_FIELDS_LABELS.manufacture_date}
             maxLength={100}
             value={form.manufacture_date_text}
             isEditing
@@ -136,6 +178,18 @@ export function PassportPositionHistory({ passportId, node }) {
             isEditing
             onChange={(reason) => setForm({ ...form, reason })}
           />
+          {canKeepScans &&
+            !!currentFiles.data?.files?.length &&
+            form.equipment_id !== node.equipment_id && (
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={keepScans}
+                  onChange={(event) => setKeepScans(event.target.checked)}
+                />
+                Сохранить привязанные сканы паспорта
+              </label>
+            )}
           {save.isError && (
             <p role="alert" className="text-xs text-red-700">
               {formatApiError(save.error, "Не удалось сохранить исправление")}

@@ -1,18 +1,19 @@
 import re
-
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from myapp.models.auxiliaries import LocomotiveModel
+from myapp.train.models.train_models import TrainModel
+from myapp.train.services.equipment_service import equipment_details as train_equipment_details
 from myapp.models.product_passports import (
     ProductPassport,
     ProductPassportEvent,
     ProductPassportEventItem,
     ProductPassportNode,
 )
-from myapp.schemas.omega import OmegaPassportData
-from myapp.schemas.product_passports import (
+from myapp.schemas.omega.source import OmegaPassportData
+from myapp.schemas.omega.product_passports import (
     ProductPassportModelResponse,
     ProductPassportNodeResponse,
     ProductPassportResponse,
@@ -83,8 +84,22 @@ class ProductPassportService:
     @staticmethod
     async def get_models(
         session: AsyncSession,
+        direction: str = "loco",
     ) -> list[ProductPassportModelResponse]:
         """Возвращает модели локомотивов, для которых есть паспорта"""
+        if direction == "train":
+            rows = (
+                await session.execute(
+                    select(TrainModel.id, TrainModel.train_model_name)
+                    .join(ProductPassport)
+                    .distinct()
+                    .order_by(TrainModel.train_model_name)
+                )
+            ).all()
+            return [
+                ProductPassportModelResponse(id=row.id, name=row.train_model_name)
+                for row in rows
+            ]
         statement = (
             select(LocomotiveModel.id, LocomotiveModel.locomotive_model_name)
             .join(ProductPassport)
@@ -104,6 +119,7 @@ class ProductPassportService:
         locomotive_model_id: int,
         product_number: str,
         limit: int = 20,
+        direction: str = "loco",
     ) -> list[ProductPassportSearchItem]:
         """Ищет паспорта по модели и началу номера локомотива"""
         normalized_number = product_number.strip()
@@ -118,9 +134,17 @@ class ProductPassportService:
         statement = (
             select(ProductPassport)
             .where(
-                ProductPassport.locomotive_model_id == locomotive_model_id,
+                (
+                    ProductPassport.train_model_id
+                    if direction == "train"
+                    else ProductPassport.locomotive_model_id
+                )
+                == locomotive_model_id,
                 ProductPassport.product_number.ilike(f"{escaped_number}%", escape="\\"),
-                ProductPassport.commissioned_at.is_not(None),
+                or_(
+                    ProductPassport.train_model_id.is_not(None),
+                    ProductPassport.commissioned_at.is_not(None),
+                ),
             )
             .order_by(ProductPassport.product_number)
             .limit(limit)
@@ -144,17 +168,26 @@ class ProductPassportService:
             select(ProductPassport)
             .options(
                 joinedload(ProductPassport.locomotive_model),
+                joinedload(ProductPassport.train_model),
                 selectinload(ProductPassport.nodes).joinedload(
                     ProductPassportNode.supplier_record
                 ),
             )
             .where(
                 ProductPassport.id == passport_id,
-                ProductPassport.commissioned_at.is_not(None),
+                or_(
+                    ProductPassport.train_model_id.is_not(None),
+                    and_(
+                        ProductPassport.locomotive_model_id.is_not(None),
+                        ProductPassport.commissioned_at.is_not(None),
+                    ),
+                ),
             )
         )
         passport = await session.scalar(statement)
         if passport:
+            if passport.train_model_id is not None:
+                passport.catalogue_details = await train_equipment_details(session)
             changed = set(
                 (
                     await session.scalars(
@@ -298,6 +331,7 @@ class ProductPassportService:
     @staticmethod
     def to_response(passport: ProductPassport) -> ProductPassportResponse:
         """Убирает технические поля Omega из ответа для интерфейса"""
+        catalogue = getattr(passport, "catalogue_details", {})
         node_ids = {node.omega_code: node.id for node in passport.nodes}
         nodes = [
             ProductPassportNodeResponse(
@@ -315,22 +349,39 @@ class ProductPassportService:
                 manufacture_date=node.manufacture_date_text or node.manufacture_date,
                 version=node.version,
                 has_history=getattr(node, "has_history", False),
+                direction="train" if passport.train_model_id is not None else "loco",
                 install_date=node.install_date,
-                manufacturer=node.manufacturer,
+                manufacturer=(
+                    catalogue[node.train_equipment_id]["manufacturer"]
+                    if node.train_equipment_id in catalogue
+                    else node.manufacturer
+                ),
                 supplier=(
-                    node.supplier_record.supplier_name
-                    if node.supplier_record
+                    catalogue[node.train_equipment_id]["supplier"]
+                    if node.train_equipment_id in catalogue
                     else (
-                        None
-                        if passport.locomotive_model_id in (1, 6)
-                        and ProductPassportSupplierService.is_26t_amortizer(
-                            node.tree_name, node.designation
+                        node.supplier_record.supplier_name
+                        if node.supplier_record
+                        else (
+                            None
+                            if passport.locomotive_model_id in (1, 6)
+                            and ProductPassportSupplierService.is_26t_amortizer(
+                                node.tree_name, node.designation
+                            )
+                            else node.omega_supplier_raw
                         )
-                        else node.omega_supplier_raw
                     )
                 ),
-                supplier_id=node.supplier_id,
-                equipment_id=node.equipment_id,
+                supplier_id=(
+                    catalogue[node.train_equipment_id]["supplier_id"]
+                    if node.train_equipment_id in catalogue
+                    else node.supplier_id
+                ),
+                equipment_id=(
+                    node.train_equipment_id
+                    if passport.train_model_id is not None
+                    else node.equipment_id
+                ),
             )
             for node in passport.nodes
             if node.is_present
@@ -339,7 +390,18 @@ class ProductPassportService:
             id=passport.id,
             product_type=passport.product_type,
             locomotive_model_id=passport.locomotive_model_id,
-            locomotive_model_name=passport.locomotive_model_name,
+            locomotive_model_name=(
+                passport.locomotive_model_name
+                if passport.locomotive_model_id is not None
+                else None
+            ),
+            train_model_id=passport.train_model_id,
+            train_model_name=(
+                passport.train_model.train_model_name
+                if passport.train_model_id is not None
+                else None
+            ),
+            direction="train" if passport.train_model_id is not None else "loco",
             product_number=passport.product_number,
             omega_name=passport.omega_name,
             commissioned_at=passport.commissioned_at,
