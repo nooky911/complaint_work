@@ -75,6 +75,9 @@ class PassportCorrection(BaseModel):
     """Данные ручного исправления позиции паспорта"""
 
     expected_version: int
+    case_fault_date: date | None = None
+    case_id: int | None = Field(default=None, gt=0)
+    expected_case_revision: int | None = Field(default=None, ge=1)
     preserve_existing_files: bool | None = None
     reason: str = Field(min_length=1, max_length=2000)
     equipment_id: int | None = None

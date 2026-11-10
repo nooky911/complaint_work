@@ -229,6 +229,9 @@ async def passport_position_types(
     node_id: int,
     session: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(require_editor_or_superadmin)],
+    case_fault_date: date | None = None,
+    case_id: int | None = None,
+    expected_version: int | None = None,
 ):
     """Возвращает допустимые типы для ручного исправления позиции"""
     await _check_passport_editor(session, passport_id, _user)
@@ -237,6 +240,14 @@ async def passport_position_types(
     )
     if node_id not in nodes:
         raise HTTPException(404, "Позиция не найдена")
+    if expected_version is not None and nodes[node_id].version != expected_version:
+        raise HTTPException(409, "Позиция изменена. Откройте исправление заново.")
+    try:
+        await PassportHistoryService.correction_date(
+            session, passport_id, node_id, case_fault_date, case_id
+        )
+    except CaseValidationError as exc:
+        raise HTTPException(422, str(exc)) from exc
     return PassportPositionService.allowed_types(
         states[node_id].get("equipment_id"), equipment
     )
@@ -253,11 +264,13 @@ async def correct_passport_position(
     """Исправляет данные позиции паспорта с сохранением истории"""
     await _check_passport_editor(session, passport_id, actor)
     try:
-        await PassportHistoryService.correct(
+        result = await PassportHistoryService.correct(
             session, passport_id, node_id, data.model_dump(exclude_unset=True), actor
         )
     except CaseValidationError as exc:
         raise HTTPException(409 if exc.field == "revision" else 422, str(exc)) from exc
+    if "case_fault_date" in data.model_fields_set or data.case_id is not None:
+        return {"status": "ok", **result}
     return {"status": "ok"}
 
 
@@ -297,6 +310,7 @@ async def upload_passport_node_files(
     actor: Annotated[User, Depends(require_editor_or_superadmin)],
     files: Annotated[list[UploadFile], File()],
     instance_key: Annotated[str, Form(min_length=1, max_length=80)],
+    expected_version: Annotated[int | None, Form(ge=1)] = None,
     event_id: Annotated[int | None, Query(ge=1)] = None,
     side: Literal["before", "after"] = "before",
 ):
@@ -304,7 +318,8 @@ async def upload_passport_node_files(
     await _check_passport_editor(session, passport_id, actor)
     return await _passport_file_result(
         PassportFileService.upload(
-            session, passport_id, node_id, files, actor, instance_key, event_id, side
+            session, passport_id, node_id, files, actor, instance_key, event_id, side,
+            expected_version=expected_version,
         )
     )
 

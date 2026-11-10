@@ -319,6 +319,8 @@ class PassportFileService:
         expected_key,
         event_id=None,
         side="before",
+        *,
+        expected_version=None,
     ):
         """Загружает сканы и убирает записанные файлы при откате транзакции"""
         created_paths = []
@@ -333,6 +335,7 @@ class PassportFileService:
                 event_id,
                 side,
                 created_paths,
+                expected_version,
             )
         except BaseException:
             for path in created_paths:
@@ -355,6 +358,7 @@ class PassportFileService:
         event_id,
         side,
         created_paths,
+        expected_version,
     ):
         """Сохраняет файлы только если экземпляр не изменился за время загрузки"""
         passport = await session.scalar(
@@ -364,8 +368,10 @@ class PassportFileService:
         )
         if passport is None:
             raise FileNotFoundError("Паспорт не найден")
-        _, key = await cls.target(session, passport_id, node_id, event_id, side)
-        if key != expected_key:
+        node, key = await cls.target(session, passport_id, node_id, event_id, side)
+        if key != expected_key or (
+            expected_version is not None and node.version != expected_version
+        ):
             raise CaseValidationError(
                 "revision", "Оборудование изменилось. Обновите список файлов"
             )

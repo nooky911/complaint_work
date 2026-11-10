@@ -2,12 +2,14 @@ import re
 from collections import defaultdict
 from datetime import datetime
 from typing import Any
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from myapp.loco.models.equipment import Equipment
 from myapp.train.services.equipment_service import equipment_details
 from myapp.utils.equipment_hierarchy import passport_classifier_ids
+from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.models.product_passports import (
+    CasePassportLink,
     ProductPassportEvent,
     ProductPassportEventItem,
     ProductPassportNode,
@@ -36,6 +38,53 @@ class PassportPositionService:
     )
 
     REPLACEMENT_TYPES = {1, 2, 3}
+    TYPE_FIELDS = (
+        "equipment_id",
+        "equipment_name",
+        "supplier_id",
+        "tree_name",
+        "designation",
+        "full_name",
+    )
+
+    @classmethod
+    def is_type_only_change(cls, fields, before=None, after=None):
+        """Отличает уточнение типа от изменения реквизитов экземпляра"""
+        other_fields = set(fields).difference(cls.TYPE_FIELDS)
+        if "equipment_id" not in fields:
+            return False
+        if not other_fields:
+            return True
+        return (
+            before is not None
+            and after is not None
+            and other_fields <= {"manufacture_date", "manufacture_date_text"}
+            and bool(before.get("manufacture_date"))
+            and before["manufacture_date"] == after.get("manufacture_date")
+        )
+
+    @classmethod
+    def with_corrected_type(cls, state, source):
+        """Переносит уточнённый тип, сохраняя остальные реквизиты экземпляра"""
+        return {
+            **state,
+            **{field: source.get(field) for field in cls.TYPE_FIELDS},
+            "_type_corrected": True,
+        }
+
+    @staticmethod
+    def same_instance(before, after):
+        """Сверяет установку и реквизиты экземпляра на одной позиции"""
+        return all(
+            before.get(field) == after.get(field)
+            for field in (
+                "_installation_case_id",
+                "serial_number",
+                "manufacture_date_text",
+                "manufacture_date",
+                "install_date",
+            )
+        )
 
     @staticmethod
     def fail(message, field="passport_links"):
@@ -140,7 +189,7 @@ class PassportPositionService:
 
     @classmethod
     async def load(cls, session, passport_id, as_of=None, exclude_case_id=None):
-        """Читает состав паспорта на нужную дату"""
+        """Читает состав на дату и учитывает уточнения типа того же экземпляра"""
         passport = await ProductPassportService.get_by_id(session, passport_id)
         if passport is None:
             cls.fail("Паспорт не найден")
@@ -150,11 +199,15 @@ class PassportPositionService:
         nodes = {n.id: n for n in passport.nodes}
         changes = defaultdict(list)
         installations = {}
+        later_corrections = defaultdict(list)
+        replaced = set()
         stmt = (
             select(
                 ProductPassportEventItem,
                 ProductPassportEvent.kind,
                 ProductPassportEvent.source_case_id,
+                ProductPassportEvent.effective_date,
+                ProductPassportEvent.case_id,
             )
             .join(ProductPassportEvent)
             .where(
@@ -168,16 +221,50 @@ class PassportPositionService:
             )
         )
         if as_of:
-            stmt = stmt.where(ProductPassportEvent.effective_date <= as_of)
-        if exclude_case_id:
-            stmt = stmt.where(
-                (ProductPassportEvent.case_id != exclude_case_id)
-                | ProductPassportEvent.case_id.is_(None)
+            corrected_nodes = (
+                select(ProductPassportEventItem.node_id)
+                .join(ProductPassportEvent)
+                .where(
+                    ProductPassportEvent.passport_id == passport_id,
+                    ProductPassportEvent.status == "active",
+                    ProductPassportEvent.kind == "manual_correction",
+                    ProductPassportEvent.effective_date > as_of,
+                    ProductPassportEventItem.changed_fields.any("equipment_id"),
+                )
+                .correlate(None)
             )
-        for item, kind, source_case_id in (await session.execute(stmt)).all():
-            changes[item.node_id].append(item)
+            stmt = stmt.where(
+                or_(
+                    ProductPassportEvent.effective_date <= as_of,
+                    ProductPassportEventItem.node_id.in_(corrected_nodes),
+                )
+            )
+        for item, kind, source_case_id, effective_date, event_case_id in (
+            await session.execute(stmt)
+        ).all():
+            node_id = item.node_id
+            type_correction = kind == "manual_correction" and cls.is_type_only_change(
+                item.changed_fields, item.before_state, item.after_state
+            )
+            if exclude_case_id is not None and event_case_id == exclude_case_id:
+                if kind == "case_replacement":
+                    replaced.add(node_id)
+                continue
+            if as_of and effective_date > as_of:
+                if type_correction:
+                    if node_id not in replaced:
+                        later_corrections[node_id].append(item)
+                else:
+                    # Более поздняя замена или изменение реквизитов разрывает цепочку
+                    replaced.add(node_id)
+                continue
+            if type_correction and node_id in replaced:
+                continue
+            if kind in ("case_replacement", "historical_replacement"):
+                replaced.discard(node_id)
+            changes[node_id].append(item)
             if kind == "case_replacement":
-                installations[item.node_id] = source_case_id
+                installations[node_id] = source_case_id
         states = {
             n.id: cls.compose(
                 n.baseline_state or cls.snapshot(n, equipment), changes[n.id]
@@ -186,8 +273,47 @@ class PassportPositionService:
         }
         for node_id, case_id in installations.items():
             states[node_id]["_installation_case_id"] = case_id
+        for node_id, corrections in later_corrections.items():
+            state = states[node_id]
+            for item in corrections:
+                before = item.before_state
+                if (
+                    state.get("equipment_id") != before.get("equipment_id")
+                    or not cls.same_instance(state, before)
+                ):
+                    break
+                state = cls.with_corrected_type(state, item.after_state)
+            states[node_id] = state
+        if exclude_case_id and as_of:
+            await cls._apply_case_type_corrections(
+                session, passport_id, as_of, exclude_case_id, states
+            )
         by_code = {n.omega_code: n for n in passport.nodes}
         return passport, nodes, states, equipment, by_code
+
+    @classmethod
+    async def _apply_case_type_corrections(
+        cls, session, passport_id, fault_date, case_id, states
+    ):
+        """Учитывает исправленный тип при повторном открытии случая на его дату"""
+        links = await session.scalars(
+            select(CasePassportLink)
+            .join(RepairCaseEquipment, RepairCaseEquipment.id == CasePassportLink.case_id)
+            .where(
+                CasePassportLink.case_id == case_id,
+                RepairCaseEquipment.passport_id == passport_id,
+                RepairCaseEquipment.fault_date == fault_date,
+                CasePassportLink.selected_state["_type_corrected"].as_boolean().is_(True),
+            )
+        )
+        for link in links:
+            state = states.get(link.node_id)
+            if (
+                state
+                and not state.get("_type_corrected")
+                and cls.same_instance(state, link.selected_state)
+            ):
+                states[link.node_id] = cls.with_corrected_type(state, link.selected_state)
 
     @staticmethod
     def ancestors(node, by_code):

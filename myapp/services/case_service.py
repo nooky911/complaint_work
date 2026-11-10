@@ -340,41 +340,26 @@ class CaseService:
                 raise CaseValidationError("user_id", str(error)) from error
             case.user_id = target_owner
 
-        eq_changed = "component_equipment_id" in update_data
-        el_changed = "element_equipment_id" in update_data
         new_eq_changed = "new_component_equipment_id" in update_data
         new_el_changed = "new_element_equipment_id" in update_data
         loco_num_changed = "locomotive_number" in update_data
         loco_model_changed = "locomotive_model_id" in update_data
+        locomotive_number = update_data.get("locomotive_number", case.locomotive_number)
+        locomotive_model_id = update_data.get(
+            "locomotive_model_id", case.locomotive_model_id
+        )
 
-        # ЛОГИКА ОПРЕДЕЛЕНИЯ ПОСТАВЩИКА:
-        if eq_changed or el_changed or loco_num_changed or loco_model_changed:
-
-            # Определяем актуальные ID оборудования (новое из update_data или старое из базы)
-            current_el_id = update_data.get(
-                "element_equipment_id", case.element_equipment_id
-            )
-            current_comp_id = update_data.get(
-                "component_equipment_id", case.component_equipment_id
-            )
-
-            # Выбираем точку старта для поиска (Элемент важнее компонента)
-            target_id = current_el_id or current_comp_id
-
-            if target_id is None:
-                update_data["supplier_id"] = None
-            else:
-                # Вызываем метод с проверкой исключений
-                update_data["supplier_id"] = await EquipmentService.resolve_supplier(
-                    session,
-                    equipment_id=target_id,
-                    locomotive_number=update_data.get(
-                        "locomotive_number", case.locomotive_number
-                    ),
-                    locomotive_model_id=update_data.get(
-                        "locomotive_model_id", case.locomotive_model_id
-                    ),
-                )
+        # Справочник мог измениться без смены оборудования в самом случае
+        current_el_id = update_data.get("element_equipment_id", case.element_equipment_id)
+        current_comp_id = update_data.get(
+            "component_equipment_id", case.component_equipment_id
+        )
+        update_data["supplier_id"] = await EquipmentService.resolve_supplier(
+            session,
+            equipment_id=current_el_id or current_comp_id,
+            locomotive_number=locomotive_number,
+            locomotive_model_id=locomotive_model_id,
+        )
 
         if new_eq_changed or new_el_changed or loco_num_changed or loco_model_changed:
             new_el_id = update_data.get(
@@ -386,12 +371,8 @@ class CaseService:
             update_data["new_supplier_id"] = await EquipmentService.resolve_supplier(
                 session,
                 equipment_id=new_el_id or new_comp_id,
-                locomotive_number=update_data.get(
-                    "locomotive_number", case.locomotive_number
-                ),
-                locomotive_model_id=update_data.get(
-                    "locomotive_model_id", case.locomotive_model_id
-                ),
+                locomotive_number=locomotive_number,
+                locomotive_model_id=locomotive_model_id,
             )
 
         # Обновляем поля

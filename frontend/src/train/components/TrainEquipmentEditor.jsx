@@ -1,5 +1,7 @@
 import { PassportReplacementRows } from "../../loco/equipment/components/PassportEquipmentFields";
 import { SHARED_LABELS } from "../../constants/labels";
+import { PassportCorrectionButton } from "../../components/productPassports/PassportPositionHistory";
+import { formatToDB } from "../../utils/formatters";
 import { PassportSelectionGroup } from "../../components/equipment/PassportSelectionGroup";
 import { MultiSelectField } from "../../components/inputs/index.jsx";
 import {
@@ -138,17 +140,29 @@ export function TrainEquipmentEditor({
                         placeholder="Выберите заводские номера"
                         allowClear
                       />
-                      {options
-                        .filter((node) => selectedIds.includes(node.id))
-                        .map((node) => (
-                          <div
-                            key={node.id}
-                            className="text-xs font-bold text-slate-900"
-                          >
-                            № {node.serial_number || "б/н"} (
-                            {node.manufacture_date || "—"})
-                          </div>
-                        ))}
+                      {role === "component" && selectedIds.length === 1 && optionIds.has(selectedIds[0]) && (
+                        <div className="flex justify-end">
+                          <PassportCorrectionButton
+                            passportId={data.passport_id}
+                            nodeId={selectedIds[0]}
+                            direction="train"
+                            caseContext={{
+                              case_id: data.id || null,
+                              case_fault_date: formatToDB(data.fault_date) || null,
+                              expected_case_revision: data.revision || null,
+                            }}
+                            onSaved={(result) => {
+                              if (result.case_revision != null) {
+                                update("revision", result.case_revision);
+                              }
+                              if (!data.id && result.position?.equipment_id === (data.train.component_id || data.train.equipment_id)) {
+                                update("component_serial_number_old", result.position.serial_number || "б/н");
+                                update("component_manufacture_date_old", result.position.manufacture_date_text || "—");
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
                     </div>
                   );
                 },
@@ -156,6 +170,13 @@ export function TrainEquipmentEditor({
             </PassportSelectionGroup>
           );
         })}
+      {!classifierLoading && data.train.passport_node_ids.some(
+        (id) => !equipment.matchingNodes.some((node) => node.id === id),
+      ) && (
+        <p role="alert" className="text-xs text-amber-800">
+          Состав паспорта изменился. Выберите актуальный тип и экземпляр.
+        </p>
+      )}
       <EquipmentFields
         mode="old"
         managedRoles={managedRoles}

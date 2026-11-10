@@ -1,12 +1,16 @@
 from collections import defaultdict
 from datetime import date, datetime, timezone
 from typing import Any
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.exc import DBAPIError
 
+from myapp.constants.case_lock import is_case_lock_active
+from myapp.loco.services.equipment_service import EquipmentService
 from myapp.services.omega_services.passport_file_service import PassportFileService
 from myapp.models.repair_case_equipment import RepairCaseEquipment
 from myapp.database.transactional import transactional
 from myapp.models.product_passports import (
+    CasePassportLink,
     ProductPassport,
     ProductPassportEvent,
     ProductPassportEventItem,
@@ -167,6 +171,180 @@ class PassportHistoryService:
         return result
 
     @classmethod
+    async def _sync_case_types(
+        cls, session, passport_id, node_id, old, new, *, train_equipment=None
+    ):
+        """Исправляет тип в случаях, связанных с тем же экземпляром паспорта"""
+        link_model = CasePassportLink
+        case_model = RepairCaseEquipment
+        old_id = old["equipment_id"]
+        new_id = new["equipment_id"]
+        candidates = select(link_model.case_id).where(
+            link_model.node_id == node_id,
+            link_model.selected_state["equipment_id"].as_integer() == old_id,
+        )
+        statement = (
+            select(case_model, link_model)
+            .join(link_model, link_model.case_id == case_model.id)
+            .where(
+                case_model.passport_id == passport_id,
+                case_model.direction
+                == ("train" if train_equipment is not None else "loco"),
+                case_model.id.in_(candidates),
+            )
+            .order_by(case_model.id, link_model.id)
+            .with_for_update(of=case_model, nowait=True)
+        )
+        # Редактирование случая блокирует его раньше паспорта
+        try:
+            rows = (await session.execute(statement)).all()
+        except DBAPIError as exc:
+            if getattr(exc.orig, "sqlstate", None) == "55P03":
+                PassportPositionService.fail(
+                    "Связанный случай сейчас сохраняется. Повторите исправление.",
+                    "revision",
+                )
+            raise
+        if not rows:
+            return
+
+        # В старых снимках замены без случая не имеют ключа установки
+        historical_cutoff = await session.scalar(
+            select(func.max(ProductPassportEvent.effective_date))
+            .join(ProductPassportEventItem)
+            .where(
+                ProductPassportEvent.passport_id == passport_id,
+                ProductPassportEventItem.node_id == node_id,
+                ProductPassportEvent.kind == "historical_replacement",
+                ProductPassportEvent.status == "active",
+            )
+        )
+        by_case = defaultdict(list)
+        for case, link in rows:
+            by_case[case].append(link)
+
+        for case, links in by_case.items():
+            if historical_cutoff and case.fault_date <= historical_cutoff:
+                continue
+            changed = False
+            for link in links:
+                if (
+                    link.node_id != node_id
+                    or link.selected_state.get("equipment_id") != old_id
+                    or not PassportPositionService.same_instance(
+                        link.selected_state, old
+                    )
+                ):
+                    continue
+                # Общий тип случая должен подходить ко всем экземплярам этой роли
+                if any(
+                    other.id != link.id
+                    and other.role == link.role
+                    and other.selected_state.get("equipment_id") != new_id
+                    for other in links
+                ):
+                    continue
+                if train_equipment is None:
+                    field = f"{link.role}_equipment_id"
+                    if getattr(case, field) != old_id:
+                        continue
+                    setattr(case, field, new_id)
+                else:
+                    from myapp.train.services.case_service import TrainCaseService
+
+                    if not await TrainCaseService.apply_passport_type_correction(
+                        session, case, link.role, old_id, new_id, train_equipment
+                    ):
+                        continue
+                link.selected_state = PassportPositionService.with_corrected_type(
+                    link.selected_state, new
+                )
+                changed = True
+            if changed and train_equipment is None:
+                case.supplier_id = await EquipmentService.resolve_supplier(
+                    session,
+                    equipment_id=(
+                        case.element_equipment_id or case.component_equipment_id
+                    ),
+                    locomotive_number=case.locomotive_number,
+                    locomotive_model_id=case.locomotive_model_id,
+                )
+            if changed:
+                case.revision += 1
+
+    @classmethod
+    async def _retry_case_type_correction(
+        cls, session, passport_id, node_id, current, *, train_equipment=None
+    ):
+        """Доводит ранее сохранённое исправление до случаев при повторном сохранении"""
+        statement = (
+            select(ProductPassportEventItem, ProductPassportEvent.kind)
+            .join(ProductPassportEvent)
+            .where(
+                ProductPassportEvent.passport_id == passport_id,
+                ProductPassportEventItem.node_id == node_id,
+                ProductPassportEvent.status == "active",
+            )
+            .order_by(
+                ProductPassportEvent.effective_date.desc(),
+                ProductPassportEvent.day_order.desc(),
+                ProductPassportEvent.id.desc(),
+            )
+            .limit(1)
+        )
+        row = (await session.execute(statement)).first()
+        if row is None or row[1] != "manual_correction":
+            return
+        item = row[0]
+        if (
+            PassportPositionService.is_type_only_change(item.changed_fields)
+            and item.after_state.get("equipment_id") == current.get("equipment_id")
+            and PassportPositionService.same_instance(item.after_state, current)
+        ):
+            await cls._sync_case_types(
+                session,
+                passport_id,
+                node_id,
+                {**current, "equipment_id": item.before_state["equipment_id"]},
+                current,
+                train_equipment=train_equipment,
+            )
+
+    @staticmethod
+    async def correction_date(session, passport_id, node_id, fault_date, case_id):
+        """Проверяет, что исправление из случая относится к текущему экземпляру"""
+        today = datetime.now().date()
+        if fault_date is None and case_id is None:
+            return today
+        effective = fault_date or today
+        if effective > today:
+            PassportPositionService.fail("Дата случая не может быть позже сегодняшней")
+        later = ProductPassportEvent.effective_date > effective
+        if case_id is not None:
+            later = or_(
+                later,
+                (ProductPassportEvent.case_id == case_id)
+                & (ProductPassportEvent.kind == "case_replacement"),
+            )
+        event = await session.scalar(
+            select(ProductPassportEvent.id)
+            .join(ProductPassportEventItem)
+            .where(
+                ProductPassportEvent.passport_id == passport_id,
+                ProductPassportEventItem.node_id == node_id,
+                ProductPassportEvent.status == "active",
+                later,
+            )
+            .limit(1)
+        )
+        if event is not None:
+            PassportPositionService.fail(
+                "У позиции есть более позднее изменение или замена по этому случаю. "
+                "Проверьте её историю в паспорте."
+            )
+        return effective
+
+    @classmethod
     @transactional
     async def correct(cls, session, passport_id, node_id, data, actor):
         """Сохраняет ручное исправление позиции с причиной и автором"""
@@ -175,8 +353,8 @@ class PassportHistoryService:
             .where(ProductPassport.id == passport_id)
             .with_for_update()
         )
-        _, nodes, states, equipment, by_code = await PassportPositionService.load(
-            session, passport_id
+        passport, nodes, states, equipment, by_code = (
+            await PassportPositionService.load(session, passport_id)
         )
         if node_id not in nodes:
             PassportPositionService.fail("Позиция не найдена")
@@ -192,6 +370,40 @@ class PassportHistoryService:
             )
         if not data.get("reason", "").strip():
             PassportPositionService.fail("Укажите причину исправления")
+        effective = await cls.correction_date(
+            session,
+            passport_id,
+            node_id,
+            data.get("case_fault_date"),
+            data.get("case_id"),
+        )
+        case = None
+        if data.get("case_id") is not None:
+            try:
+                case = await session.get(
+                    RepairCaseEquipment,
+                    data["case_id"],
+                    with_for_update={"nowait": True},
+                    populate_existing=True,
+                )
+            except DBAPIError as exc:
+                if getattr(exc.orig, "sqlstate", None) == "55P03":
+                    PassportPositionService.fail(
+                        "Случай сейчас сохраняется", "revision"
+                    )
+                raise
+            if (
+                case is None
+                or case.direction
+                != ("train" if passport.train_model_id is not None else "loco")
+                or case.locked_by_id != actor.id
+                or not is_case_lock_active(case)
+                or case.revision != data.get("expected_case_revision")
+            ):
+                PassportPositionService.fail(
+                    "Редакция случая изменилась. Откройте актуальную карточку.",
+                    "revision",
+                )
         old = states[node_id]
         new: dict[str, Any] = dict(old)
         changed = []
@@ -231,13 +443,11 @@ class PassportHistoryService:
                 )
                 new["designation"] = None
                 new["full_name"] = None
-                changed += [
-                    "equipment_name",
-                    "supplier_id",
-                    "tree_name",
-                    "designation",
-                    "full_name",
-                ]
+                changed.extend(
+                    type_field
+                    for type_field in PassportPositionService.TYPE_FIELDS
+                    if type_field != field
+                )
             if field == "manufacture_date_text":
                 new["manufacture_date"] = None
                 for fmt in ("%d.%m.%Y", "%Y-%m-%d"):
@@ -251,8 +461,29 @@ class PassportHistoryService:
                 changed.append("manufacture_date")
             new[field] = value
             changed.append(field)
+        train_equipment = equipment if passport.train_model_id is not None else None
+        result = {
+            "position": {
+                "equipment_id": new.get("equipment_id"),
+                "equipment_name": new.get("equipment_name"),
+                "serial_number": new.get("serial_number"),
+                "manufacture_date_text": new.get("manufacture_date_text"),
+                "version": node.version + int(bool(changed)),
+            }
+        }
         if not changed:
-            return
+            if data.get("equipment_id") is not None:
+                await cls._retry_case_type_correction(
+                    session, passport_id, node_id, old, train_equipment=train_equipment
+                )
+            return {
+                **result,
+                "case_revision": case.revision if case is not None else None,
+            }
+        if PassportPositionService.is_type_only_change(changed):
+            await cls._sync_case_types(
+                session, passport_id, node_id, old, new, train_equipment=train_equipment
+            )
         preserve_files = data.get("preserve_existing_files")
         compatible = PassportFileService.can_preserve_files(old, new)
         if preserve_files is True and not compatible:
@@ -262,13 +493,11 @@ class PassportHistoryService:
         if node.baseline_state is None:
             node.baseline_state = PassportPositionService.snapshot(node, equipment)
             node.baseline_source = "reviewed_import"
-        # Ручное исправление действует с сегодняшнего дня после уже записанных замен
-        today = datetime.now().date()
         order = (
             await session.scalar(
                 select(func.max(ProductPassportEvent.day_order)).where(
                     ProductPassportEvent.passport_id == passport_id,
-                    ProductPassportEvent.effective_date == today,
+                    ProductPassportEvent.effective_date == effective,
                 )
             )
             or 0
@@ -276,7 +505,7 @@ class PassportHistoryService:
         event = ProductPassportEvent(
             passport_id=passport_id,
             kind="manual_correction",
-            effective_date=today,
+            effective_date=effective,
             day_order=order,
             actor_id=actor.id,
             actor_name=actor.full_name or actor.login,
@@ -300,3 +529,4 @@ class PassportHistoryService:
             )
         )
         await cls.recalculate(session, {node_id})
+        return {**result, "case_revision": case.revision if case is not None else None}

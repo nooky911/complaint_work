@@ -3,7 +3,8 @@ import electricTrainIcon from "../../assets/icons/electric-train.png";
 import { useState, useRef, useEffect } from "react";
 import { User, ChevronDown, KeyRound, LogOut, Shield } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
-import { useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { getHomeSection } from "../../utils/userSections";
 import ulLogo from "../../assets/logo/ul-logo.svg";
 
 export default function Header({ onChangePassword }) {
@@ -24,15 +25,15 @@ export default function Header({ onChangePassword }) {
 
   if (!user) return null;
 
+  const homeSection = getHomeSection(user, location);
+  const isTrainSection = homeSection === "/train";
+
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white py-1">
       <div className="grid w-full grid-cols-3 items-center px-8">
-        <div
-          onClick={() => navigate("/")}
-          className="cursor-pointer text-[24px] font-bold"
-        >
+        <Link to={homeSection} className="cursor-pointer text-[24px] font-bold">
           Справка ПРР
-        </div>
+        </Link>
 
         <div className="flex justify-center">
           <img
@@ -67,27 +68,17 @@ export default function Header({ onChangePassword }) {
               {!user.restricted_access && (
                 <button
                   onClick={() => {
-                    navigate(
-                      location.pathname.startsWith("/train")
-                        ? "/dashboard"
-                        : "/train",
-                    );
+                    navigate(isTrainSection ? "/dashboard" : "/train");
                     setIsOpen(false);
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <img
-                    src={
-                      location.pathname.startsWith("/train")
-                        ? electricTrainIcon
-                        : trainIcon
-                    }
+                    src={String(isTrainSection ? electricTrainIcon : trainIcon)}
                     alt=""
                     className="h-4 w-4 shrink-0 object-contain"
                   />
-                  {location.pathname.startsWith("/train")
-                    ? "Локомотивы"
-                    : "Электропоезда"}
+                  {isTrainSection ? "Локомотивы" : "Электропоезда"}
                 </button>
               )}
               {user.role === "superadmin" && (

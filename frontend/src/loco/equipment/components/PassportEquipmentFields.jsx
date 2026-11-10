@@ -1,6 +1,7 @@
 import { replacementSerialLabel } from "../../../utils/formatters";
 import { REPAIR_FIELDS_LABELS } from "../../../constants/labels";
 import { Tooltip } from "../../../utils/Tooltip";
+import { PassportCorrectionButton } from "../../../components/productPassports/PassportPositionHistory";
 import { PassportSelectionGroup } from "../../../components/equipment/PassportSelectionGroup";
 import { useEffect, useMemo } from "react";
 import {
@@ -13,6 +14,7 @@ import { usePassportEquipment } from "../hooks/usePassportEquipment.js";
 import { isValidManufactureDate } from "../../../utils/validators.js";
 import {
   formatSerialNumber,
+  formatToDB,
   formatApiError,
   sortOptionsByName,
 } from "../../../utils/formatters.js";
@@ -24,18 +26,22 @@ const errorText = (error) =>
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /** Добавляет дату изготовления в скобках рядом с номером */
-const passportOptionName = (option, state = option.state) =>
-  `${option.name} (${state?.manufacture_date_text || "—"})`;
+const passportOptionName = (option) =>
+  `${option.name} (${option.state?.manufacture_date_text || "—"})`;
 
 /** Выбор неисправных экземпляров паспорта по секциям */
 export function PassportEquipmentSelector({ data, updateField, query }) {
   const links = data.passport_links || [];
+  const singleComponent = links.filter((link) => link.role === "component").length === 1;
+  const unavailable = !!query.data && links.some((link) =>
+    !query.data[link.role]?.some((option) => option.id === link.node_id),
+  );
   const required = useMemo(
     () => query.data?.required_roles || [],
     [query.data],
   );
   useEffect(() => {
-    const status = query.isError
+    const status = query.isError || unavailable
       ? "error"
       : query.isFetching
         ? "loading"
@@ -51,6 +57,7 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
   }, [
     query.isError,
     query.isFetching,
+    unavailable,
     data._passport_status,
     data._passport_required_roles,
     required,
@@ -80,8 +87,7 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
     const options = query.data?.[role] || [];
     let next = links.filter((x) => x.role !== role);
     next = next.concat(
-      values.map((id) => {
-        const option = options.find((x) => x.id === id);
+      options.filter((option) => values.includes(option.id)).map((option) => {
         const parent =
           role === "element"
             ? next.find(
@@ -91,7 +97,7 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
               )
             : null;
         return {
-          node_id: id,
+          node_id: option.id,
           role,
           version: option.version,
           parent_node_id: parent?.node_id || null,
@@ -149,6 +155,11 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
 
   return (
     <div className="space-y-3">
+      {unavailable && !query.isFetching && (
+        <p role="alert" className="text-xs text-amber-800">
+          Состав паспорта изменился. Выберите актуальный тип и экземпляр.
+        </p>
+      )}
       {required
         .filter((role) => role !== "element" || data.element_equipment_id)
         .map((role) => (
@@ -205,17 +216,36 @@ export function PassportEquipmentSelector({ data, updateField, query }) {
                     allowClear
                     placeholder="Выберите заводские номера"
                   />
-                  {selected.map((x) => (
-                    <div
-                      key={x.node_id}
-                      className="text-xs font-bold text-slate-900"
-                    >
-                      {passportOptionName(
-                        options.find((o) => o.id === x.node_id),
-                        x.state,
-                      )}
+                  {role === "component" && singleComponent && selected.length === 1 && (
+                    <div className="flex justify-end">
+                      <PassportCorrectionButton
+                        passportId={data.passport_id}
+                        nodeId={selected[0].node_id}
+                        direction="loco"
+                        caseContext={{
+                          case_id: data.id || null,
+                          case_fault_date: formatToDB(data.fault_date) || null,
+                          expected_case_revision: data.expected_revision || null,
+                        }}
+                        onSaved={(result) => {
+                          if (result.case_revision != null) {
+                            updateField("expected_revision", result.case_revision);
+                          }
+                          const option = result.position;
+                          if (option?.equipment_id === data.component_equipment_id) {
+                            updateField("passport_links", links.map((link) =>
+                              link === selected[0]
+                                ? { ...link, version: option.version, state: { ...link.state, ...option } }
+                                : link,
+                            ), data.id ? {} : {
+                              component_serial_number_old: option.serial_number || "б/н",
+                              component_manufacture_date_old: option.manufacture_date_text || "—",
+                            });
+                          }
+                        }}
+                      />
                     </div>
-                  ))}
+                  )}
                 </div>
               );
             })}

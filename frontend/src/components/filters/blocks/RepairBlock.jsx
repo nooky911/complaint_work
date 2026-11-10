@@ -5,7 +5,7 @@ export const RepairBlock = ({ filters, options, updateFilter }) => {
   return (
     <>
       {/* Секция нового оборудования */}
-      <div className="space-y-3">
+      <div className="grid grid-cols-2 items-end gap-3">
         <MultiSelectField
           allowEmpty
           label={REPAIR_FIELDS_LABELS.new_component}

@@ -114,8 +114,7 @@ class PassportCaseService:
             or (previous is None and selection_from_record)
         ):
             # Сохраняем снятые номера этого случая, даже если предыдущую замену удалили
-            for old_link in existing:
-                states[old_link.node_id] = old_link.selected_state
+            original_states = {link.node_id: link.selected_state for link in existing}
             old_items = (
                 (
                     await session.scalars(
@@ -127,8 +126,15 @@ class PassportCaseService:
                 if previous
                 else []
             )
-            for old_item in old_items:
-                states[old_item.node_id] = old_item.before_state
+            original_states.update({item.node_id: item.before_state for item in old_items})
+            for node_id, original in original_states.items():
+                current = states.get(node_id, {})
+                states[node_id] = (
+                    PassportPositionService.with_corrected_type(original, current)
+                    if current.get("_type_corrected")
+                    and PassportPositionService.same_instance(original, current)
+                    else original
+                )
         if train_details is None:
             PassportPositionService.validate_links(
                 nodes,

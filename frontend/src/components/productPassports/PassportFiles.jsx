@@ -16,6 +16,7 @@ export function PassportFiles({
   historyLoading = false,
   historyError = false,
   retryHistory,
+  expectedVersion,
 }) {
   const { user } = useAuth();
   const inputId = useId();
@@ -39,6 +40,7 @@ export function PassportFiles({
     mutationFn: async (files) => {
       const body = new FormData();
       body.append("instance_key", data.instance_key);
+      if (expectedVersion != null) body.append("expected_version", expectedVersion);
       files.forEach((file) => body.append("files", file));
       return api.post(`${base}/files`, body, {
         params: { event_id: eventId, side },

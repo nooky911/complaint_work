@@ -20,6 +20,7 @@ from myapp.models.waybill_docs import WaybillDoc
 from myapp.schemas.cases import CaseDetail
 from myapp.train.models.case_details import TrainCaseDetails
 from myapp.train.models.equipment import TrainEquipment, TrainEquipmentMalfunction
+from myapp.services import CaseValidationError
 from myapp.services.reference_service import ReferenceService
 from myapp.services.warranty_service import WarrantyService
 from myapp.services.omega_services.passport_case_service import PassportCaseService
@@ -325,7 +326,51 @@ class TrainCaseService:
         )
 
     @staticmethod
-    async def check_duplicate(session, data, case_id=None):
+    async def apply_passport_type_correction(session, case, role, old_id, new_id, equipment):
+        """Исправляет совместимый тип в поездном расширении случая"""
+        train = await session.get(TrainCaseDetails, case.id)
+        if train is None:
+            return False
+        fields = ("equipment_id", "component_id", "element_id")
+        if role == "element":
+            field = "element_id"
+        else:
+            field = "component_id" if train.component_id else "equipment_id"
+        if getattr(train, field) != old_id:
+            return False
+
+        selected = [
+            new_id if key == field else getattr(train, key) for key in fields
+        ]
+        # Исправление типа не выбирает за пользователя другой компонент или элемент
+        previous = None
+        for level, equipment_id in enumerate(selected, 2):
+            if equipment_id is None:
+                continue
+            item = equipment.get(equipment_id)
+            if not item or item["level"] != level or (
+                previous is not None and item["parent_id"] != previous
+            ):
+                return False
+            previous = equipment_id
+        leaf = previous
+        if leaf == new_id and not await session.get(
+            TrainEquipmentMalfunction, (leaf, case.malfunction_id)
+        ):
+            return False
+
+        setattr(train, field, new_id)
+        try:
+            await TrainCaseService.check_duplicate(session, case, case.id, train=train)
+        except HTTPException as exc:
+            if exc.status_code != 409:
+                raise
+            raise CaseValidationError("revision", str(exc.detail)) from exc
+        case.supplier_id = inherited_equipment_value(leaf, equipment, "supplier_id")
+        return True
+
+    @staticmethod
+    async def check_duplicate(session, data, case_id=None, *, train=None):
         """Не допускает повторный поездной случай, включая одновременное сохранение"""
         key = json.dumps(
             [
@@ -357,10 +402,12 @@ class TrainCaseService:
         )
         if case_id is not None:
             statement = statement.where(Case.id != case_id)
-        identity = TrainCaseService.duplicate_equipment_identity(data, data.train)
-        for existing, train in (await session.execute(statement)).all():
+        identity = TrainCaseService.duplicate_equipment_identity(
+            data, data.train if train is None else train
+        )
+        for existing, existing_train in (await session.execute(statement)).all():
             if (
-                TrainCaseService.duplicate_equipment_identity(existing, train)
+                TrainCaseService.duplicate_equipment_identity(existing, existing_train)
                 == identity
             ):
                 raise HTTPException(409, "Такой поездной случай уже существует")

@@ -31,9 +31,10 @@ export const useProductPassportSearch = (
     staleTime: 60 * 1000,
   });
 
-export const useProductPassport = (passportId) =>
+export const useProductPassport = (passportId, { refresh = false } = {}) =>
   useQuery({
     queryKey: ["product-passports", passportId],
     queryFn: () => getProductPassport(passportId),
     enabled: Boolean(passportId),
+    ...(refresh ? { staleTime: 0, refetchOnMount: "always" } : {}),
   });

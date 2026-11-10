@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { ChevronDown, Check, Search } from "lucide-react";
+import { ChevronDown, Check, Search, X } from "lucide-react";
 import { EMPTY_FILTER_VALUE } from "../../constants/filters";
 import { useDropdown } from "../../hooks/useDropdown";
 import { useSearchFilter } from "../../hooks/useSearchFilter";
@@ -25,6 +25,13 @@ export const MultiSelectField = ({
         ? [{ id: EMPTY_FILTER_VALUE, name: "(Пустые)" }, ...(options || [])]
         : options,
     [allowEmpty, options],
+  );
+  const labels = new Map(
+    (availableOptions || []).map((option) =>
+      typeof option === "object"
+        ? [String(option.value ?? option.id), option.label || option.name]
+        : [String(option), option],
+    ),
   );
   const filteredOptions = useSearchFilter(availableOptions, searchTerm);
 
@@ -61,26 +68,54 @@ export const MultiSelectField = ({
 
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex h-[38px] cursor-pointer items-center justify-between rounded-lg border border-slate-200 bg-white px-3 shadow-sm transition-all ${
+        className={`flex min-h-[38px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-2 py-1 shadow-sm transition-all ${
           isOpen
             ? "border-indigo-500 ring-1 ring-indigo-50"
             : "hover:border-slate-400"
         }`}
       >
-        <div className="flex items-center overflow-hidden">
+        <div className="flex min-w-0 flex-wrap items-center gap-1">
           {selectedValues.length === 0 ? (
-            <span className="text-sm font-bold text-slate-400">
+            <span className="px-1 text-sm font-bold text-slate-400">
               {placeholder}
             </span>
           ) : (
-            <span className="text-sm font-bold text-slate-800">
-              Выбрано: {selectedValues.length}
-            </span>
+            selectedValues.map((value) => {
+              const name = labels.get(String(value)) ?? String(value);
+              return (
+                <span
+                  key={value}
+                  className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 text-sm font-semibold text-slate-800"
+                >
+                  <span className="truncate" title={name}>
+                    {name}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Убрать ${name}`}
+                    className="shrink-0 rounded text-slate-500 hover:bg-slate-200 hover:text-slate-800"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      toggleValue(value);
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </span>
+              );
+            })
           )}
         </div>
-        <ChevronDown
-          className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
+        <button
+          type="button"
+          aria-label={label || "Открыть список"}
+          aria-expanded={isOpen}
+          className="shrink-0 rounded p-1"
+        >
+          <ChevronDown
+            className={`h-4 w-4 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+          />
+        </button>
       </div>
 
       {isOpen && (

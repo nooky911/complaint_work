@@ -116,9 +116,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
     setLoading(true);
     setShowError(false);
     try {
+      let freshCase;
       // Пытаемся заблокировать случай
       try {
-        await lockMutation.mutateAsync(repairCase.id);
+        freshCase = await lockMutation.mutateAsync(repairCase.id);
         acquired = true;
       } catch (lockError) {
         console.error("Lock error:", lockError);
@@ -157,7 +158,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
       }
 
       const targetId =
-        repairCase.element_equipment?.id || repairCase.component_equipment?.id;
+        freshCase.element_equipment?.id || freshCase.component_equipment?.id;
 
       if (targetId) {
         const currentLevels = {
@@ -175,13 +176,13 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         }
 
         setFaultyHierarchy({
-          component: repairCase.component_equipment?.id,
-          element: repairCase.element_equipment?.id,
+          component: freshCase.component_equipment?.id,
+          element: freshCase.element_equipment?.id,
           fullHierarchy: currentLevels,
         });
       }
 
-      setEditData(convertCaseToFormData(repairCase));
+      setEditData(convertCaseToFormData(freshCase));
       setIsEditing(true);
     } catch (error) {
       if (acquired) {
@@ -408,7 +409,10 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         .filter((k) => k.startsWith("_"))
         .forEach((k) => delete payload[k]);
 
-      if (Object.keys(payload).length === 0) {
+      // Расхождение с предпросмотром требует сохранения, поставщика вычисляет сервер
+      const refreshSupplier = "supplier_id" in payload;
+      delete payload.supplier_id;
+      if (!refreshSupplier && Object.keys(payload).length === 0) {
         await unlockMutation.mutateAsync(repairCase.id);
         setIsEditing(false);
         setSaving(false);
@@ -419,7 +423,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
         payload.user_id = cleanedData.user_id;
       }
 
-      payload.expected_revision = repairCase.revision;
+      payload.expected_revision = editData.expected_revision;
       await onUpdate(payload);
 
       setIsEditing(false);
