@@ -7,6 +7,7 @@ import api from "../../api/api";
 import {
   getInitialCaseData,
   formatApiError,
+  applyLocoEquipmentSelection,
   hasPassportScopeChanged,
   normalizeInstalledSerials,
 } from "../../utils/formatters";
@@ -185,15 +186,7 @@ export const useCreateRepairCase = (onSuccess, currentUser) => {
 
   const handleEquipmentSelect = (data) => {
     setFaultyHierarchy(data);
-    setFormData((prev) => ({
-      ...prev,
-      component_equipment_id: data.component,
-      element_equipment_id: data.element,
-      malfunction_id: null,
-      passport_links: [],
-      replacement_items: [],
-      _passport_status: "loading",
-    }));
+    setFormData((prev) => applyLocoEquipmentSelection(prev, data));
   };
 
   const handleCreate = async () => {

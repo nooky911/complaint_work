@@ -8,6 +8,7 @@ import api from "../../api/api";
 import {
   convertCaseToFormData,
   formatApiError,
+  applyLocoEquipmentSelection,
   hasPassportScopeChanged,
   normalizeInstalledSerials,
 } from "../../utils/formatters";
@@ -257,15 +258,7 @@ export const useRepairCaseForm = (repairCase, onUpdate, currentUser) => {
 
   const handleEquipmentSelect = (data) => {
     setFaultyHierarchy(data);
-    setEditData((prev) => ({
-      ...prev,
-      component_equipment_id: data.component,
-      element_equipment_id: data.element,
-      malfunction_id: null,
-      passport_links: [],
-      replacement_items: [],
-      _passport_status: "loading",
-    }));
+    setEditData((prev) => applyLocoEquipmentSelection(prev, data));
   };
 
   const updateSupplierPreview = async (eqId, locoNum, modelId) => {

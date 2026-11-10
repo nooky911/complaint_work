@@ -94,6 +94,20 @@ export const hasPassportScopeChanged = (previous, field, value) => {
   );
 };
 
+/** Сохраняет паспортные номера компонента при смене только его элемента */
+export const applyLocoEquipmentSelection = (previous, { component, element }) => ({
+  ...previous,
+  component_equipment_id: component,
+  element_equipment_id: element,
+  malfunction_id: null,
+  passport_links:
+    component && previous.component_equipment_id === component
+      ? (previous.passport_links || []).filter((link) => link.role === "component")
+      : [],
+  replacement_items: [],
+  _passport_status: "loading",
+});
+
 /** Подставляет б/н в пустые номера установленного оборудования перед отправкой */
 export const normalizeInstalledSerials = (data, current = data) => {
   const normalized = { ...data };
